@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/favicon.ico?v=oscar-neon" />
+    <link rel="shortcut icon" href="/favicon.ico?v=oscar-neon" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=oscar-neon" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=oscar-neon" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=oscar-neon" />
+    <title>OSCAR STORE</title>
+    <style>
+      #app-boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at 50% 45%, rgb(14 165 233 / 0.16), transparent 52%),
+          radial-gradient(circle at 10% 0%, rgb(14 165 233 / 0.1), transparent 35%),
+          linear-gradient(180deg, #090d16 0%, #060912 100%);
+        transition: opacity 240ms ease, visibility 240ms ease;
+      }
+
+      #app-boot-loader.is-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .boot-loader__logo {
+        width: clamp(90px, 19vw, 132px);
+        height: clamp(90px, 19vw, 132px);
+        object-fit: contain;
+        animation: boot-logo-motion 1.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        filter: drop-shadow(0 10px 24px rgb(14 165 233 / 0.38));
+      }
+
+      @keyframes boot-logo-motion {
+        0% {
+          transform: translateY(0) rotate(0deg) scale(0.985);
+        }
+
+        50% {
+          transform: translateY(-4px) rotate(180deg) scale(1);
+        }
+
+        100% {
+          transform: translateY(0) rotate(360deg) scale(0.985);
+        }
+      }
+
+    </style>
+  </head>
+  <body>
+    <div id="app-boot-loader" aria-hidden="true">
+      <img class="boot-loader__logo" src="/src/assets/ms-removebg-preview.webp" alt="OSCAR STORE" />
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

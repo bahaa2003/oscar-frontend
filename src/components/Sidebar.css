@@ -1,0 +1,155 @@
+.sidebar {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 1000;
+  display: flex;
+  width: 76px;
+  height: calc(100vh - 24px);
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  border: 1px solid rgb(93 111 181 / 0.54);
+  border-radius: 28px;
+  background:
+    radial-gradient(26rem circle at 78% -6%, rgb(34 211 238 / 0.16), transparent 34%),
+    radial-gradient(22rem circle at 16% 8%, rgb(168 85 247 / 0.16), transparent 42%),
+    linear-gradient(180deg, rgb(4 9 24 / 0.98), rgb(2 7 19 / 0.96) 54%, rgb(2 5 14 / 0.98));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 48px -28px rgb(34 211 238 / 0.78),
+    0 0 54px -32px rgb(244 63 221 / 0.84),
+    0 30px 80px -54px rgb(0 0 0 / 0.92);
+  padding: 16px 10px;
+  transition: width 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar::after {
+  content: "";
+  position: absolute;
+  left: -24%;
+  right: -24%;
+  bottom: -4.25rem;
+  height: 11rem;
+  pointer-events: none;
+  background:
+    radial-gradient(18rem 5.5rem at 82% 66%, rgb(34 211 238 / 0.34), transparent 66%),
+    radial-gradient(16rem 6rem at 16% 62%, rgb(168 85 247 / 0.34), transparent 68%),
+    linear-gradient(145deg, transparent 22%, rgb(124 58 237 / 0.24) 42%, transparent 58%);
+}
+
+.sidebar.expanded {
+  width: 232px;
+}
+
+.sidebar-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 3.45rem;
+  cursor: pointer;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid rgb(93 111 181 / 0.24);
+  border-radius: 1rem;
+  background:
+    radial-gradient(13rem circle at 90% 50%, rgb(34 211 238 / 0.035), transparent 44%),
+    linear-gradient(180deg, rgb(6 13 31 / 0.58), rgb(2 8 22 / 0.48));
+  color: rgb(203 213 225 / 0.78);
+  padding: 10px 12px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.sidebar-item:hover {
+  border-color: rgb(34 211 238 / 0.2);
+  color: white;
+  background:
+    radial-gradient(13rem circle at 90% 50%, rgb(34 211 238 / 0.09), transparent 44%),
+    linear-gradient(180deg, rgb(9 18 42 / 0.72), rgb(3 10 26 / 0.62));
+}
+
+.sidebar-item.active {
+  border-color: rgb(168 85 247 / 0.72);
+  background:
+    radial-gradient(11rem circle at 88% 50%, rgb(34 211 238 / 0.22), transparent 46%),
+    radial-gradient(13rem circle at 12% 36%, rgb(244 63 221 / 0.18), transparent 46%),
+    linear-gradient(90deg, rgb(124 58 237 / 0.26), rgb(5 12 30 / 0.78) 68%, rgb(34 211 238 / 0.1));
+  color: white;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 36px -16px rgb(34 211 238 / 0.88),
+    0 0 40px -18px rgb(244 63 221 / 0.9);
+}
+
+.sidebar-item.active::after {
+  content: "";
+  position: absolute;
+  inset-block: 0.82rem;
+  inset-inline-start: -1px;
+  width: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #7df9ff, #d946ef);
+  box-shadow:
+    0 0 16px rgb(34 211 238 / 0.86),
+    0 0 20px rgb(244 63 221 / 0.72);
+}
+
+.sidebar-icon {
+  width: 2.55rem;
+  height: 2.55rem;
+  flex-shrink: 0;
+  border: 1px solid rgb(93 111 181 / 0.32);
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 36% 26%, rgb(255 255 255 / 0.09), transparent 34%),
+    linear-gradient(180deg, rgb(37 34 84 / 0.74), rgb(17 16 48 / 0.7));
+  color: #8b5cf6;
+  padding: 10px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 28px -18px rgb(168 85 247 / 0.82);
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-item:hover .sidebar-icon {
+  border-color: rgb(34 211 238 / 0.28);
+  color: #7df9ff;
+  transform: translateY(-1px);
+}
+
+.sidebar-item.active .sidebar-icon {
+  border-color: rgb(34 211 238 / 0.38);
+  background:
+    radial-gradient(circle at 36% 26%, rgb(34 211 238 / 0.24), transparent 38%),
+    linear-gradient(145deg, rgb(14 86 151 / 0.86), rgb(51 25 126 / 0.88));
+  color: #7df9ff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.14),
+    0 0 30px -10px rgb(34 211 238 / 0.84),
+    0 0 34px -14px rgb(244 63 221 / 0.84);
+}
+
+.sidebar-text {
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition:
+    opacity 0.26s ease,
+    transform 0.26s ease;
+  white-space: nowrap;
+}
+
+.sidebar.expanded .sidebar-text {
+  opacity: 1;
+  transform: translateX(0);
+}
