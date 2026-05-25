@@ -129,7 +129,6 @@
 .purchase-balance-desc {
   display: inline-block;
   max-width: 8.2rem;
-  color: rgb(236 244 255 / 0.95);
   font-size: clamp(0.68rem, 2.7vw, 0.78rem);
   font-weight: 700;
   line-height: 1.15;

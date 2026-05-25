@@ -1511,6 +1511,18 @@ const isAdmin = () => {
 
 const realApi = {
 
+  whatsapp: {
+    getStatus: async () => {
+      const res = await http.get('/admin/whatsapp/status');
+      return unwrap(res);
+    },
+
+    reconnect: async () => {
+      const res = await http.post('/admin/whatsapp/reconnect');
+      return unwrap(res);
+    },
+  },
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   auth: {
     login: async (email, password) => {

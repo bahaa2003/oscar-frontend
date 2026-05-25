@@ -54,6 +54,7 @@ const OrdersFiltersBar = ({
   searchPlaceholder,
   helperText,
   showTypeFilter = true,
+  showStatusFilter = true,
   showDateFilter = true,
   showSort = true,
   panelClassName = '',
@@ -157,13 +158,15 @@ const OrdersFiltersBar = ({
             'grid min-w-0 flex-1 grid-cols-2 gap-2 md:grid-cols-3',
             showTypeFilter && showDateFilter ? 'xl:grid-cols-4' : 'xl:grid-cols-2'
           )}>
-            <FilterField
+            {showStatusFilter ? (
+              <FilterField
               label={isArabic ? 'الحالة' : 'Status'}
               value={statusFilter}
               onChange={onStatusChange}
               options={statusOptions}
               compact={compact}
             />
+            ) : null}
 
             {showTypeFilter ? (
               <FilterField

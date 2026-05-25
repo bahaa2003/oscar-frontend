@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap");
 @import "tailwindcss";
 @import "./theme/tokens.css";
@@ -6,13 +7,14 @@
 
 @theme {
   --font-sans:
-    "Poppins", "Cairo", "Tajawal", ui-sans-serif, system-ui,
+    "Poppins", "Alexandria", ui-sans-serif, system-ui,
     sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   html {
+    font-size: 14px;
     background-color: var(--color-bg);
     color-scheme: light;
     scroll-behavior: smooth;
@@ -70,7 +72,7 @@
   }
 
   html[lang="ar"] body {
-    font-family: "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Alexandria", ui-sans-serif, system-ui, sans-serif;
   }
 
   html[lang="en"] body {

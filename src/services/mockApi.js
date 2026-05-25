@@ -2436,6 +2436,30 @@ const mockApi = {
     },
   },
 
+  whatsapp: {
+    getStatus: async () => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      return {
+        state: 'QR_READY',
+        qrCode: null,
+        isConnected: false,
+        isInitializing: false,
+        lastError: '',
+      };
+    },
+
+    reconnect: async () => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      return {
+        state: 'INITIALIZING',
+        qrCode: null,
+        isConnected: false,
+        isInitializing: true,
+        lastError: '',
+      };
+    },
+  },
+
   audit: {
     list: async () => {
       await new Promise(resolve => setTimeout(resolve, DELAY));

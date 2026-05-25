@@ -1,7 +1,22 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  BadgeDollarSign,
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  Hash,
+  Info,
+  Mail,
+  Package,
+  ReceiptText,
+  RefreshCw,
+  ShoppingBag,
+  UserRound,
+} from 'lucide-react';
 import useOrderStore from '../store/useOrderStore';
 import { useLanguage } from '../context/LanguageContext';
 import { devLogger } from '../utils/devLogger';
@@ -19,6 +34,11 @@ const getCopy = (language = 'ar') => {
       playerId: 'Player ID',
       orderDetails: 'Order Details',
       personalInfo: 'Personal Information',
+      productInfo: 'Product Information',
+      notes: 'Notes',
+      productName: 'Product',
+      productId: 'Product ID',
+      quantity: 'Quantity',
       backToOrders: 'Back to Orders',
       manual: 'Manual',
       automatic: 'Automatic',
@@ -27,6 +47,7 @@ const getCopy = (language = 'ar') => {
       completed: 'Completed',
       failed: 'Failed',
       cancelled: 'Cancelled',
+      loading: 'Loading order details...',
     };
   }
 
@@ -41,6 +62,11 @@ const getCopy = (language = 'ar') => {
     playerId: 'رقم اللاعب',
     orderDetails: 'تفاصيل الطلب',
     personalInfo: 'المعلومات الشخصية',
+    productInfo: 'بيانات المنتج',
+    notes: 'ملاحظات',
+    productName: 'المنتج',
+    productId: 'معرف المنتج',
+    quantity: 'الكمية',
     backToOrders: 'العودة للطلبات',
     manual: 'يدوي',
     automatic: 'تلقائي',
@@ -49,59 +75,95 @@ const getCopy = (language = 'ar') => {
     completed: 'مكتمل',
     failed: 'فشل',
     cancelled: 'ملغى',
+    loading: 'جاري تحميل تفاصيل الطلب...',
   };
 };
 
+const statusTone = (status) => {
+  switch (String(status || '').toLowerCase()) {
+    case 'completed':
+    case 'success':
+      return 'text-emerald-500 dark:text-emerald-300';
+    case 'failed':
+    case 'cancelled':
+    case 'rejected':
+      return 'text-rose-500 dark:text-rose-300';
+    default:
+      return 'text-cyan-600 dark:text-cyan-300';
+  }
+};
+
 const getStatusIcon = (status) => {
-  switch (status?.toLowerCase()) {
+  switch (String(status || '').toLowerCase()) {
     case 'completed':
     case 'success':
-      return <CheckCircle2 className="h-5 w-5 text-green-400" />;
-    case 'processing':
-    case 'pending':
-      return <Clock className="h-5 w-5 text-cyan-400" />;
+      return CheckCircle2;
     case 'failed':
     case 'cancelled':
-      return <AlertCircle className="h-5 w-5 text-red-400" />;
+    case 'rejected':
+      return AlertCircle;
     default:
-      return <Clock className="h-5 w-5 text-cyan-400" />;
+      return Clock;
   }
 };
 
-const getStatusColor = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'completed':
-    case 'success':
-      return 'border-green-400/30 bg-green-400/10 text-green-300';
-    case 'processing':
-    case 'pending':
-      return 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300';
-    case 'failed':
-    case 'cancelled':
-      return 'border-red-400/30 bg-red-400/10 text-red-300';
-    default:
-      return 'border-cyan-400/30 bg-cyan-400/10 text-cyan-300';
-  }
-};
+const normalizeOrderId = (value) => String(value || '').replace(/^#/, '').trim().toLowerCase();
 
-const formatDate = (dateString) => {
+const formatDate = (dateString, language = 'ar') => {
   if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch (e) {
-    return dateString;
-  }
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return String(dateString);
+
+  return parsed.toLocaleString(language === 'en' ? 'en-US' : 'ar-SA', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const displayValue = (value) => {
+  if (value === null || value === undefined || value === '') return '-';
+  return String(value);
+};
+
+const SectionHeader = ({ children }) => (
+  <div className="-mx-4 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-500 dark:text-white/45 sm:-mx-5 sm:px-5">
+    {children}
+  </div>
+);
+
+const DetailRow = ({ icon: Icon, label, value, dir = 'auto', valueClassName = '' }) => (
+  <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+    <span className="inline-flex shrink-0 items-center gap-2 text-sm text-slate-500 dark:text-white/45">
+      <Icon className="h-4 w-4 text-slate-400 dark:text-white/35" />
+      <span>{label}</span>
+    </span>
+    <span
+      dir={dir}
+      className={`min-w-0 max-w-[58%] text-end text-sm font-medium text-slate-900 dark:text-white/85 ${valueClassName}`}
+    >
+      {React.isValidElement(value) ? value : displayValue(value)}
+    </span>
+  </div>
+);
+
+const StatusValue = ({ status, label }) => {
+  const Icon = getStatusIcon(status);
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${statusTone(status)}`}>
+      <Icon className="h-4 w-4" />
+      <span>{displayValue(label)}</span>
+    </span>
+  );
 };
 
 const OrderDetailsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { orderId } = useParams();
   const { language, dir } = useLanguage();
   const orders = useOrderStore((state) => state.orders);
@@ -110,11 +172,8 @@ const OrderDetailsPage = () => {
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Find order
   useEffect(() => {
-    // Support orderId passed as route param or as URL hash (e.g. /orders/#10009)
-    const loc = location;
-    const maybeHash = loc?.hash ? loc.hash.replace(/^#/, '') : '';
+    const maybeHash = location?.hash ? location.hash.replace(/^#/, '') : '';
     const candidateId = orderId || maybeHash;
 
     if (!candidateId) {
@@ -122,192 +181,160 @@ const OrderDetailsPage = () => {
       return;
     }
 
-    const normalize = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
-    const target = normalize(candidateId);
+    const target = normalizeOrderId(candidateId);
+    const found = orders?.find((item) => (
+      normalizeOrderId(item.id) === target
+      || normalizeOrderId(item.orderId) === target
+      || normalizeOrderId(item.orderNumber) === target
+      || normalizeOrderId(item.displayOrderId) === target
+    ));
 
-    const found = orders?.find((o) => normalize(o.id) === target || normalize(o.orderId) === target);
     if (found) {
       setOrder(found);
     } else {
       devLogger.warn('Order not found', { orderId: candidateId });
       navigate('/orders');
     }
+
     setIsLoading(false);
-  }, [orderId, orders, navigate]);
+  }, [location?.hash, navigate, orderId, orders]);
 
   if (isLoading || !order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[linear-gradient(135deg,#0a0e1a_0%,#1a0f2e_50%,#0a0e1a_100%)]">
+      <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(135deg,#0a0e1a_0%,#1a0f2e_50%,#0a0e1a_100%)]" dir={dir}>
         <div className="text-center">
-          <div className="inline-flex h-12 w-12 animate-spin rounded-full border-4 border-cyan-400 border-t-fuchsia-400" />
-          <p className="mt-4 text-cyan-300 text-sm">{copy.orderDetails}...</p>
+          <div className="inline-flex h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-cyan-300" />
+          <p className="mt-4 text-sm text-white/55">{copy.loading}</p>
         </div>
       </div>
     );
   }
 
-  const statusLabel = copy[order.status?.toLowerCase()] || order.status;
-  const typeLabel = copy[(order.type?.toLowerCase() === 'manual' ? 'manual' : 'automatic')] || order.type;
+  const statusLabel = copy[String(order.status || '').toLowerCase()] || order.status || '-';
+  const typeLabel = copy[String(order.type || '').toLowerCase() === 'manual' ? 'manual' : 'automatic'] || order.type || '-';
+  const orderNumber = order.orderNumber || order.displayOrderId || order.id || order.orderId;
+  const amount = order.total ?? order.amount ?? order.priceCoins ?? order.price ?? '-';
+  const customerIdentifier = order.playerId || order.customerId || order.userId;
+  const notes = order.description || order.notes || order.remarks || order.rejectionReason;
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-[linear-gradient(135deg,#0a0e1a_0%,#1a0f2e_50%,#0a0e1a_100%)] flex flex-col px-4 py-6"
+      className="min-h-screen bg-[linear-gradient(135deg,#0a0e1a_0%,#1a0f2e_50%,#0a0e1a_100%)] px-4 py-6 text-slate-950 dark:text-white"
+      dir={dir}
     >
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-lg hover:bg-cyan-400/10 text-cyan-300 transition"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <h1 className="text-2xl font-bold text-cyan-300 flex-1">{copy.orderDetails}</h1>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-2xl mx-auto w-full space-y-4 pb-6">
-        {/* Order Header Card */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 via-slate-900/50 to-fuchsia-400/5 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(34,211,238,0.1)]"
-        >
-          <div className="space-y-4">
-            {/* Order Number */}
-            <div className="flex items-center justify-between pb-4 border-b border-cyan-400/10">
-              <span className="text-sm text-cyan-200/60 font-medium">{copy.orderNumber}</span>
-              <span className="text-lg font-bold text-cyan-300 font-mono">{order.id || order.orderId}</span>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-cyan-200/60 font-medium">{copy.status}</span>
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${getStatusColor(order.status)}`}>
-                {getStatusIcon(order.status)}
-                <span className="text-sm font-bold">{statusLabel}</span>
-              </div>
-            </div>
-
-            {/* Order Type */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-cyan-200/60 font-medium">{copy.orderType}</span>
-              <span className="text-sm font-bold text-cyan-300">{typeLabel}</span>
-            </div>
-
-            {/* Amount */}
-            <div className="flex items-center justify-between pt-2 border-t border-cyan-400/10">
-              <span className="text-sm text-cyan-200/60 font-medium">{copy.amount}</span>
-              <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-fuchsia-300 to-cyan-300">
-                ${parseFloat(order.total || order.amount || 0).toFixed(4)}
-              </span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Dates Card */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 via-slate-900/50 to-fuchsia-400/5 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(34,211,238,0.1)]"
-        >
-          <h3 className="text-xs text-cyan-200/60 font-semibold mb-4 uppercase">{copy.personalInfo}</h3>
-          <div className="space-y-3">
-            {/* Created Date */}
-            <div>
-              <p className="text-xs text-cyan-200/60 font-medium mb-1">{copy.createdDate}</p>
-              <p className="text-sm text-cyan-300">
-                {formatDate(order.createdAt || order.timestamp || order.date)}
-              </p>
-            </div>
-
-            {/* Updated Date */}
-            {(order.updatedAt || order.lastUpdated) && (
-              <div>
-                <p className="text-xs text-cyan-200/60 font-medium mb-1">{copy.updatedDate}</p>
-                <p className="text-sm text-cyan-300">
-                  {formatDate(order.updatedAt || order.lastUpdated)}
-                </p>
-              </div>
-            )}
-
-            {/* Email */}
-            {order.email && (
-              <div>
-                <p className="text-xs text-cyan-200/60 font-medium mb-1">{copy.email}</p>
-                <p className="text-sm text-cyan-300 break-all">{order.email}</p>
-              </div>
-            )}
-
-            {/* Player ID */}
-            {(order.playerId || order.userId || order.customerId) && (
-              <div>
-                <p className="text-xs text-cyan-200/60 font-medium mb-1">{copy.playerId}</p>
-                <p className="text-sm font-mono text-cyan-300">
-                  {order.playerId || order.userId || order.customerId}
-                </p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Additional Details */}
-        {(order.description || order.notes || order.remarks) && (
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 via-slate-900/50 to-fuchsia-400/5 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(34,211,238,0.1)]"
+      <div className="mx-auto w-full max-w-2xl">
+        <header className="mb-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/orders')}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-white/70 backdrop-blur-md transition hover:bg-white/10 hover:text-white"
+            aria-label={copy.backToOrders}
           >
-            <h3 className="text-xs text-cyan-200/60 font-semibold mb-3 uppercase">ملاحظات</h3>
-            <p className="text-sm text-cyan-300 leading-relaxed">
-              {order.description || order.notes || order.remarks}
-            </p>
-          </motion.div>
-        )}
+            <ArrowLeft className={`h-5 w-5 ${dir === 'rtl' ? 'rotate-180' : ''}`} />
+          </button>
+          <h1 className="text-lg font-bold text-white/90">{copy.orderDetails}</h1>
+        </header>
 
-        {/* Product Information */}
-        {(order.productId || order.productName) && (
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/5 via-slate-900/50 to-fuchsia-400/5 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(34,211,238,0.1)]"
-          >
-            <h3 className="text-xs text-cyan-200/60 font-semibold mb-4 uppercase">المنتج</h3>
-            <div className="space-y-3">
-              {order.productName && (
-                <div className="flex justify-between items-start">
-                  <span className="text-sm text-cyan-200/60">الاسم</span>
-                  <span className="text-sm font-bold text-cyan-300 text-right">{order.productName}</span>
-                </div>
-              )}
-              {order.quantity && (
-                <div className="flex justify-between items-start">
-                  <span className="text-sm text-cyan-200/60">الكمية</span>
-                  <span className="text-sm font-bold text-cyan-300">{order.quantity}</span>
-                </div>
-              )}
-              {order.productId && (
-                <div className="flex justify-between items-start">
-                  <span className="text-sm text-cyan-200/60">ID</span>
-                  <span className="text-sm font-mono text-cyan-300">{order.productId}</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
+        <motion.article
+          initial={{ y: 14, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-2 shadow-[0_28px_80px_-52px_rgba(0,0,0,0.95)] backdrop-blur-md sm:px-5"
+        >
+          <DetailRow
+            icon={Hash}
+            label={copy.orderNumber}
+            value={orderNumber}
+            dir="ltr"
+            valueClassName="break-all font-mono text-xs"
+          />
+          <DetailRow
+            icon={ReceiptText}
+            label={copy.status}
+            value={<StatusValue status={order.status} label={statusLabel} />}
+          />
+          <DetailRow icon={Info} label={copy.orderType} value={typeLabel} />
+          <DetailRow
+            icon={BadgeDollarSign}
+            label={copy.amount}
+            value={amount}
+            dir="ltr"
+            valueClassName="break-all font-mono text-xs"
+          />
+          <DetailRow icon={CalendarClock} label={copy.createdDate} value={formatDate(order.createdAt || order.timestamp || order.date, language)} />
 
-        {/* Action Button */}
+          {(order.updatedAt || order.lastUpdated) && (
+            <DetailRow icon={RefreshCw} label={copy.updatedDate} value={formatDate(order.updatedAt || order.lastUpdated, language)} />
+          )}
+
+          {(order.email || customerIdentifier) && <SectionHeader>{copy.personalInfo}</SectionHeader>}
+
+          {order.email && (
+            <DetailRow
+              icon={Mail}
+              label={copy.email}
+              value={order.email}
+              dir="ltr"
+              valueClassName="break-all text-xs"
+            />
+          )}
+
+          {customerIdentifier && (
+            <DetailRow
+              icon={UserRound}
+              label={copy.playerId}
+              value={customerIdentifier}
+              dir="ltr"
+              valueClassName="break-all font-mono text-xs"
+            />
+          )}
+
+          {(order.productName || order.quantity || order.productId) && <SectionHeader>{copy.productInfo}</SectionHeader>}
+
+          {order.productName && (
+            <DetailRow
+              icon={Package}
+              label={copy.productName}
+              value={order.productName}
+              valueClassName="break-words"
+            />
+          )}
+
+          {order.quantity && (
+            <DetailRow icon={ShoppingBag} label={copy.quantity} value={order.quantity} dir="ltr" />
+          )}
+
+          {order.productId && (
+            <DetailRow
+              icon={Hash}
+              label={copy.productId}
+              value={order.productId}
+              dir="ltr"
+              valueClassName="break-all font-mono text-xs"
+            />
+          )}
+
+          {notes && <SectionHeader>{copy.notes}</SectionHeader>}
+
+          {notes && (
+            <DetailRow
+              icon={Info}
+              label={copy.notes}
+              value={notes}
+              valueClassName="break-words"
+            />
+          )}
+        </motion.article>
+
         <motion.button
-          initial={{ y: 20, opacity: 0 }}
+          initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.08, duration: 0.2 }}
+          type="button"
           onClick={() => navigate('/orders')}
-          className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-500 via-fuchsia-500 to-pink-500 text-white font-bold text-sm transition hover:brightness-110 shadow-[0_0_20px_rgba(34,211,238,0.3),0_0_30px_rgba(168,85,247,0.2)]"
+          className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-white/10 text-sm font-semibold text-white/85 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
         >
           {copy.backToOrders}
         </motion.button>

@@ -31,8 +31,6 @@ import {
 import { COUNTRY_CATALOG } from '../data/countryCatalog';
 import { getDefaultRouteForRole } from '../utils/authRoles';
 import { getAccountAccessRoute, normalizeAccountStatus } from '../utils/accountStatus';
-import brandIconImage from '../assets/ms-removebg-preview.webp';
-import coinsImage from '../assets/عملات.webp';
 import styles from './Auth.module.css';
 
 const GoogleMark = () => (
@@ -98,7 +96,6 @@ const Auth = () => {
   const [errors, setErrors] = useState({});
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
@@ -476,24 +473,6 @@ const countryOptions = useMemo(() => {
   const authSelectClassName =
     'h-11 w-full rounded-[var(--radius-md)] px-4 text-sm outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55';
   const authLinkClassName = 'font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]';
-  const modeConfig = isLogin
-    ? {
-        heading: t('auth.globalSignInTitle', {
-          defaultValue: dir === 'rtl' ? 'بوابتك العالمية إلى OSCAR STORE' : 'Your global gateway to OSCAR STORE',
-        }),
-        description: t('auth.globalSignInDescription', {
-          defaultValue: dir === 'rtl'
-            ? 'سجّل الدخول بأمان من أي مكان، وتابع رصيدك وطلباتك بعملتك المفضلة.'
-            : 'Sign in securely from anywhere, then manage your balance and orders in your preferred currency.',
-        }),
-        pills: [],
-      }
-    : {
-        heading: t('auth.register'),
-        description: t('auth.joinToday'),
-        pills: [],
-      };
-
   const handleBack = () => {
     navigate('/');
   };
@@ -533,74 +512,14 @@ const countryOptions = useMemo(() => {
           transition={{ duration: 0.45, ease: 'easeOut' }}
           className={styles.formPane}
         >
-          <div className={styles.brandBlock}>
-            <div className={styles.brandIcon}>
-              <img
-                src={brandIconImage}
-                alt="OSCAR STORE"
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-              />
-            </div>
-            <div>
-              <span className={styles.eyebrow}>{isLogin ? t('auth.login') : t('auth.register')}</span>
-              <h1 className={styles.formTitle}>{modeConfig.heading}</h1>
-              <p className={styles.formSubtitle}>{modeConfig.description}</p>
-            </div>
-          </div>
-
-          <div className={styles.modeToggle} data-auth-no-sparkle>
-            {[
-              { key: 'login', active: isLogin, label: t('auth.login'), onClick: () => !isLogin && toggleMode() },
-              { key: 'register', active: !isLogin, label: t('auth.register'), onClick: () => isLogin && toggleMode() },
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={item.onClick}
-                className={cn(
-                  'relative overflow-hidden rounded-[0.9rem] px-3 py-2 text-[0.82rem] font-semibold transition',
-                  item.active
-                    ? 'text-[var(--color-button-text)] shadow-[0_18px_36px_-26px_rgb(var(--color-primary-rgb)/0.55)]'
-                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                )}
-              >
-                {item.active && (
-                  <motion.span
-                    layoutId="auth-mode-toggle"
-                    className={styles.modeToggleActive}
-                    transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{item.label}</span>
-              </button>
-            ))}
-          </div>
-
           <section className={styles.formCard} data-auth-no-sparkle>
-            <form onSubmit={handleSubmit} className={styles.formStack}>
-              {!isLogin && (
-                <div className={styles.stepProgress} aria-label="تقدم التسجيل">
-                  {[
-                    { index: 1, label: 'البيانات الأساسية' },
-                    { index: 2, label: 'إعداد الحساب' },
-                  ].map((step) => (
-                    <div
-                      key={step.index}
-                      className={cn(
-                        styles.stepItem,
-                        registerStep === step.index && styles.stepItemActive,
-                        registerStep > step.index && styles.stepItemDone
-                      )}
-                    >
-                      <span>{step.index}</span>
-                      <small>{step.label}</small>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <header className="mb-6 text-center">
+              <h1 className={styles.formTitle}>
+                {isLogin ? t('auth.login') : t('auth.register')}
+              </h1>
+            </header>
 
+            <form onSubmit={handleSubmit} className={styles.formStack}>
               <AnimatePresence mode="wait" initial={false}>
                 {isLogin && twoFactorChallenge ? (
                   <motion.div key="login-2fa" {...stepMotion} className={styles.verificationStep}>
@@ -851,13 +770,13 @@ const countryOptions = useMemo(() => {
               {!twoFactorChallenge && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[rgba(212,175,55,0.3)] to-transparent" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
                     {t('auth.orContinueWith', {
                       defaultValue: dir === 'rtl' ? 'أو تابع باستخدام' : 'Or continue with',
                     })}
                   </span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent via-[rgba(212,175,55,0.3)] to-transparent" />
+                  <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/10 to-transparent" />
                 </div>
 
                 <motion.button
@@ -866,9 +785,9 @@ const countryOptions = useMemo(() => {
                   whileTap={reduceMotion ? undefined : { scale: 0.99 }}
                   onClick={handleGoogleAuth}
                   disabled={isLoading}
-                  className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,244,234,0.92))] px-4 py-3 text-sm font-semibold text-[var(--color-text)] shadow-[0_18px_42px_-26px_rgba(15,23,42,0.28)] transition-all hover:border-[color:rgb(var(--color-primary-rgb)/0.28)] hover:shadow-[0_24px_48px_-26px_rgba(212,175,55,0.26)] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[linear-gradient(180deg,rgba(17,19,26,0.96),rgba(9,10,13,0.92))]"
+                  className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[var(--color-text)] shadow-none backdrop-blur-md transition-all hover:border-purple-500/35 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                  <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white shadow-sm">
                     <GoogleMark />
                   </span>
                   <span className="relative">
@@ -905,82 +824,7 @@ const countryOptions = useMemo(() => {
             </form>
           </section>
         </motion.div>
-
-        <aside className={styles.visualPane} aria-hidden="true">
-          <div className={styles.visualGlowOne} />
-          <div className={styles.visualGlowTwo} />
-          <div className={styles.goldLines} />
-          <div className={styles.visualContent}>
-            <div className={styles.visualLogo}>
-              <img src={brandIconImage} alt="" />
-            </div>
-            <img
-              src={coinsImage}
-              alt="عملات"
-              loading="eager"
-              decoding="async"
-              className="mx-auto h-8 w-auto object-contain"
-            />
-            <span className={styles.visualKicker}>OSCAR STORE</span>
-            <h2>{isLogin ? modeConfig.description : modeConfig.heading}</h2>
-            <p>{modeConfig.description}</p>
-          </div>
-        </aside>
       </main>
-
-      {isLogin && (
-        <>
-          <div className={`${styles.globalAccessBar} ${styles.footerAccessBar}`} data-auth-no-sparkle>
-            {[
-              {
-                icon: Globe,
-                label: t('auth.worldwideAccess', {
-                  defaultValue: dir === 'rtl' ? 'وصول عالمي' : 'Worldwide access',
-                }),
-              },
-              {
-                icon: Lock,
-                label: t('auth.secureAccountAccess', {
-                  defaultValue: dir === 'rtl' ? 'حساب آمن' : 'Secure account',
-                }),
-              },
-              {
-                icon: Mail,
-                label: t('auth.fastVerification', {
-                  defaultValue: dir === 'rtl' ? 'تحقق سريع' : 'Fast verification',
-                }),
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <span key={item.label} className={styles.globalAccessItem}>
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </span>
-              );
-            })}
-          </div>
-
-          <div className={styles.privacyStrip} data-auth-no-sparkle>
-            <div>
-              {dir === 'rtl'
-                ? 'بتسجيل الدخول إلى OSCAR STORE، فأنت تقر بأنك اطلعت على '
-                : 'By signing in to OSCAR STORE, you acknowledge our '}
-              <button
-                type="button"
-                onClick={() => setPrivacyModalOpen(true)}
-                className="font-semibold text-[var(--color-primary)] underline underline-offset-4 transition hover:text-[var(--color-primary-hover)]"
-              >
-                {dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}
-              </button>
-              {dir === 'rtl'
-                ? ' وتفهم كيفية استخدام البيانات اللازمة لحماية الحساب وتحسين الخدمة.'
-                : ' and understand how the data required to secure your account and improve the service is used.'}
-            </div>
-          </div>
-        </>
-      )}
 
       <Modal
         isOpen={forgotModalOpen}
@@ -1011,37 +855,6 @@ const countryOptions = useMemo(() => {
             autoFocus
           />
         </form>
-      </Modal>
-
-      <Modal
-        isOpen={privacyModalOpen}
-        onClose={() => setPrivacyModalOpen(false)}
-        title={dir === 'rtl' ? 'سياسة الخصوصية' : 'Privacy Policy'}
-        footer={(
-          <div className="flex justify-end">
-            <Button onClick={() => setPrivacyModalOpen(false)}>
-              {dir === 'rtl' ? 'إغلاق' : 'Close'}
-            </Button>
-          </div>
-        )}
-      >
-        <div className="space-y-3 text-sm leading-7 text-[var(--color-text-secondary)]">
-          <p>
-            {dir === 'rtl'
-              ? 'تحترم OSCAR STORE خصوصيتك، وتستخدم بيانات تسجيل الدخول وبيانات الجلسة والمعلومات الأمنية الأساسية بالقدر اللازم فقط لتوثيق الحساب، حمايته، ومنع إساءة الاستخدام.'
-              : 'OSCAR STORE respects your privacy and uses sign-in details, session data, and essential security information only as needed to authenticate your account, protect it, and prevent misuse.'}
-          </p>
-          <p>
-            {dir === 'rtl'
-              ? 'قد تتم معالجة البيانات المرتبطة بالحساب لتحسين الاعتمادية، دعم تسجيل الدخول، متابعة الطلبات، وتقديم تجربة أكثر أمانًا واستقرارًا داخل المنصة.'
-              : 'Account-related data may be processed to improve reliability, support sign-in, follow order activity, and provide a more secure and stable experience across the platform.'}
-          </p>
-          <p>
-            {dir === 'rtl'
-              ? 'باستمرارك في تسجيل الدخول، فإنك توافق على هذه المعالجة الأساسية ضمن حدود تشغيل الخدمة وسياسات الحماية المعمول بها داخل المنصة.'
-              : 'By continuing to sign in, you agree to this essential processing within the scope of operating the service and the platform’s applicable protection policies.'}
-          </p>
-        </div>
       </Modal>
     </div>
   );
