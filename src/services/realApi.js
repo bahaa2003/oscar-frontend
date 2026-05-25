@@ -23,6 +23,7 @@ import {
 import { resolveImageUrl } from '../utils/imageUrl';
 import { resolveUserAvatar } from '../utils/avatar';
 import { getAccountAccessRoute, normalizeAccountStatus } from '../utils/accountStatus';
+import { getDashboardPathForRole } from '../utils/navigation';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -44,6 +45,9 @@ const LOGIN_REDIRECT_PATH = '/login';
 const REFRESH_ENDPOINT = '/auth/refresh';
 
 const AUTH_FORCE_LOGOUT_EVENT = 'auth:force-logout';
+const APP_TOAST_EVENT = 'app:toast';
+const PERMISSION_DENIED_TOAST_KEY = 'permission-denied';
+const PERMISSION_DENIED_TOAST_INTERVAL = 5000;
 
 const safeParseJson = (raw, fallback = null) => {
   try {
@@ -233,6 +237,99 @@ const forceLogoutAndRedirect = (reason = SESSION_EXPIRED_REASON) => {
   dispatchForceLogoutEvent(reason);
 };
 
+let lastPermissionDeniedToastAt = 0;
+let permissionRecoveryInFlight = null;
+let permissionRedirectInProgress = false;
+
+const dispatchToastEvent = (detail) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent(APP_TOAST_EVENT, { detail }));
+  } catch {
+    // Best-effort notification only.
+  }
+};
+
+const isPermissionError = (error) => {
+  const status = Number(error?.response?.status || error?.status || 0);
+  const code = String(error?.response?.data?.code || error?.code || '').toLowerCase();
+  const message = String(
+    error?.response?.data?.message
+    || error?.response?.data?.error
+    || error?.message
+    || ''
+  ).toLowerCase();
+
+  return (
+    status === 403
+    || code.includes('permission')
+    || code.includes('forbidden')
+    || message.includes('forbidden')
+    || message.includes('permission')
+    || message.includes('access denied')
+    || message.includes('insufficient permissions')
+  );
+};
+
+const emitPermissionDeniedToast = () => {
+  const now = Date.now();
+  if (now - lastPermissionDeniedToastAt < PERMISSION_DENIED_TOAST_INTERVAL) return;
+  lastPermissionDeniedToastAt = now;
+
+  dispatchToastEvent({
+    type: 'error',
+    dedupeKey: PERMISSION_DENIED_TOAST_KEY,
+    debounceMs: PERMISSION_DENIED_TOAST_INTERVAL,
+    message: {
+      ar: 'ليست لديك صلاحية للوصول إلى هذه الصفحة. تم تحديث صلاحيات حسابك.',
+      en: 'You no longer have permission to access this page. Your account permissions were refreshed.',
+    },
+  });
+};
+
+const syncProfileAfterPermissionDenied = () => {
+  if (permissionRecoveryInFlight) return permissionRecoveryInFlight;
+
+  permissionRecoveryInFlight = import('../store/useAuthStore')
+    .then((module) => module.default?.getState?.().refreshProfile?.({ force: true }))
+    .catch((error) => {
+      devLogger.warnUnlessBenign('[API] Permission recovery profile refresh failed:', error, { once: true });
+      return null;
+    })
+    .finally(() => {
+      permissionRecoveryInFlight = null;
+    });
+
+  return permissionRecoveryInFlight;
+};
+
+const redirectAfterPermissionDenied = () => {
+  if (typeof window === 'undefined' || permissionRedirectInProgress) return;
+
+  permissionRedirectInProgress = true;
+  const fallbackPath = getDashboardPathForRole(getStoredRole());
+
+  window.setTimeout(() => {
+    if (window.location.pathname !== fallbackPath) {
+      window.location.assign(fallbackPath);
+      return;
+    }
+
+    permissionRedirectInProgress = false;
+  }, 0);
+};
+
+const handlePermissionDenied = (error, originalRequest = {}) => {
+  if (!isPermissionError(error)) return false;
+  if (originalRequest?.skipPermissionRecovery || originalRequest?._skipPermissionRecovery) return true;
+  if (isPublicAuthRequest(originalRequest?.url)) return true;
+
+  emitPermissionDeniedToast();
+  void syncProfileAfterPermissionDenied();
+  redirectAfterPermissionDenied();
+  return true;
+};
+
 const isPublicAuthRequest = (url = '') => {
   const value = String(url || '');
   return (
@@ -344,6 +441,8 @@ http.interceptors.response.use(
     const originalRequest = error?.config || {};
     const unauthorized = isTokenAuthError(error);
     const skipAuthHandling = isPublicAuthRequest(originalRequest?.url);
+
+    handlePermissionDenied(error, originalRequest);
 
     if (unauthorized && !skipAuthHandling) {
       const refreshToken = getStoredRefreshToken();
@@ -1644,7 +1743,7 @@ const realApi = {
     getProfile: async (_userId) => {
       // Prefer the self-profile endpoint used elsewhere in this adapter.
       // Some deployments don't expose `/me` but do expose `/users/me`.
-      const res = await http.get('/users/me');
+      const res = await http.get('/users/me', { _skipPermissionRecovery: true });
       return normaliseUser(unwrap(res));
     },
 

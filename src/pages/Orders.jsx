@@ -13,6 +13,8 @@ import useSystemStore from '../store/useSystemStore';
 import {
   filterOrders,
   enrichOrders,
+  getOrderAmountValue,
+  summarizeOrders,
 } from '../utils/orders';
 import { formatNumber } from '../utils/intl';
 
@@ -38,6 +40,11 @@ const Orders = () => {
 
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const locale = isArabic ? 'ar-EG' : 'en-US';
+  const billingMode = String(user?.billingMode || user?.group?.billingMode || '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_');
+  const usesQuantityBilling = ['quantity', 'quantity_only'].includes(billingMode);
 
   useEffect(() => {
     let isMounted = true;
@@ -127,6 +134,26 @@ const Orders = () => {
     [enrichedOrders, selectedOrderId]
   );
 
+  const orderStats = useMemo(() => {
+    const summary = summarizeOrders(filteredOrders);
+    const totals = filteredOrders.reduce(
+      (accumulator, order) => {
+        const quantity = Number(order?.quantity ?? order?.qty ?? 0);
+
+        return {
+          totalQuantity: accumulator.totalQuantity + (Number.isFinite(quantity) ? quantity : 0),
+          totalSpent: accumulator.totalSpent + getOrderAmountValue(order),
+        };
+      },
+      { totalQuantity: 0, totalSpent: 0 }
+    );
+
+    return {
+      ...summary,
+      ...totals,
+    };
+  }, [filteredOrders]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [customEndDate, customStartDate, dateFilter, searchTerm, sortOrder, statusFilter]);
@@ -150,6 +177,48 @@ const Orders = () => {
   const visibleEnd = Math.min(pageStartIndex + paginatedOrders.length, filteredOrders.length);
   const PreviousIcon = isArabic ? ChevronRight : ChevronLeft;
   const NextIcon = isArabic ? ChevronLeft : ChevronRight;
+  const userCurrencyCode = String(user?.currency || 'USD').toUpperCase();
+  const fourthStatCard = usesQuantityBilling
+    ? {
+        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0643\u0645\u064a\u0629' : 'Total Quantity',
+        value: formatNumber(orderStats.totalQuantity, locale),
+        dir: 'ltr',
+      }
+    : {
+        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0625\u0646\u0641\u0627\u0642' : 'Total Spent',
+        value: `${formatNumber(orderStats.totalSpent, locale, { maximumFractionDigits: 2 })} ${userCurrencyCode}`,
+        dir: 'ltr',
+      };
+  const statCards = [
+    {
+      label: isArabic ? 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø·Ù„Ø¨Ø§Øª' : 'Total Orders',
+      value: formatCount(orderStats.total),
+    },
+    {
+      label: isArabic ? 'Ù‚ÙŠØ¯ Ø§Ù„ØªÙ†ÙÙŠØ°' : 'Pending',
+      value: formatCount(orderStats.processing),
+    },
+    {
+      label: isArabic ? 'Ù…ÙƒØªÙ…Ù„Ø©' : 'Completed',
+      value: formatCount(orderStats.completed),
+    },
+    {
+      label: isArabic ? 'Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø¥Ù†ÙØ§Ù‚' : 'Total Spent',
+      value: `${formatNumber(orderStats.totalSpent, locale, { maximumFractionDigits: 2 })} ${userCurrencyCode}`,
+      dir: 'ltr',
+    },
+  ];
+  const localizedStatCards = statCards.map((stat, index) => ({
+    ...stat,
+    label: [
+      isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628\u0627\u062a' : 'Total Orders',
+      isArabic ? '\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630' : 'Pending',
+      isArabic ? '\u0645\u0643\u062a\u0645\u0644\u0629' : 'Completed',
+      fourthStatCard.label,
+    ][index] || stat.label,
+    value: index === 3 ? fourthStatCard.value : stat.value,
+    dir: index === 3 ? fourthStatCard.dir : stat.dir,
+  }));
   const statusChips = [
     { value: 'all', label: isArabic ? 'الكل' : 'All' },
     { value: 'processing', label: isArabic ? 'قيد التنفيذ' : 'In progress' },
@@ -201,6 +270,20 @@ const Orders = () => {
             );
           })}
         </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {localizedStatCards.map((stat) => (
+          <div
+            key={stat.label}
+            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md"
+          >
+            <span className="text-xs text-gray-400">{stat.label}</span>
+            <strong className="truncate text-sm font-semibold text-white" dir={stat.dir || 'auto'}>
+              {stat.value}
+            </strong>
+          </div>
+        ))}
       </section>
 
       <OrdersFiltersBar

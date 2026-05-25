@@ -1,20 +1,60 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { X, Check, AlertTriangle, Info } from 'lucide-react';
 import { cn } from './Button';
 import { useLanguage } from '../../context/LanguageContext';
 import { getToastMessage } from '../../utils/errorMessages';
 
 const ToastContext = createContext();
+const APP_TOAST_EVENT = 'app:toast';
+const PERMISSION_TOAST_DEBOUNCE_MS = 5000;
 
 export const useToast = () => useContext(ToastContext);
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const { dir, language } = useLanguage();
+  const lastToastByKeyRef = useRef({});
+
+  const resolveToastMessage = (message) => {
+    if (message && typeof message === 'object' && !React.isValidElement(message)) {
+      return message[language] || message.en || message.ar || message.message || '';
+    }
+
+    return message;
+  };
+
+  const getInferredDedupeKey = (message, type) => {
+    const value = String(message || '').toLowerCase();
+    const isPermissionMessage = (
+      value.includes('permission')
+      || value.includes('forbidden')
+      || value.includes('access denied')
+      || value.includes('insufficient permissions')
+      || value.includes('صلاحية')
+      || value.includes('مصرح')
+    );
+
+    return type === 'error' && isPermissionMessage ? 'permission-denied' : '';
+  };
 
   const addToast = (message, type = 'info', options = {}) => {
-    const id = Date.now();
-    const readableMessage = getToastMessage(message, type, { ...options, language });
+    const resolvedMessage = resolveToastMessage(message);
+    const readableMessage = getToastMessage(resolvedMessage, type, { ...options, language });
+    const dedupeKey = options.dedupeKey || getInferredDedupeKey(readableMessage, type);
+
+    if (dedupeKey) {
+      const now = Date.now();
+      const debounceMs = Number(options.debounceMs || PERMISSION_TOAST_DEBOUNCE_MS);
+      const lastShownAt = Number(lastToastByKeyRef.current[dedupeKey] || 0);
+
+      if (now - lastShownAt < debounceMs) {
+        return;
+      }
+
+      lastToastByKeyRef.current[dedupeKey] = now;
+    }
+
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts((prev) => [...prev, { id, message: readableMessage, type }]);
     setTimeout(() => removeToast(id), 3000);
   };
@@ -22,6 +62,18 @@ export const ToastProvider = ({ children }) => {
   const removeToast = (id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleGlobalToast = (event) => {
+      const detail = event?.detail || {};
+      addToast(detail.message, detail.type || 'info', detail);
+    };
+
+    window.addEventListener(APP_TOAST_EVENT, handleGlobalToast);
+    return () => window.removeEventListener(APP_TOAST_EVENT, handleGlobalToast);
+  }, [language]);
 
   return (
     <ToastContext.Provider value={{ addToast }}>

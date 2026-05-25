@@ -152,6 +152,10 @@
     display: none;
   }
 
+  body[data-purchase-success="true"] .site-copyright-footer {
+    display: none;
+  }
+
   .compact-ui {
     --compact-control-height: 2.35rem;
   }

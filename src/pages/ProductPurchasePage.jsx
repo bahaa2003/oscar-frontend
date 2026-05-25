@@ -149,6 +149,16 @@ const SummaryValue = ({ value, dir = 'auto' }) => {
   return <strong dir={dir}>{value}</strong>;
 };
 
+const sanitizeQuantityInput = (value) => String(value ?? '').replace(/,/g, '').replace(/[^\d]/g, '');
+
+const formatQuantityInput = (value) => {
+  const rawValue = sanitizeQuantityInput(value);
+  if (!rawValue) return '';
+
+  const numericValue = Number.parseInt(rawValue, 10);
+  return Number.isFinite(numericValue) ? numericValue.toLocaleString('en-US') : '';
+};
+
 const ProductPurchasePage = () => {
   const navigate = useNavigate();
   const { productId } = useParams();
@@ -248,6 +258,18 @@ const ProductPurchasePage = () => {
     }
   }, [currencies, loadCurrencies]);
 
+  useEffect(() => {
+    if (!successOrder) {
+      delete document.body.dataset.purchaseSuccess;
+      return undefined;
+    }
+
+    document.body.dataset.purchaseSuccess = 'true';
+    return () => {
+      delete document.body.dataset.purchaseSuccess;
+    };
+  }, [successOrder]);
+
   if (isLoading || !product || !quantityMeta) {
     return (
       <div className="product-purchase-page" dir={dir}>
@@ -288,7 +310,14 @@ const ProductPurchasePage = () => {
   const primaryOrderFieldPlaceholder = primaryOrderField?.placeholder || copy.userIdPlaceholder;
 
   const handleQuantityChange = (event) => {
-    setQuantityInput(event.target.value);
+    const rawValue = sanitizeQuantityInput(event.target.value);
+    if (!rawValue) {
+      setQuantityInput('');
+      return;
+    }
+
+    const nextQuantity = Number.parseInt(rawValue, 10);
+    setQuantityInput(Number.isFinite(nextQuantity) ? nextQuantity : '');
   };
 
   const handleQuantityBlur = () => {
@@ -296,7 +325,7 @@ const ProductPurchasePage = () => {
       return;
     }
 
-    setQuantityInput((value) => String(clampProductQuantity(value, product)));
+    setQuantityInput((value) => clampProductQuantity(value, product));
   };
 
   const handlePurchase = async () => {
@@ -310,7 +339,7 @@ const ProductPurchasePage = () => {
       return;
     }
 
-    setQuantityInput(String(submittedQuantity));
+    setQuantityInput(submittedQuantity);
     setIsSubmitting(true);
     try {
       const orderId = `#${product?.name?.replace(/\s+/g, '').toUpperCase() || 'ORD'}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
@@ -443,7 +472,7 @@ const ProductPurchasePage = () => {
       <motion.div
         initial={false}
         animate={{ opacity: 1 }}
-        className="product-purchase-page"
+        className="product-purchase-page fixed inset-0 z-50 !min-h-screen !items-center !justify-center !p-4"
         dir={dir}
       >
         <section className="purchase-phone purchase-phone--success" aria-label={copy.successTitle}>
@@ -606,12 +635,13 @@ const ProductPurchasePage = () => {
           <label className="purchase-input-shell !mt-2 !min-h-9 !rounded-lg">
             <span className="purchase-sr-only">{copy.quantity}</span>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
+              pattern="[0-9,]*"
               min={quantityMeta.minQty}
               max={quantityMeta.maxQty}
               step={quantityMeta.stepQty}
-              value={quantityInput}
+              value={formatQuantityInput(quantityInput)}
               onChange={handleQuantityChange}
               onBlur={handleQuantityBlur}
               placeholder={copy.quantityPlaceholder}

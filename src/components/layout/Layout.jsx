@@ -16,7 +16,7 @@ import {
 } from '../../utils/navigation';
 
 const SiteCopyrightFooter = ({ isArabic }) => (
-  <footer className="mx-auto w-full max-w-[var(--shell-max-width)] px-3 pb-6 sm:px-4 md:px-6 lg:px-8">
+  <footer className="site-copyright-footer mx-auto w-full max-w-[var(--shell-max-width)] px-3 pb-6 sm:px-4 md:px-6 lg:px-8">
     <div className="relative overflow-hidden rounded-[1.45rem] border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.82),rgb(var(--color-elevated-rgb)/0.58))] px-4 py-4 text-center shadow-[var(--shadow-subtle)] backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-10 -top-20 h-28 rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.16)] blur-3xl" />
       <div className="relative space-y-2">
