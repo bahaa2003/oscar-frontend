@@ -77,23 +77,23 @@ const BuyTarget = () => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 text-[var(--color-text)]">
+    <div className="compact-ui mx-auto max-w-6xl space-y-3 text-[var(--color-text)]" dir="rtl">
       <TargetForm products={products} paymentMethods={paymentMethods} onSubmit={handleSubmit} />
-      <section className="rounded-[1.5rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.92),rgb(var(--color-surface-rgb)/0.68))] p-4 shadow-[0_22px_62px_-48px_rgb(var(--color-primary-rgb)/0.34)]">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.24)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] text-[var(--color-primary)]">
-              <ClipboardList className="h-5 w-5" />
+      <section className="rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.16)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.92),rgb(var(--color-surface-rgb)/0.68))] p-3 shadow-[0_18px_48px_-42px_rgb(var(--color-primary-rgb)/0.32)]">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] text-[var(--color-primary)]">
+              <ClipboardList className="h-4 w-4" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-base font-black text-[var(--color-text)]">طلبات التارجت السابقة</h2>
-              <p className="mt-1 text-xs leading-5 text-[var(--color-text-secondary)]">
+              <h2 className="text-sm font-black text-[var(--color-text)]">طلبات التارجت السابقة</h2>
+              <p className="mt-0.5 text-[11px] leading-5 text-[var(--color-text-secondary)]">
                 تابع حالة طلباتك وافتح تفاصيل كل طلب من سجل مستقل.
               </p>
             </div>
           </div>
 
-          <Button type="button" className="h-10 rounded-xl px-4 text-sm" onClick={() => navigate('/target-orders')}>
+          <Button type="button" className="h-9 rounded-lg px-3 text-xs" onClick={() => navigate('/target-orders')}>
             <ClipboardList className="h-4 w-4" />
             عرض طلباتي
           </Button>

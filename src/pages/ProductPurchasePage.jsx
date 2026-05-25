@@ -238,8 +238,7 @@ const ProductPurchasePage = () => {
 
   useEffect(() => {
     if (product) {
-      const { minQty } = getProductQuantityMeta(product);
-      setQuantityInput(String(minQty));
+      setQuantityInput('');
     }
   }, [product?.id]);
 
@@ -293,6 +292,10 @@ const ProductPurchasePage = () => {
   };
 
   const handleQuantityBlur = () => {
+    if (!String(quantityInput).trim()) {
+      return;
+    }
+
     setQuantityInput((value) => String(clampProductQuantity(value, product)));
   };
 
@@ -554,24 +557,26 @@ const ProductPurchasePage = () => {
           </div>
         </header>
 
-        <motion.div
-          initial={false}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.1 }}
-          className="purchase-product-hero !h-20 !mt-0"
-        >
-          <span className="purchase-orbit purchase-orbit--cyan !h-4 !w-24" />
-          <span className="purchase-orbit purchase-orbit--pink !h-5 !w-28" />
-          <div className="purchase-product-orb !h-16 !w-16">
-            <ProductImage product={product} className="purchase-product-image !h-12 !w-12 !object-contain" />
-          </div>
-        </motion.div>
+        <div className="flex flex-col items-center gap-3 py-3 text-center">
+          <motion.div
+            initial={false}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.1 }}
+            className="purchase-product-hero !mt-0 !h-32"
+          >
+            <span className="purchase-orbit purchase-orbit--cyan !h-7 !w-36" />
+            <span className="purchase-orbit purchase-orbit--pink !h-8 !w-40" />
+            <div className="purchase-product-orb !h-28 !w-28 !rounded-full">
+              <ProductImage product={product} className="purchase-product-image !h-24 !w-24 !object-contain" />
+            </div>
+          </motion.div>
 
-        {product?.name ? (
-          <h1 className="purchase-product-title !mb-2 !text-base !leading-5">{product.name}</h1>
-        ) : (
-          <div className="purchase-skeleton purchase-skeleton--title" />
-        )}
+          {product?.name ? (
+            <h1 className="purchase-product-title !mb-1 !text-2xl !font-bold !leading-8 sm:!text-3xl sm:!leading-9">{product.name}</h1>
+          ) : (
+            <div className="purchase-skeleton purchase-skeleton--title" />
+          )}
+        </div>
 
         <div className="purchase-badges !mb-2 !gap-1.5" aria-label={dir === 'rtl' ? 'حالة المنتج' : 'Product status'}>
           <span className="purchase-badge !min-h-0 !px-2 !py-0.5 !text-xs !shadow-none">
@@ -610,7 +615,7 @@ const ProductPurchasePage = () => {
               onChange={handleQuantityChange}
               onBlur={handleQuantityBlur}
               placeholder={copy.quantityPlaceholder}
-              className="!min-h-9 !px-2 !pr-8 !text-xs"
+              className="purchase-order-input !min-h-9 !py-2.5 !pl-3 !pr-8 !text-sm !font-medium !leading-normal placeholder:!text-sm placeholder:!font-normal placeholder:!text-gray-400"
             />
             <FileText size={16} className="!h-4 !w-4" aria-hidden="true" />
           </label>
@@ -636,7 +641,7 @@ const ProductPurchasePage = () => {
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               placeholder={primaryOrderFieldPlaceholder}
-              className="!min-h-9 !px-2 !pr-8 !text-xs"
+              className="purchase-order-input !min-h-9 !py-2.5 !pl-3 !pr-8 !text-sm !font-medium !leading-normal placeholder:!text-sm placeholder:!font-normal placeholder:!text-gray-400"
             />
             <UserRound size={16} className="!h-4 !w-4" aria-hidden="true" />
           </label>

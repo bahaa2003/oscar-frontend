@@ -166,7 +166,7 @@ const Orders = () => {
   };
 
   return (
-    <div className="min-w-0 space-y-3 pb-3" dir={isArabic ? 'rtl' : 'ltr'}>
+    <div className="compact-ui min-w-0 space-y-3 pb-3" dir={isArabic ? 'rtl' : 'ltr'}>
       <section className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">

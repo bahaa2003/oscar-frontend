@@ -576,27 +576,27 @@ const Wallet = () => {
 
   return (
     <div
-      className="min-h-screen bg-transparent"
+      className="compact-ui min-h-screen bg-transparent"
       dir={dir}
     >
-      <div className="mx-auto max-w-7xl px-4 pb-18 pt-4 sm:pb-20 sm:pt-5">
+      <div className="mx-auto max-w-7xl px-3 pb-16 pt-3 sm:px-4 sm:pb-18 sm:pt-4">
         <section
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="sidebar-wallet-shimmer relative isolate mb-3.5 overflow-hidden rounded-[17px] border border-[color:rgb(var(--color-primary-rgb)/0.38)] bg-[linear-gradient(145deg,rgb(var(--color-primary-rgb)/0.14),rgba(124,58,237,0.12)_40%,rgb(var(--color-card-rgb)/0.92)_100%)] p-3 shadow-[0_12px_28px_-22px_rgb(var(--color-primary-rgb)/0.36)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(244,63,221,0.24),transparent_45%)] before:opacity-80"
+          className="sidebar-wallet-shimmer relative isolate mb-3 overflow-hidden rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[linear-gradient(145deg,rgb(var(--color-primary-rgb)/0.14),rgba(124,58,237,0.12)_40%,rgb(var(--color-card-rgb)/0.92)_100%)] p-2.5 shadow-[0_10px_24px_-20px_rgb(var(--color-primary-rgb)/0.36)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(244,63,221,0.24),transparent_45%)] before:opacity-80 sm:p-3"
         >
           <div className="relative z-10">
             <p className="text-[10px] font-bold tracking-[0.08em] text-[var(--color-primary-soft)]">
               {walletCoinsLabel}
             </p>
             <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-[1.05rem] font-black tracking-[-0.01em] text-[var(--color-text)] sm:text-[1.18rem]">
+              <p className="min-w-0 flex-1 truncate text-base font-black text-[var(--color-text)] sm:text-lg">
                 {walletCoinsDisplay}
               </p>
               {!isQuantityOnly && (
               <button
                 type="button"
                 onClick={handleAddBalance}
-                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-[12px] border border-[color:rgb(var(--color-primary-rgb)/0.38)] bg-[linear-gradient(135deg,#0284c7_0%,#5b21b6_52%,#d946ef_100%)] px-3 text-xs font-black text-white shadow-[0_0_26px_-16px_rgba(34,211,238,0.8),0_0_28px_-18px_rgba(244,63,221,0.82)] transition-all hover:-translate-y-0.5 hover:brightness-[1.05]"
+                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.32)] bg-[linear-gradient(135deg,#0284c7_0%,#5b21b6_52%,#d946ef_100%)] px-2.5 text-[11px] font-black text-white shadow-[0_0_22px_-16px_rgba(34,211,238,0.8),0_0_24px_-18px_rgba(244,63,221,0.82)] transition-all hover:-translate-y-0.5 hover:brightness-[1.05]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>{isRTL ? 'أضف رصيد' : t('wallet.addBalance', { defaultValue: 'Add Balance' })}</span>
@@ -610,10 +610,10 @@ const Wallet = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="mb-2.5"
+          className="mb-2"
         >
           <div className={`flex flex-wrap items-end justify-between gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <h2 className="text-[15px] font-bold text-gray-900 dark:text-white sm:text-lg">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white sm:text-base">
               {t('wallet.recentTransactions')}
             </h2>
             <p className="text-[11px] text-[var(--color-text-secondary)] sm:text-xs">
@@ -624,7 +624,7 @@ const Wallet = () => {
           </div>
         </motion.div>
 
-        <FilterBar onFilterChange={handleFilterChange} />
+        <FilterBar onFilterChange={handleFilterChange} total={filteredTransactions.length} />
 
         {txLoading ? (
           <div className="rounded-[1rem] border border-[color:rgb(var(--color-border-rgb)/0.82)] bg-[color:rgb(var(--color-card-rgb)/0.76)]">

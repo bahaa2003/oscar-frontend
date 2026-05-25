@@ -21,7 +21,7 @@ const UploadProof = ({ value, onChange, label = 'إثبات التحويل' }) =
 
   return (
     <div>
-      <p className="mb-2 text-sm font-semibold text-[var(--color-text)]">{label}</p>
+      <p className="mb-1.5 text-xs font-semibold text-[var(--color-text)]">{label}</p>
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -34,18 +34,18 @@ const UploadProof = ({ value, onChange, label = 'إثبات التحويل' }) =
           handleFile(event.dataTransfer.files?.[0]);
         }}
         className={cn(
-          'relative overflow-hidden rounded-[1.5rem] border border-dashed border-[color:rgb(var(--color-primary-rgb)/0.34)] bg-[#101010]/85 p-4 text-center shadow-[0_22px_70px_-42px_rgb(var(--color-primary-rgb)/0.45)] transition-all duration-300',
+          'relative overflow-hidden rounded-2xl border border-dashed border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[#101010]/85 p-3 text-center shadow-[0_18px_52px_-42px_rgb(var(--color-primary-rgb)/0.42)] transition-all duration-300',
           isDragging && 'scale-[1.01] border-[color:rgb(var(--color-primary-rgb)/0.72)] bg-[color:rgb(var(--color-primary-rgb)/0.1)]'
         )}
       >
         {value?.preview ? (
-          <div className="grid gap-4 sm:grid-cols-[10rem_1fr] sm:text-start">
+          <div className="grid gap-3 sm:grid-cols-[8.5rem_1fr] sm:text-start">
             <img
               src={value.preview}
               alt="Transfer proof preview"
-              className="h-36 w-full rounded-[1.1rem] border border-[color:rgb(var(--color-primary-rgb)/0.2)] object-cover"
+              className="h-28 w-full rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.18)] object-cover"
             />
-            <div className="flex flex-col justify-center gap-3">
+            <div className="flex flex-col justify-center gap-2.5">
               <div>
                 <p className="text-sm font-bold text-[var(--color-text)]">{value.fileName}</p>
                 <p className="mt-1 text-xs text-[var(--color-text-secondary)]">تم رفع الصورة وجاهزة للإرسال.</p>
@@ -66,12 +66,12 @@ const UploadProof = ({ value, onChange, label = 'إثبات التحويل' }) =
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center rounded-[1.25rem] px-4 py-8 transition hover:bg-[color:rgb(var(--color-primary-rgb)/0.07)]"
+            className="flex w-full flex-col items-center justify-center rounded-xl px-3 py-5 transition hover:bg-[color:rgb(var(--color-primary-rgb)/0.07)]"
           >
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:rgb(var(--color-primary-rgb)/0.12)] text-[var(--color-primary)]">
-              <UploadCloud className="h-7 w-7" />
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[color:rgb(var(--color-primary-rgb)/0.12)] text-[var(--color-primary)]">
+              <UploadCloud className="h-5 w-5" />
             </span>
-            <span className="mt-3 text-sm font-bold text-[var(--color-text)]">اسحب صورة التحويل هنا أو اضغط للرفع</span>
+            <span className="mt-2 text-xs font-bold text-[var(--color-text)]">اسحب صورة التحويل هنا أو اضغط للرفع</span>
             <span className="mt-1 text-xs text-[var(--color-text-secondary)]">PNG, JPG, WEBP</span>
           </button>
         )}

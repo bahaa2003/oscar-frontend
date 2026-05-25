@@ -423,6 +423,19 @@
   color: rgb(207 220 244 / 0.52);
 }
 
+.purchase-input-shell input.purchase-order-input {
+  padding-block: 0.625rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+}
+
+.purchase-input-shell input.purchase-order-input::placeholder {
+  color: rgb(156 163 175) !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+}
+
 .purchase-input-shell input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;

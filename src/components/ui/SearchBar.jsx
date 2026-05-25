@@ -27,8 +27,8 @@ const SearchBar = ({
       <div className="relative">
         <Search
           className={cn(
-            'pointer-events-none absolute top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--color-muted)]',
-            isIconOnRight ? 'right-4' : 'left-4'
+            'pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)]',
+            isIconOnRight ? 'right-3.5' : 'left-3.5'
           )}
         />
         <input
@@ -36,7 +36,7 @@ const SearchBar = ({
           className={cn(
             searchInputClassName,
             inputClassName,
-            isIconOnRight ? 'pr-12 pl-4 text-right' : 'pl-12 pr-4 text-left'
+            isIconOnRight ? 'pr-10 pl-3.5 text-right' : 'pl-10 pr-3.5 text-left'
           )}
           placeholder={placeholder || ''}
           value={value}

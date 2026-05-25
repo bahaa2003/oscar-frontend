@@ -14,18 +14,18 @@ const EmptyTransactions = ({ onAddBalance }) => {
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.8 }}
-      className="rounded-[1rem] border border-[#e1cfaa]/70 bg-[linear-gradient(170deg,rgba(255,255,255,0.86),rgba(255,249,236,0.72)_56%,rgba(236,245,245,0.58)_100%)] px-4 py-7 text-center shadow-[0_16px_28px_-24px_rgba(98,71,22,0.38)] dark:border-[#5f4f2f]/60 dark:bg-[linear-gradient(170deg,rgba(39,34,25,0.94),rgba(29,25,20,0.9)_56%,rgba(24,35,35,0.82)_100%)] sm:px-5 sm:py-8"
+      className="rounded-xl border border-[#e1cfaa]/60 bg-[linear-gradient(170deg,rgba(255,255,255,0.86),rgba(255,249,236,0.72)_56%,rgba(236,245,245,0.58)_100%)] px-3 py-5 text-center shadow-[0_14px_24px_-22px_rgba(98,71,22,0.38)] dark:border-[#5f4f2f]/60 dark:bg-[linear-gradient(170deg,rgba(39,34,25,0.94),rgba(29,25,20,0.9)_56%,rgba(24,35,35,0.82)_100%)] sm:px-4 sm:py-6"
     >
-      <div className="relative mb-4">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,rgba(255,241,205,0.84),rgba(231,244,242,0.66))] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <FileText className="h-7 w-7 text-[var(--color-primary)]" />
+      <div className="relative mb-3">
+        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(255,241,205,0.84),rgba(231,244,242,0.66))] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <FileText className="h-5 w-5 text-[var(--color-primary)]" />
         </div>
       </div>
 
-      <h3 className="mb-1.5 text-base font-bold text-[#3f2d11] dark:text-[#fff5dd] sm:text-lg">{t('wallet.noTransactionsYet')}</h3>
-      <p className="mx-auto mb-4 max-w-sm text-xs leading-5 text-[var(--color-text-secondary)] sm:text-[13px]">{t('wallet.noTransactionsDescription')}</p>
+      <h3 className="mb-1 text-sm font-bold text-[#3f2d11] dark:text-[#fff5dd] sm:text-base">{t('wallet.noTransactionsYet')}</h3>
+      <p className="mx-auto mb-3 max-w-sm text-xs leading-5 text-[var(--color-text-secondary)]">{t('wallet.noTransactionsDescription')}</p>
 
-      <div className={`mb-4 flex flex-wrap items-center gap-1.5 ${isRTL ? 'justify-center flex-row-reverse' : 'justify-center'}`}>
+      <div className={`mb-3 flex flex-wrap items-center gap-1.5 ${isRTL ? 'justify-center flex-row-reverse' : 'justify-center'}`}>
         <span className="rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.32)] bg-[color:rgb(var(--color-card-rgb)/0.75)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--color-primary)]">
           {isRTL ? 'ابدأ بأول عملية شحن' : 'Start with your first top-up'}
         </span>

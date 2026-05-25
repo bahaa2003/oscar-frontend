@@ -20,28 +20,28 @@ const BalanceCard = ({ balance, currency, secondaryBalance, secondaryCurrency, o
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="sidebar-wallet-shimmer relative isolate overflow-hidden rounded-[28px] border-2 border-[#d8b66e]/70 bg-[linear-gradient(135deg,#56370d_0%,#8f621b_48%,#d8ab55_100%)] p-8 shadow-[0_22px_42px_-28px_rgba(86,55,13,0.82)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(255,247,220,0.34),transparent_46%)] before:opacity-90 dark:border-[#8f7236]/72 dark:bg-[linear-gradient(135deg,#17120a_0%,#3d2b13_48%,#9d762c_100%)] sm:p-10"
+      className="sidebar-wallet-shimmer relative isolate overflow-hidden rounded-2xl border border-[#d8b66e]/60 bg-[linear-gradient(135deg,#56370d_0%,#8f621b_48%,#d8ab55_100%)] p-4 shadow-[0_18px_34px_-28px_rgba(86,55,13,0.82)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(255,247,220,0.34),transparent_46%)] before:opacity-90 dark:border-[#8f7236]/64 dark:bg-[linear-gradient(135deg,#17120a_0%,#3d2b13_48%,#9d762c_100%)] sm:p-5"
     >
-      <div className="relative z-10 space-y-5">
-        <div className={`flex items-center justify-between gap-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
+      <div className="relative z-10 space-y-3">
+        <div className={`flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold tracking-[0.12em] text-[#ffe8a9] sm:text-sm">
+            <p className="text-[11px] font-bold tracking-[0.12em] text-[#ffe8a9] sm:text-xs">
               {t('wallet.currentBalance')}
             </p>
-            <p className="mt-1.5 text-sm font-medium text-[#fff7df] sm:text-base">{t('wallet.balanceAvailable')}</p>
+            <p className="mt-1 text-xs font-medium text-[#fff7df] sm:text-sm">{t('wallet.balanceAvailable')}</p>
           </div>
 
-          <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] border border-[#f7d997]/48 bg-[linear-gradient(180deg,rgba(255,246,219,0.28),rgba(255,218,135,0.18))] text-[#fff2c7] shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
-            <Wallet className="h-8 w-8" />
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#f7d997]/42 bg-[linear-gradient(180deg,rgba(255,246,219,0.28),rgba(255,218,135,0.18))] text-[#fff2c7] shadow-[inset_0_1px_0_rgba(255,255,255,0.24)]">
+            <Wallet className="h-5 w-5" />
           </span>
         </div>
 
         <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
-          <div className={`wallet-page-balance-value truncate text-3xl font-black leading-none tracking-[-0.02em] sm:text-4xl md:text-5xl lg:text-6xl ${isNegativeBalance ? 'is-negative text-[#ffb4b4]' : 'text-[#fff8e8]'}`}>
+          <div className={`wallet-page-balance-value truncate text-2xl font-black leading-none sm:text-3xl md:text-4xl ${isNegativeBalance ? 'is-negative text-[#ffb4b4]' : 'text-[#fff8e8]'}`}>
             {primaryBalance}
           </div>
           {approxBalance && (
-            <div className={`mt-3 inline-flex rounded-full px-4 py-1.5 text-sm font-semibold sm:text-base ${
+            <div className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
               isNegativeBalance
                 ? 'border border-[#f0aaaa]/42 bg-[linear-gradient(180deg,rgba(255,210,210,0.14),rgba(167,35,35,0.18))] text-[#ffd1d1]'
                 : 'border border-[#f7d997]/42 bg-[linear-gradient(180deg,rgba(255,239,194,0.2),rgba(189,133,35,0.22))] text-[#fff0bd]'
@@ -51,13 +51,13 @@ const BalanceCard = ({ balance, currency, secondaryBalance, secondaryCurrency, o
           )}
         </div>
 
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
-          <div className={`flex flex-wrap items-center gap-2.5 ${isRTL ? 'justify-end' : 'justify-start'}`}>
-            <span className={`inline-flex items-center gap-2 rounded-full border border-[#f0d395]/45 bg-[linear-gradient(180deg,rgba(255,245,213,0.24),rgba(172,121,35,0.2))] px-4 py-1.5 text-sm font-semibold text-[#fff2c8] sm:text-base ${isRTL ? 'flex-row-reverse' : ''}`}>
-              <CreditCard className="h-5 w-5" />
+        <div className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
+          <div className={`flex flex-wrap items-center gap-2 ${isRTL ? 'justify-end' : 'justify-start'}`}>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border border-[#f0d395]/40 bg-[linear-gradient(180deg,rgba(255,245,213,0.24),rgba(172,121,35,0.2))] px-3 py-1 text-xs font-semibold text-[#fff2c8] ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <CreditCard className="h-4 w-4" />
               {isRTL ? 'محفظة نشطة' : 'Active wallet'}
             </span>
-            <span className="inline-flex items-center rounded-full border border-[#f0d395]/38 bg-[linear-gradient(180deg,rgba(255,245,213,0.18),rgba(172,121,35,0.18))] px-4 py-1.5 text-sm font-semibold text-[#fff2c8] sm:text-base">
+            <span className="inline-flex items-center rounded-full border border-[#f0d395]/34 bg-[linear-gradient(180deg,rgba(255,245,213,0.18),rgba(172,121,35,0.18))] px-3 py-1 text-xs font-semibold text-[#fff2c8]">
               {isRTL ? 'تحويل فوري' : 'Instant updates'}
             </span>
           </div>
@@ -65,7 +65,7 @@ const BalanceCard = ({ balance, currency, secondaryBalance, secondaryCurrency, o
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onAddBalance}
-            className="inline-flex h-13 shrink-0 items-center justify-center gap-2.5 rounded-[16px] border border-[color:rgb(var(--color-primary-rgb)/0.42)] bg-[linear-gradient(135deg,var(--color-primary),var(--color-primary-soft)_54%,var(--color-primary-hover))] px-5 text-base font-bold text-[var(--color-button-text)] shadow-[0_12px_22px_-16px_rgba(37,23,4,0.9)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] sm:min-w-[10.5rem]"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.34)] bg-[linear-gradient(135deg,var(--color-primary),var(--color-primary-soft)_54%,var(--color-primary-hover))] px-4 text-sm font-bold text-[var(--color-button-text)] shadow-[0_12px_22px_-16px_rgba(37,23,4,0.9)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] sm:min-w-[9rem]"
           >
             <ArrowUpRight className="h-5 w-5" />
             {t('wallet.addBalance')}

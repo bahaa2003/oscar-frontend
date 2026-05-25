@@ -14,17 +14,17 @@ const SaveChangesBar = ({
   cleanHint
 }) => {
   return (
-    <div className="sticky bottom-3 z-30 pt-3">
+    <div className="sticky bottom-3 z-30 pt-2">
       <AnimatePresence mode="wait">
         <motion.div
           key={isDirty ? 'dirty' : 'clean'}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
-          className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.92)] p-3 shadow-[var(--shadow-medium)] backdrop-blur-md"
+          className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.92)] p-2.5 shadow-[var(--shadow-subtle)] backdrop-blur-md"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
               {isDirty ? (
                 <CircleAlert className="h-4 w-4 text-amber-500 dark:text-amber-300" />
               ) : (
@@ -33,7 +33,7 @@ const SaveChangesBar = ({
               {isDirty ? dirtyHint : cleanHint}
             </p>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-1.5 sm:flex-row">
               <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving || !isDirty}>
                 {cancelLabel}
               </Button>

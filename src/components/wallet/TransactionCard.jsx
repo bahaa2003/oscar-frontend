@@ -114,15 +114,15 @@ const TransactionCard = ({ transaction, index }) => {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.18) }}
       dir={isRTL ? 'rtl' : 'ltr'}
-      className="group flex w-full min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-start shadow-[0_14px_36px_-30px_rgba(15,23,42,0.9)] backdrop-blur-md transition-all hover:bg-white/10"
+      className="group flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2.5 text-start shadow-[0_12px_30px_-28px_rgba(15,23,42,0.9)] backdrop-blur-md transition-all hover:bg-white/10"
     >
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClassName}`}>
-        <Icon className="h-4 w-4" />
+      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${iconClassName}`}>
+        <Icon className="h-3.5 w-3.5" />
       </div>
 
       <div className="min-w-0 flex-1 pe-2">
         <div className="flex min-w-0 items-center gap-2">
-          <h4 className="min-w-0 truncate text-sm font-semibold text-[var(--color-text)]">
+          <h4 className="min-w-0 truncate text-xs font-semibold text-[var(--color-text)] sm:text-sm">
             {transactionDescription}
           </h4>
           {referenceText ? (
@@ -137,7 +137,7 @@ const TransactionCard = ({ transaction, index }) => {
           ) : null}
         </div>
 
-        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400">
           <span className="truncate">
             {formatDateTime(transaction.date, locale, {
               year: 'numeric',
@@ -158,7 +158,7 @@ const TransactionCard = ({ transaction, index }) => {
       </div>
 
       <div className="ms-auto flex shrink-0 flex-col items-end gap-1">
-        <span className={`max-w-[8rem] truncate text-sm font-black [direction:ltr] sm:text-base ${amountClassName}`}>
+        <span className={`max-w-[8rem] truncate text-xs font-black [direction:ltr] sm:text-sm ${amountClassName}`}>
           {formatWalletAmount(transaction.amount, transaction.currency, { signed: true })}
         </span>
         {hasBalanceSnapshot ? (

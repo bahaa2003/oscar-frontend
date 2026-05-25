@@ -204,37 +204,37 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-[28px] border border-gray-200/60 bg-gradient-to-br from-white via-white/95 to-gray-50/80 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.08)] backdrop-blur-sm dark:border-gray-800/60 dark:from-gray-900 dark:via-gray-900/95 dark:to-gray-800/80">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-200/50 bg-gradient-to-br from-white via-white/95 to-gray-50/80 shadow-[0_10px_24px_-18px_rgba(0,0,0,0.16)] backdrop-blur-sm dark:border-gray-800/50 dark:from-gray-900 dark:via-gray-900/95 dark:to-gray-800/80">
         <div className="absolute inset-0 -z-10">
           <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-br from-green-200/30 to-transparent blur-3xl dark:from-green-900/20" />
           <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-gradient-to-br from-emerald-200/20 to-transparent blur-3xl dark:from-emerald-900/10" />
         </div>
 
         {/* Header Section */}
-        <div className="border-b border-gray-200/40 px-6 py-8 dark:border-gray-800/40 sm:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="border-b border-gray-200/40 px-3.5 py-3.5 dark:border-gray-800/40 sm:px-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="mb-2 flex items-center gap-3">
+              <div className="mb-1.5 flex items-center gap-2">
                 <div
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${
                     isEnabled
                       ? 'bg-gradient-to-br from-green-500 to-emerald-500 text-white shadow-lg'
                       : 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-700 dark:from-gray-700 dark:to-gray-800'
                   }`}
                 >
-                  <Mail className="h-5 w-5" />
+                  <Mail className="h-4 w-4" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-950 dark:text-white">
+                <h3 className="text-base font-medium text-gray-950 dark:text-white">
                   {text.title}
                 </h3>
               </div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+              <p className="text-sm leading-6 text-gray-400">
                 {text.description}
               </p>
             </div>
 
             <div
-              className={`shrink-0 rounded-lg border px-4 py-2 text-xs font-bold shadow-sm ${
+              className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium shadow-sm ${
                 isEnabled
                   ? 'border-green-300/60 bg-gradient-to-r from-green-100/70 to-emerald-100/50 text-green-700 dark:border-green-900/50 dark:from-green-950/40 dark:to-emerald-950/30 dark:text-green-300'
                   : badgeState.variant === 'warning'
@@ -251,12 +251,12 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
         </div>
 
         {/* Main Content */}
-        <div className="p-6 sm:p-8">
+        <div className="p-4 sm:p-5">
           {/* Email Notice */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`mb-6 flex items-center gap-3 rounded-[18px] border px-4 py-3 text-sm font-medium ${
+            className={`mb-3 flex items-center gap-2.5 rounded-xl border px-3 py-2 text-xs font-medium ${
               isEnabled
                 ? 'border-green-200/50 bg-gradient-to-r from-green-100/40 to-emerald-100/30 text-green-800 dark:border-green-900/40 dark:from-green-950/30 dark:to-emerald-950/20 dark:text-green-300'
                 : 'border-gray-200/50 bg-gradient-to-r from-gray-100/40 to-gray-100/30 text-gray-700 dark:border-gray-800/40 dark:from-gray-950/30 dark:to-gray-900/20 dark:text-gray-400'
@@ -277,19 +277,19 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="mb-6 space-y-4 rounded-[18px] border border-blue-200/50 bg-gradient-to-br from-blue-100/30 to-cyan-100/20 p-5 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-cyan-950/20 sm:p-6"
+              className="mb-3 space-y-3 rounded-xl border border-blue-200/50 bg-gradient-to-br from-blue-100/30 to-cyan-100/20 p-3 dark:border-blue-900/40 dark:from-blue-950/30 dark:to-cyan-950/20 sm:p-4"
             >
-              <p className="text-sm font-semibold text-gray-950 dark:text-white">
+              <p className="text-xs font-semibold text-gray-950 dark:text-white">
                 {text.setupCodePrompt}
               </p>
               <OtpInput value={enableCode} onChange={setEnableCode} disabled={status === STATUS.CONFIRMING} />
-              <div className="flex flex-wrap gap-3 sm:flex-row">
+              <div className="flex flex-wrap gap-2 sm:flex-row">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={confirmEnableTwoFactor}
                   disabled={status === STATUS.CONFIRMING || enableCode.length !== 6}
-                  className="flex items-center gap-2 rounded-lg border border-green-300/60 bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-2.5 font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 rounded-lg border border-green-300/60 bg-gradient-to-r from-green-500 to-emerald-500 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {status === STATUS.CONFIRMING ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -303,7 +303,7 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
                   whileTap={{ scale: 0.98 }}
                   onClick={generateTwoFactor}
                   disabled={status === STATUS.SENDING_CODE || status === STATUS.CONFIRMING}
-                  className="flex items-center gap-2 rounded-lg border border-gray-300/60 bg-white px-4 py-2.5 font-semibold text-gray-700 shadow-md transition-all hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700/60 dark:bg-gray-800 dark:text-gray-300"
+                  className="flex items-center gap-2 rounded-lg border border-gray-300/60 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-700/60 dark:bg-gray-800 dark:text-gray-300"
                 >
                   <Mail className="h-4 w-4" />
                   {text.resendCode}
@@ -317,7 +317,7 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-6 flex items-start gap-3 rounded-[18px] border border-amber-200/50 bg-gradient-to-br from-amber-100/40 to-orange-100/30 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/20 dark:text-amber-300"
+              className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200/50 bg-gradient-to-br from-amber-100/40 to-orange-100/30 p-3 text-xs text-amber-800 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/20 dark:text-amber-300"
             >
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <span>{text.saveEmailFirst}</span>
@@ -328,7 +328,7 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`mb-6 flex items-start gap-3 rounded-[18px] border p-4 text-sm ${
+              className={`mb-3 flex items-start gap-2 rounded-xl border p-3 text-xs ${
                 feedback.type === 'success'
                   ? 'border-green-200/50 bg-gradient-to-br from-green-100/40 to-emerald-100/30 text-green-800 dark:border-green-900/40 dark:from-green-950/30 dark:to-emerald-950/20 dark:text-green-300'
                   : feedback.type === 'error'
@@ -356,7 +356,7 @@ const TwoFactorCard = ({ email, twoFactorEnabled = false, emailChangedPending = 
             type="button"
             onClick={handleToggle}
             disabled={status === STATUS.SENDING_CODE || status === STATUS.CONFIRMING || isDisabling || emailChangedPending}
-            className={`w-full rounded-lg px-6 py-3 font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+            className={`flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium shadow-md transition-all ${
               isEnabled
                 ? 'border border-red-300/60 bg-gradient-to-r from-red-500 to-rose-500 text-white hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'
                 : 'border border-green-300/60 bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed'

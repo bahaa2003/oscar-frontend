@@ -111,21 +111,21 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
   };
 
   return (
-    <Card className="rounded-[2rem] border-[color:rgb(var(--color-primary-rgb)/0.22)] bg-[#0f0f0f]/90 p-4 shadow-[0_34px_100px_-54px_rgb(var(--color-primary-rgb)/0.45)] sm:p-6">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="rounded-2xl border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[#0f0f0f]/90 p-3 shadow-[0_24px_70px_-52px_rgb(var(--color-primary-rgb)/0.42)] sm:p-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.24)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] px-3 py-1 text-xs font-bold text-[var(--color-primary)]">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
               <Sparkles className="h-3.5 w-3.5" />
               OSCAR STORE Target
             </p>
-            <h2 className="mt-3 text-xl font-black text-[var(--color-text)] sm:text-2xl">بيع تارجت</h2>
+            <h2 className="mt-2 text-lg font-black text-[var(--color-text)] sm:text-xl">بيع تارجت</h2>
           </div>
         </div>
 
         <section>
-          <p className="mb-3 text-sm font-bold text-[var(--color-text)]">اختر تطبيق بيع التارجت</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <p className="mb-2 text-xs font-bold text-[var(--color-text)]">اختر تطبيق بيع التارجت</p>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {activeApps.map((app) => {
               const isSelected = String(app.id) === String(selectedApp?.id);
               return (
@@ -134,30 +134,30 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                   type="button"
                   onClick={() => setSelectedAppId(app.id)}
                   className={cn(
-                    'group overflow-hidden rounded-[1.35rem] border bg-[#111]/90 text-start shadow-[0_18px_60px_-42px_rgb(var(--color-primary-rgb)/0.55)] transition duration-300 hover:-translate-y-1 hover:scale-[1.01]',
+                    'group overflow-hidden rounded-2xl border bg-[#111]/90 text-start shadow-[0_16px_44px_-38px_rgb(var(--color-primary-rgb)/0.52)] transition duration-300 hover:-translate-y-0.5 hover:scale-[1.005]',
                     isSelected
                       ? 'border-[color:rgb(var(--color-primary-rgb)/0.72)] shadow-[0_22px_70px_-36px_rgb(var(--color-primary-rgb)/0.65)]'
                       : 'border-white/10 hover:border-[color:rgb(var(--color-primary-rgb)/0.32)]'
                   )}
                 >
-                  <div className="relative h-28 overflow-hidden">
+                  <div className="relative h-24 overflow-hidden">
                     {app.image ? (
                       <img src={resolveImageUrl(app.image)} alt={app.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-black/30 text-[var(--color-primary)]">
-                        <Target className="h-8 w-8" />
+                        <Target className="h-6 w-6" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     {isSelected && (
-                      <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-black">
+                      <span className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)] text-black">
                         <CheckCircle2 className="h-4 w-4" />
                       </span>
                     )}
                   </div>
-                  <div className="p-3">
-                    <p className="font-bold text-[var(--color-text)]">{app.name}</p>
-                    <p className="mt-1 text-sm text-[var(--color-primary)]">
+                  <div className="p-2.5">
+                    <p className="text-sm font-bold text-[var(--color-text)]">{app.name}</p>
+                    <p className="mt-0.5 text-xs text-[var(--color-primary)]">
                       {formatNumber(app.unitPrice, 'en-US', { maximumFractionDigits: 2 })} EGP / كوين
                     </p>
                   </div>
@@ -167,9 +167,9 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
           </div>
         </section>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_18rem]">
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-[1fr_16rem]">
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 label="عدد الكوينز"
                 type="number"
@@ -187,9 +187,9 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">طريقة الدفع</span>
+                <span className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">طريقة الدفع</span>
                 <select
                   value={paymentMethodId}
                   onChange={(event) => setPaymentMethodId(event.target.value)}
@@ -215,12 +215,12 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
             <UploadProof label="صورة إثبات التحويل" value={proof} onChange={setProof} />
           </div>
 
-          <aside className="h-fit rounded-[1.5rem] border border-[color:rgb(var(--color-primary-rgb)/0.22)] bg-[linear-gradient(180deg,#171717,#0d0d0d)] p-4 shadow-[0_26px_80px_-48px_rgb(var(--color-primary-rgb)/0.55)]">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:rgb(var(--color-primary-rgb)/0.13)] text-[var(--color-primary)]">
-              <Coins className="h-6 w-6" />
+          <aside className="h-fit rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[linear-gradient(180deg,#171717,#0d0d0d)] p-3 shadow-[0_22px_60px_-48px_rgb(var(--color-primary-rgb)/0.55)]">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[color:rgb(var(--color-primary-rgb)/0.13)] text-[var(--color-primary)]">
+              <Coins className="h-5 w-5" />
             </div>
-            <p className="text-sm font-semibold text-[var(--color-text-secondary)]">ملخص السعر</p>
-            <div className="mt-4 space-y-3 text-sm">
+            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">ملخص السعر</p>
+            <div className="mt-3 space-y-2.5 text-xs">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[var(--color-text-secondary)]">سعر الكوين</span>
                 <strong className="text-[var(--color-text)]">{formatNumber(unitPrice, 'en-US', { maximumFractionDigits: 2 })} EGP</strong>
@@ -229,9 +229,9 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                 <span className="text-[var(--color-text-secondary)]">الكوينز</span>
                 <strong className="text-[var(--color-text)]">{formatNumber(coinAmountValue, 'en-US')}</strong>
               </div>
-              <div className="border-t border-white/10 pt-3">
+              <div className="border-t border-white/10 pt-2.5">
                 <span className="text-xs text-[var(--color-text-secondary)]">الإجمالي</span>
-                <p className="mt-1 text-3xl font-black text-[var(--color-primary)]">
+                <p className="mt-1 text-xl font-black text-[var(--color-primary)] sm:text-2xl">
                   {formatNumber(totalPrice, 'en-US', { maximumFractionDigits: 2 })} EGP
                 </p>
               </div>
@@ -239,8 +239,8 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
           </aside>
         </div>
 
-        <Button type="submit" size="lg" className="w-full rounded-[1.25rem]" disabled={isSubmitting || !activeApps.length || !availablePaymentMethods.length}>
-          <Target className="h-5 w-5" />
+        <Button type="submit" size="md" className="w-full rounded-xl" disabled={isSubmitting || !activeApps.length || !availablePaymentMethods.length}>
+          <Target className="h-4 w-4" />
           {isSubmitting ? 'جارٍ إرسال الطلب...' : 'إرسال طلب التارجت'}
         </Button>
       </form>

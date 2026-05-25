@@ -444,10 +444,10 @@ const Account = () => {
 
   if (isInitialLoading) {
     return (
-      <div className="mx-auto max-w-5xl space-y-4">
-        <div className="h-14 animate-pulse rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
-        <div className="h-52 animate-pulse rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
-        <div className="h-64 animate-pulse rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
+      <div className="compact-ui mx-auto max-w-5xl space-y-3">
+        <div className="h-11 animate-pulse rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
+        <div className="h-40 animate-pulse rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
+        <div className="h-48 animate-pulse rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.9)]" />
       </div>
     );
   }
@@ -455,25 +455,25 @@ const Account = () => {
   const emailVerified = Boolean(user?.emailVerified ?? true);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 pb-24">
+    <div className="compact-ui mx-auto max-w-5xl space-y-3 pb-20">
       <motion.header
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-5 shadow-[var(--shadow-subtle)] backdrop-blur-md"
+        className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 shadow-[var(--shadow-subtle)] backdrop-blur-md sm:p-4"
       >
-        <h1 className="text-2xl font-bold text-[var(--color-text)]">{text.pageTitle}</h1>
-        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{text.pageSubtitle}</p>
+        <h1 className="text-xl font-bold text-[var(--color-text)]">{text.pageTitle}</h1>
+        <p className="mt-0.5 text-xs text-[var(--color-text-secondary)]">{text.pageSubtitle}</p>
       </motion.header>
 
       {isDirty ? (
-        <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="rounded-xl border border-amber-400/25 bg-amber-500/10 p-2.5 text-xs text-amber-800 dark:text-amber-200">
           {text.unsavedAlert}
         </div>
       ) : null}
 
       {saveState.message ? (
         <div
-          className={`rounded-xl border p-3 text-sm ${
+          className={`rounded-xl border p-2.5 text-xs ${
             saveState.type === 'success'
               ? 'border-emerald-400/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200'
               : saveState.type === 'error'
@@ -486,25 +486,25 @@ const Account = () => {
       ) : null}
 
       <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-              <UserCircle2 className="h-[18px] w-[18px] text-[var(--color-primary)]" />
+        <Card className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 sm:p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+              <UserCircle2 className="h-4 w-4 text-[var(--color-primary)]" />
               {text.profileTitle}
             </h2>
             <Badge variant="success">{text.activeAccount}</Badge>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <img
               src={displayedAvatar}
               alt={form.fullName || text.pageTitle}
-              className="h-20 w-20 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.88)] object-cover"
+              className="h-16 w-16 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.68)] object-cover"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-lg font-semibold text-[var(--color-text)]">{form.fullName || '---'}</p>
-              <p className="truncate text-sm text-[var(--color-text-secondary)]">{form.email || '---'}</p>
-              <p className="mt-2 text-xs text-[var(--color-muted)]">{text.imageHint}</p>
+              <p className="truncate text-base font-semibold text-[var(--color-text)]">{form.fullName || '---'}</p>
+              <p className="truncate text-xs text-[var(--color-text-secondary)]">{form.email || '---'}</p>
+              <p className="mt-1.5 text-[11px] text-[var(--color-muted)]">{text.imageHint}</p>
               {errors.avatar ? <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">{errors.avatar}</p> : null}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -531,12 +531,12 @@ const Account = () => {
       </motion.section>
 
       <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-5">
-          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-            <User className="h-[18px] w-[18px] text-[var(--color-primary)]" />
+        <Card className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 sm:p-4">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+            <User className="h-4 w-4 text-[var(--color-primary)]" />
             {text.personalInfo}
           </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Input
               label={text.fullName}
               value={form.fullName}
@@ -553,12 +553,12 @@ const Account = () => {
             />
           </div>
         </Card>
-        <div className="mt-3 flex justify-end">
+        <div className="mt-2.5 flex justify-end">
           <button
             type="button"
             onClick={handleSavePersonalInfo}
             disabled={isSaving || !hasPersonalInfoChanges}
-            className="inline-flex h-10 min-w-[8.5rem] items-center justify-center rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-button-text)] shadow-[0_10px_24px_-12px_rgb(var(--color-primary-rgb)/0.9)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-9 min-w-[8rem] items-center justify-center rounded-lg bg-[var(--color-primary)] px-4 text-xs font-bold text-[var(--color-button-text)] shadow-[0_10px_24px_-14px_rgb(var(--color-primary-rgb)/0.9)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSaving ? (isEnglish ? 'Saving...' : 'جاري الحفظ...') : text.saveLabel}
           </button>
@@ -566,17 +566,17 @@ const Account = () => {
       </motion.section>
 
       <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-              <Mail className="h-[18px] w-[18px] text-[var(--color-primary)]" />
+        <Card className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+              <Mail className="h-4 w-4 text-[var(--color-primary)]" />
               {text.contactInfo}
             </h2>
             <Badge variant={emailVerified ? 'success' : 'warning'}>
               {emailVerified ? text.emailVerified : text.emailNotVerified}
             </Badge>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Input
               label={text.emailAddress}
               type="email"
@@ -593,25 +593,25 @@ const Account = () => {
               placeholder={isEnglish ? '+1 555 123 4567' : '+20 100 123 4567'}
             />
           </div>
-          <p className="mt-3 text-xs text-[var(--color-muted)]">{text.email2faHint}</p>
+          <p className="mt-2.5 text-[11px] text-[var(--color-muted)]">{text.email2faHint}</p>
         </Card>
       </motion.section>
 
       <motion.section ref={passwordSectionRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.9)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-5">
-          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-[var(--color-text)]">
-            <KeyRound className="h-[18px] w-[18px] text-[var(--color-primary)]" />
+        <Card className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 sm:p-4">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+            <KeyRound className="h-4 w-4 text-[var(--color-primary)]" />
             {text.passwordCard}
           </h2>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             {[
               { key: 'current', label: text.currentPassword, error: errors.currentPassword },
               { key: 'next', label: text.newPassword, error: errors.nextPassword },
               { key: 'confirm', label: text.confirmPassword, error: errors.confirmPassword }
             ].map((item) => (
               <div key={item.key}>
-                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">{item.label}</label>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">{item.label}</label>
                 <div className="relative">
                   <input
                     type={showPassword[item.key] ? 'text' : 'password'}
@@ -640,7 +640,7 @@ const Account = () => {
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs text-[var(--color-muted)]">{text.passwordHint}</p>
+          <p className="mt-2.5 text-[11px] text-[var(--color-muted)]">{text.passwordHint}</p>
         </Card>
       </motion.section>
 

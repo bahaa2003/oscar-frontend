@@ -1,5 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Poppins:wght@400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Poppins:wght@400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap");
+
 @import "tailwindcss";
 @import "./theme/tokens.css";
 
@@ -7,14 +9,14 @@
 
 @theme {
   --font-sans:
-    "Poppins", "Alexandria", ui-sans-serif, system-ui,
+    "Poppins", "Tajawal", ui-sans-serif, system-ui,
     sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   html {
-    font-size: 14px;
+    font-size: 12px;
     background-color: var(--color-bg);
     color-scheme: light;
     scroll-behavior: smooth;
@@ -72,7 +74,7 @@
   }
 
   html[lang="ar"] body {
-    font-family: "Alexandria", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Tajawal", ui-sans-serif, system-ui, sans-serif;
   }
 
   html[lang="en"] body {
@@ -148,6 +150,54 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .compact-ui {
+    --compact-control-height: 2.35rem;
+  }
+
+  .compact-ui input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  .compact-ui select,
+  .compact-ui textarea {
+    min-height: var(--compact-control-height) !important;
+    height: var(--compact-control-height) !important;
+    border-width: 1px !important;
+    border-color: rgb(var(--color-border-rgb) / 0.62) !important;
+    border-radius: 0.72rem !important;
+    padding-block: 0.45rem !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    box-shadow: none !important;
+  }
+
+  .compact-ui input::placeholder,
+  .compact-ui textarea::placeholder {
+    color: rgb(156 163 175 / 0.78) !important;
+    font-size: 13px !important;
+  }
+
+  .compact-ui select option {
+    font-size: 13px;
+  }
+
+  .compact-ui textarea {
+    min-height: 5.25rem !important;
+    height: auto !important;
+  }
+
+  .compact-ui button,
+  .compact-ui a {
+    border-width: 1px;
+  }
+
+  .compact-ui .premium-card,
+  .compact-ui .premium-card-elevated,
+  .compact-ui .premium-card-premium,
+  .compact-ui .admin-premium-panel,
+  .compact-ui .admin-premium-toolbar,
+  .compact-ui .admin-premium-stat {
+    border-color: rgb(var(--color-border-rgb) / 0.66);
+    box-shadow: var(--shadow-subtle);
   }
 
   .ambient-background {
@@ -2281,3 +2331,46 @@
   box-shadow: none !important;
 }
 
+:root:not(.dark) .compact-ui input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+:root:not(.dark) .compact-ui select,
+:root:not(.dark) .compact-ui textarea {
+  border-color: rgb(148 178 210 / 0.48) !important;
+  background-color: rgb(255 255 255 / 0.88) !important;
+  box-shadow: none !important;
+}
+
+.compact-ui .wallet-filter-control {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+  border-width: 1px !important;
+  border-color: rgb(255 255 255 / 0.1) !important;
+  border-radius: 0.5rem !important;
+  background-color: rgb(255 255 255 / 0.05) !important;
+  padding-block: 0.625rem !important;
+  color: #ffffff !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.5 !important;
+  box-shadow: none !important;
+}
+
+.compact-ui .wallet-filter-control:focus {
+  border-color: rgb(168 85 247 / 1) !important;
+  outline: none !important;
+}
+
+.compact-ui .wallet-filter-control::placeholder {
+  color: rgb(156 163 175 / 1) !important;
+  font-size: 0.875rem !important;
+}
+
+.compact-ui .wallet-filter-control option {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.compact-ui .wallet-filter-control::-webkit-calendar-picker-indicator {
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.78;
+}
