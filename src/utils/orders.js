@@ -398,7 +398,7 @@ export const formatOrderDuration = (createdAt, completedAt) => {
 
   const diffInSeconds = Math.floor((completed.getTime() - started.getTime()) / 1000);
   if (!Number.isFinite(diffInSeconds)) return '';
-  if (diffInSeconds <= 0) return 'استغرق لحظات';
+  if (diffInSeconds <= 0) return 'مدة الطلب : لحظات';
 
   const hours = Math.floor(diffInSeconds / 3600);
   const minutes = Math.floor((diffInSeconds % 3600) / 60);
@@ -417,7 +417,7 @@ export const formatOrderDuration = (createdAt, completedAt) => {
     parts.push(`${seconds} ثانية`);
   }
 
-  return `استغرق ${parts.join(' و ')}`;
+  return `مدة الطلب : ${parts.join(' و ')}`;
 };
 
 export const isCompletedOrderStatus = (status) => {

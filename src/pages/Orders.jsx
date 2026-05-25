@@ -185,7 +185,7 @@ const Orders = () => {
         dir: 'ltr',
       }
     : {
-        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0625\u0646\u0641\u0627\u0642' : 'Total Spent',
+        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0643\u0644\u0641\u0629' : 'Total Spent',
         value: `${formatNumber(orderStats.totalSpent, locale, { maximumFractionDigits: 2 })} ${userCurrencyCode}`,
         dir: 'ltr',
       };

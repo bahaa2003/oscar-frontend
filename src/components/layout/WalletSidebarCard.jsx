@@ -121,7 +121,7 @@ const WalletSidebarCard = ({ className, isVisible = true, onNavigate }) => {
             className="inline-flex h-8 items-center justify-center gap-1 rounded-[12px] border border-[color:rgb(var(--color-primary-rgb)/0.38)] bg-[linear-gradient(135deg,#0284c7_0%,#5b21b6_52%,#d946ef_100%)] px-2 text-[10px] font-bold text-white shadow-[0_0_26px_-16px_rgba(34,211,238,0.8),0_0_28px_-18px_rgba(244,63,221,0.82)] transition-colors hover:brightness-[1.05]"
           >
             <ArrowUpLeft className="h-3 w-3" />
-            <span>اشحن الآن</span>
+            <span> اضافة رصيد</span>
           </button>
         </div>
       </div>

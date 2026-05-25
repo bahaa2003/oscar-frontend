@@ -261,8 +261,11 @@ const OrderDetailsPage = () => {
               <div className="flex flex-col items-center">
                 <StatusValue status={order.status} label={statusLabel} />
                 {orderDurationText ? (
-                  <div className="mt-1 text-center text-[11px] font-medium text-gray-400">
-                    {orderDurationText}
+                  <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+                    <Clock className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-xs font-medium text-gray-300">
+                      {orderDurationText}
+                    </span>
                   </div>
                 ) : null}
               </div>
