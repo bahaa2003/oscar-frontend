@@ -24,9 +24,11 @@ import AdminOrderActions from './AdminOrderActions';
 import ManualReviewActions from './ManualReviewActions';
 import {
   getCustomerOrderFeedback,
+  formatOrderDuration,
   formatOrderDateTime,
   formatOrderMoney,
   getProviderDisplayName,
+  isCompletedOrderStatus,
 } from '../../utils/orders';
 import { resolveUserAvatar } from '../../utils/avatar';
 import { buildWhatsAppLink, getAdminWhatsAppNumber } from '../../utils/whatsapp';
@@ -155,6 +157,9 @@ const OrderDetailsDrawer = ({
     }
   };
   const orderNumber = order?.siteOrderNumber || order?.orderNumber || '';
+  const orderDurationText = isCompletedOrderStatus(order?.statusKey || order?.status)
+    ? formatOrderDuration(order?.createdAt, order?.updatedAt || order?.lastUpdated)
+    : '';
 
   useEffect(() => {
     if (copyState === 'idle') return undefined;
@@ -348,8 +353,15 @@ const OrderDetailsDrawer = ({
                             : (isArabic ? 'تعذر نسخ رقم الطلب' : 'Unable to copy order number')}
                         </p>
                       ) : null}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <OrderStatusBadge status={order.status} isArabic={isArabic} />
+                      <div className="flex flex-wrap items-start gap-1.5">
+                        <div className="flex flex-col items-center">
+                          <OrderStatusBadge status={order.status} isArabic={isArabic} />
+                          {orderDurationText ? (
+                            <div className="mt-1 text-center text-[11px] font-medium text-gray-400">
+                              {orderDurationText}
+                            </div>
+                          ) : null}
+                        </div>
                         <Badge variant={order.typeVariant}>{order.typeLabel}</Badge>
                       </div>
                     </div>

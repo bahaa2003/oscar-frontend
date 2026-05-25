@@ -20,6 +20,7 @@ import {
 import useOrderStore from '../store/useOrderStore';
 import { useLanguage } from '../context/LanguageContext';
 import { devLogger } from '../utils/devLogger';
+import { formatOrderDuration, isCompletedOrderStatus } from '../utils/orders';
 
 const getCopy = (language = 'ar') => {
   if (language === 'en') {
@@ -216,6 +217,9 @@ const OrderDetailsPage = () => {
   const amount = order.total ?? order.amount ?? order.priceCoins ?? order.price ?? '-';
   const customerIdentifier = order.playerId || order.customerId || order.userId;
   const notes = order.description || order.notes || order.remarks || order.rejectionReason;
+  const orderDurationText = isCompletedOrderStatus(order.statusKey || order.status || statusLabel)
+    ? formatOrderDuration(order.createdAt || order.timestamp || order.date, order.updatedAt || order.lastUpdated)
+    : '';
 
   return (
     <motion.div
@@ -253,7 +257,16 @@ const OrderDetailsPage = () => {
           <DetailRow
             icon={ReceiptText}
             label={copy.status}
-            value={<StatusValue status={order.status} label={statusLabel} />}
+            value={(
+              <div className="flex flex-col items-center">
+                <StatusValue status={order.status} label={statusLabel} />
+                {orderDurationText ? (
+                  <div className="mt-1 text-center text-[11px] font-medium text-gray-400">
+                    {orderDurationText}
+                  </div>
+                ) : null}
+              </div>
+            )}
           />
           <DetailRow icon={Info} label={copy.orderType} value={typeLabel} />
           <DetailRow

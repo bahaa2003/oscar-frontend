@@ -384,6 +384,49 @@ export const formatOrderDateTime = (value, locale = 'ar-EG') => formatDateTime(v
   minute: '2-digit',
 });
 
+const parseOrderDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const formatOrderDuration = (createdAt, completedAt) => {
+  const started = parseOrderDate(createdAt);
+  const completed = parseOrderDate(completedAt);
+
+  if (!started || !completed) return '';
+
+  const diffInSeconds = Math.floor((completed.getTime() - started.getTime()) / 1000);
+  if (!Number.isFinite(diffInSeconds)) return '';
+  if (diffInSeconds <= 0) return 'استغرق لحظات';
+
+  const hours = Math.floor(diffInSeconds / 3600);
+  const minutes = Math.floor((diffInSeconds % 3600) / 60);
+  const seconds = diffInSeconds % 60;
+  const parts = [];
+
+  if (hours > 0) {
+    parts.push(`${hours} ساعة`);
+  }
+
+  if (minutes > 0) {
+    parts.push(`${minutes} دقيقة`);
+  }
+
+  if (seconds > 0) {
+    parts.push(`${seconds} ثانية`);
+  }
+
+  return `استغرق ${parts.join(' و ')}`;
+};
+
+export const isCompletedOrderStatus = (status) => {
+  const normalized = toLower(status);
+  const compact = String(status || '').trim().replace(/\s+/g, '');
+
+  return normalized === 'completed' || compact === 'مكتمل' || compact === 'مكتملة';
+};
+
 export const resolveSiteOrderNumber = (order = {}) => toDisplayString(
   order?.siteOrderNumber
     || order?.internalOrderNumber
