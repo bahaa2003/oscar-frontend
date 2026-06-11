@@ -4,6 +4,7 @@ import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import { cn } from '../ui/Button';
 import EmptyState from './EmptyState';
+import { isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 
 const SupplierBalancesSection = ({ items, isArabic, isLoading }) => {
   const loadingRows = Array.from({ length: 4 }, (_, index) => `supplier-loading-${index}`);
@@ -59,7 +60,10 @@ const SupplierBalancesSection = ({ items, isArabic, isLoading }) => {
       ) : (
         <div className="flex-1 overflow-y-auto pe-1">
           <div className="space-y-2">
-            {items.map((item) => (
+            {items.map((item) => {
+              const isNegativeBalance = isNegativeWalletAmount(item.balance);
+
+              return (
               <article
                 key={item.id}
                 className="rounded-[var(--radius-lg)] border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[color:rgb(var(--color-card-rgb)/0.76)] px-3 py-2.5"
@@ -83,7 +87,7 @@ const SupplierBalancesSection = ({ items, isArabic, isLoading }) => {
                   </div>
 
                   <div className={cn('shrink-0', isArabic ? 'text-left' : 'text-right')}>
-                    <p className="text-[12px] font-bold text-[var(--color-primary)]">
+                    <p className={cn('text-[12px] font-bold text-[var(--color-primary)]', isNegativeBalance && negativeWalletBalanceClassName)}>
                       {item.balanceLabel}
                     </p>
                     <p className="mt-0.5 text-[10px] text-[var(--color-muted)]">
@@ -92,7 +96,8 @@ const SupplierBalancesSection = ({ items, isArabic, isLoading }) => {
                   </div>
                 </div>
               </article>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

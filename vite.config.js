@@ -10,11 +10,19 @@ const __dirname = dirname(__filename);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+  const buildId = env.VITE_OSCAR_BUILD_ID
+    || env.VITE_APP_VERSION
+    || env.RENDER_GIT_COMMIT
+    || env.VERCEL_GIT_COMMIT_SHA
+    || env.COMMIT_REF
+    || `${mode}-${Date.now()}`;
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
       'process.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
       'process.env.VITE_APP_ENV': JSON.stringify(env.VITE_APP_ENV || mode),
+      'import.meta.env.VITE_OSCAR_BUILD_ID': JSON.stringify(buildId),
     },
     resolve: {
       alias: {

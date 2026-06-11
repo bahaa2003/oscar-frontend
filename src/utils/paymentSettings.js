@@ -51,8 +51,8 @@ export const createDefaultPaymentGroups = () => [
         isActive: true,
       },
       {
-        id: 'instapay',
-        name: 'إنستا باي',
+        id: 'etisalat cash',
+        name: 'اتصالات كاش',
         type: 'mobile_wallet',
         isActive: true,
       },
@@ -63,8 +63,8 @@ export const createDefaultPaymentGroups = () => [
         isActive: true,
       },
       {
-        id: 'etisalat cash',
-        name: 'اتصالات كاش',
+        id: 'instapay',
+        name: 'إنستا باي',
         type: 'mobile_wallet',
         isActive: true,
       },
@@ -92,6 +92,13 @@ const PAYMENT_METHOD_ALIASES = {
   binance: ['بينانس'],
   'بينانس': ['binance'],
 };
+
+export const DEFAULT_TARGET_PAYMENT_METHOD_IDS = [
+  'vodafone cash',
+  'etisalat cash',
+  'orange cash',
+  'instapay',
+];
 
 const getPaymentMethodTokenVariants = (value) => {
   const token = normalizePaymentMethodToken(value);

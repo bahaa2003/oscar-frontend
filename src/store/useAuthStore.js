@@ -91,8 +91,41 @@ const normalizeBillingMode = (value) => (
   String(value || '').trim().toLowerCase() === 'quantity_only' ? 'quantity_only' : 'standard'
 );
 
+const parseWalletBalanceCandidate = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.replace(/,/g, '').trim();
+  const numericMatch = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!numericMatch) return null;
+
+  const numericValue = Number(numericMatch[0]);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const resolvePersistedWalletBalance = (user) => {
+  const candidates = [
+    user?.walletBalance,
+    user?.balance,
+    user?.coins,
+    user?.currentBalance,
+    user?.availableBalance,
+    user?.wallet?.walletBalance,
+    user?.wallet?.balance,
+    user?.wallet?.coins,
+    user?.wallet?.currentBalance,
+    user?.wallet?.availableBalance,
+  ];
+  const numbers = candidates
+    .map(parseWalletBalanceCandidate)
+    .filter((value) => value !== null);
+
+  return numbers.find((value) => value < 0) ?? numbers[0] ?? 0;
+};
+
 const pickPersistedUser = (user) => {
   if (!user) return null;
+  const walletBalance = resolvePersistedWalletBalance(user);
 
   const rawGroup = (
     user.group && typeof user.group === 'object'
@@ -115,10 +148,12 @@ const pickPersistedUser = (user) => {
     verified: user.verified !== undefined ? Boolean(user.verified) : undefined,
     signupMethod: user.signupMethod || '',
     authProvider: user.authProvider || '',
-    coins: user.coins ?? user.walletBalance ?? user.balance ?? 0,
-    walletBalance: user.walletBalance ?? user.coins ?? user.balance ?? 0,
-    balance: user.balance ?? user.walletBalance ?? user.coins ?? 0,
+    coins: walletBalance,
+    walletBalance,
+    balance: walletBalance,
     currency: user.currency || 'USD',
+    country: user.country || '',
+    countryName: user.countryName || '',
     group: user.group || '',
     groupName: user.groupName || user.group || '',
     groupId: user.groupId || '',
@@ -482,6 +517,46 @@ const useAuthStore = create((set, get) => ({
             profileLastLoadedAt: Date.now(),
           });
         }
+      },
+
+      completeGoogleProfileSetup: async ({ country, countryName, currency } = {}) => {
+        const { user, token } = get();
+        if (!user?.id) {
+          throw new Error('No authenticated user found');
+        }
+
+        const normalizedCountry = String(country || '').trim().toUpperCase();
+        const normalizedCurrency = String(currency || '').trim().toUpperCase();
+        const updatedUser = await apiClient.users.updateProfile(user.id, {
+          country: normalizedCountry,
+          countryName: countryName || '',
+          currency: normalizedCurrency,
+        }, user);
+        const nextUser = {
+          ...user,
+          ...updatedUser,
+          country: updatedUser?.country || normalizedCountry,
+          countryName: updatedUser?.countryName || countryName || '',
+          currency: updatedUser?.currency || normalizedCurrency,
+        };
+        const nextStatus = normalizeAccountStatus(nextUser?.status);
+
+        set({
+          user: nextUser,
+          blockedStatus: isApprovedAccountStatus(nextStatus) ? null : nextStatus,
+          blockedUser: isApprovedAccountStatus(nextStatus) ? null : nextUser,
+          profileLastLoadedAt: Date.now(),
+        });
+        writeStoredAuthState({
+          user: nextUser,
+          token: token || null,
+          isAuthenticated: Boolean(token),
+          blockedStatus: isApprovedAccountStatus(nextStatus) ? null : nextStatus,
+          blockedUser: isApprovedAccountStatus(nextStatus) ? null : nextUser,
+          profileLastLoadedAt: Date.now(),
+        });
+
+        return nextUser;
       },
 
       refreshProfile: async ({ force = true } = {}) => {

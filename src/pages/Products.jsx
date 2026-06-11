@@ -1,6 +1,7 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Layers3, Search, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
 import useMediaStore from '../store/useMediaStore';
@@ -11,11 +12,13 @@ import CategoryCard from '../components/home/CategoryCard';
 import ProductCardSimple from '../components/products/ProductCardSimple';
 import LoadingSkeleton from '../components/products/LoadingSkeleton';
 import EmptyState from '../components/products/EmptyState';
+import ProductPurchasePage from './ProductPurchasePage';
 import {
   createStorefrontCategories,
   createStorefrontProducts,
   getStorefrontLanguage,
 } from '../utils/storefront';
+import { isBackofficeRole } from '../utils/authRoles';
 
 const getProductsPageCopy = (language = 'ar') => (
   language === 'ar'
@@ -66,7 +69,6 @@ const getProductsPageCopy = (language = 'ar') => (
 );
 
 const Products = () => {
-  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const products = useMediaStore((state) => state.products);
   const categories = useMediaStore((state) => state.categories);
@@ -77,12 +79,16 @@ const Products = () => {
   const { i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchResetSignal, setSearchResetSignal] = useState(0);
+  const [selectedPurchaseProduct, setSelectedPurchaseProduct] = useState(null);
+  const [isPurchaseSubmitting, setIsPurchaseSubmitting] = useState(false);
 
   const language = getStorefrontLanguage(i18n);
   const isRTL = language === 'ar';
   const copy = useMemo(() => getProductsPageCopy(language), [language]);
 
   const activeCategoryParam = searchParams.get('category') || '';
+  const activePurchaseParam = searchParams.get('purchase') || '';
+  const shouldUseLocalGroupPricing = isBackofficeRole(user?.role);
 
   // ── Hierarchical navigation state ──────────────────────────────────────
   const [currentParentId, setCurrentParentId] = useState(null);
@@ -98,8 +104,9 @@ const Products = () => {
       language,
       userGroup: user?.groupId || user?.group || 'Normal',
       userGroupPercentage: user?.groupPercentage ?? null,
+      preferLocalGroupPrice: shouldUseLocalGroupPricing,
     }),
-    [groupsLastLoadedAt, language, products, user?.group, user?.groupId, user?.groupPercentage]
+    [groupsLastLoadedAt, language, products, shouldUseLocalGroupPricing, user?.group, user?.groupId, user?.groupPercentage]
   );
 
   const storefrontCategories = useMemo(
@@ -107,6 +114,29 @@ const Products = () => {
       .filter((category) => category.id !== 'all'),
     [categories, language, storefrontProducts]
   );
+
+  useEffect(() => {
+    if (!activePurchaseParam) {
+      setSelectedPurchaseProduct(null);
+      return;
+    }
+
+    const matchedProduct = storefrontProducts.find((product) => String(product.id) === String(activePurchaseParam));
+    if (matchedProduct) {
+      setSelectedPurchaseProduct(matchedProduct);
+    }
+  }, [activePurchaseParam, storefrontProducts]);
+
+  useEffect(() => {
+    if (!selectedPurchaseProduct) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedPurchaseProduct]);
 
   // ── Hierarchy helpers ──────────────────────────────────────────────────
 
@@ -309,8 +339,25 @@ const Products = () => {
   }, [searchParams, setSearchParams]);
 
   const openProduct = useCallback((product) => {
-    navigate(`/purchase/${product.id}`);
-  }, [navigate]);
+    setSelectedPurchaseProduct(product);
+    const next = new URLSearchParams(searchParams);
+    next.set('purchase', product.id);
+    startTransition(() => {
+      setSearchParams(next, { replace: false });
+    });
+  }, [searchParams, setSearchParams]);
+
+  const closePurchaseCard = useCallback((options = {}) => {
+    const forceClose = Boolean(options?.force);
+    if (isPurchaseSubmitting && !forceClose) return;
+
+    setSelectedPurchaseProduct(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('purchase');
+    startTransition(() => {
+      setSearchParams(next, { replace: true });
+    });
+  }, [isPurchaseSubmitting, searchParams, setSearchParams]);
 
   const navigateBreadcrumb = useCallback((catId) => {
     const next = new URLSearchParams(searchParams);
@@ -486,6 +533,39 @@ const Products = () => {
           )}
         </>
       )}
+
+      <AnimatePresence>
+        {selectedPurchaseProduct && (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-black/70 p-2 backdrop-blur-sm sm:p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <button
+              type="button"
+              className="absolute inset-0 cursor-default"
+              onClick={closePurchaseCard}
+              disabled={isPurchaseSubmitting}
+              aria-label={language === 'ar' ? 'إغلاق الشراء' : 'Close purchase'}
+            />
+            <motion.div
+              className="relative max-h-[95vh] w-full max-w-[34rem] overflow-y-auto rounded-[1.7rem]"
+              initial={{ opacity: 0, y: 28, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <ProductPurchasePage
+                product={selectedPurchaseProduct}
+                onClose={closePurchaseCard}
+                onSubmittingChange={setIsPurchaseSubmitting}
+                embedded
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

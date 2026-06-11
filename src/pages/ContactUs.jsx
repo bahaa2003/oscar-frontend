@@ -39,27 +39,27 @@ const ContactUs = () => {
   return (
     <main
       dir={dir}
-      className="flex min-h-[calc(100vh-6rem)] items-center justify-center px-4 py-8 sm:px-6 lg:px-8"
+      className="flex min-h-[calc(100vh-6rem)] items-start justify-center px-4 pb-8 pt-14 sm:px-6 sm:pt-16 lg:px-8 lg:pt-20"
     >
       <motion.section
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45 }}
-        className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 text-center shadow-[var(--shadow-medium)] backdrop-blur-md"
+        className="relative mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.86)] bg-[linear-gradient(180deg,rgb(var(--color-card-rgb)/0.98),rgb(var(--color-surface-rgb)/0.92))] p-8 text-center shadow-[var(--shadow-medium)] backdrop-blur-md dark:border-white/10 dark:bg-white/5"
       >
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgb(var(--color-primary-rgb)/0.16),transparent_46%)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgb(37_211_102/0.16),transparent_48%)]" />
 
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#25D366] shadow-[0_0_32px_-18px_#25D366]">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#25D366]/25 bg-[#25D366]/10 text-[#128C4A] shadow-[0_0_32px_-18px_#25D366] dark:text-[#25D366]">
           <Headphones className="h-6 w-6" />
         </div>
 
-        <p className="mb-3 inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-gray-400">
+        <p className="mb-3 inline-flex items-center justify-center gap-2 rounded-full border border-[#25D366]/20 bg-[#25D366]/10 px-3 py-1 text-[11px] font-medium text-[#128C4A] dark:text-[#9debbd]">
           <MessageCircle className="h-3.5 w-3.5 text-[#25D366]" />
           {text.note}
         </p>
 
-        <h1 className="mb-2 text-xl font-bold text-white">{text.title}</h1>
-        <p className="mb-8 text-sm leading-7 text-gray-400">{text.description}</p>
+        <h1 className="mb-2 text-xl font-bold text-[var(--color-text)]">{text.title}</h1>
+        <p className="mb-8 text-sm leading-7 text-[var(--color-text-secondary)]">{text.description}</p>
 
         <a
           href={whatsappHref}

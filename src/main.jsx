@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import './i18n';
 import { devLogger } from './utils/devLogger';
+import { refreshAppCachesOnVersionChange } from './utils/cacheRefresh';
 import { cleanupVolatileAppStorage } from './utils/storageMaintenance';
 
 const isExternalExtensionPermissionError = (value) => {
@@ -57,6 +58,7 @@ if (typeof window !== 'undefined') {
 
 // Auth state persists in localStorage; keep this compatibility cleanup as a no-op.
 cleanupVolatileAppStorage && typeof cleanupVolatileAppStorage === 'function' && cleanupVolatileAppStorage();
+refreshAppCachesOnVersionChange();
 
 const hideBootLoader = () => {
   if (typeof window === 'undefined') return;

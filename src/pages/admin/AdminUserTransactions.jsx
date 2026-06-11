@@ -33,6 +33,9 @@ import {
   resolveWalletTransactionExecutionCurrency,
   resolveWalletTransactionOriginalCurrency,
 } from '../../utils/transactionCurrency';
+import { negativeWalletBalanceClassName } from '../../utils/storefront';
+
+const LEDGER_PAGE_SIZE = 10;
 
 const asNumber = (value) => {
   const parsed = Number(value);
@@ -232,6 +235,7 @@ const AdminUserTransactions = () => {
   const [targetBalance, setTargetBalance] = useState('');
   const [isBalanceUpdating, setIsBalanceUpdating] = useState(false);
   const [detailsItem, setDetailsItem] = useState(null);
+  const [ledgerPage, setLedgerPage] = useState(1);
 
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const locale = getNumericLocale(isArabic ? 'ar-EG' : 'en-US');
@@ -366,6 +370,27 @@ const AdminUserTransactions = () => {
     }),
     [currencies, displayCurrencyCode, operations, walletOperations]
   );
+  const ledgerTotalPages = Math.max(1, Math.ceil(displayOperations.length / LEDGER_PAGE_SIZE));
+  const safeLedgerPage = Math.min(Math.max(ledgerPage, 1), ledgerTotalPages);
+  const paginatedOperations = useMemo(() => {
+    const startIndex = (safeLedgerPage - 1) * LEDGER_PAGE_SIZE;
+    return displayOperations.slice(startIndex, startIndex + LEDGER_PAGE_SIZE);
+  }, [displayOperations, safeLedgerPage]);
+  const ledgerPageNumbers = useMemo(
+    () => Array.from({ length: ledgerTotalPages }, (_, index) => index + 1),
+    [ledgerTotalPages]
+  );
+  const ledgerVisibleStart = displayOperations.length ? ((safeLedgerPage - 1) * LEDGER_PAGE_SIZE) + 1 : 0;
+  const ledgerVisibleEnd = Math.min(ledgerVisibleStart + paginatedOperations.length - 1, displayOperations.length);
+
+  useEffect(() => {
+    setLedgerPage(1);
+  }, [userId]);
+
+  useEffect(() => {
+    setLedgerPage((page) => Math.min(Math.max(page, 1), ledgerTotalPages));
+  }, [ledgerTotalPages]);
+
   const creditTotal = useMemo(
     () => displayOperations.reduce((sum, entry) => (entry.convertedAmount > 0 ? sum + entry.convertedAmount : sum), 0),
     [displayOperations]
@@ -616,7 +641,7 @@ const AdminUserTransactions = () => {
         ) : null}
 
         <div className="space-y-1 lg:hidden">
-          {displayOperations.map((item) => (
+          {paginatedOperations.map((item) => (
             <div key={item.id} className="rounded-[var(--radius-lg)] border border-[color:rgb(var(--color-border-rgb)/0.74)] p-2">
               <div className="flex items-start justify-between gap-1.5">
                 <div className="min-w-0">
@@ -671,7 +696,7 @@ const AdminUserTransactions = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayOperations.map((item) => (
+              {paginatedOperations.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     {item.source === 'wallet'
@@ -721,6 +746,59 @@ const AdminUserTransactions = () => {
             </TableBody>
           </Table>
         </div>
+
+        {displayOperations.length && ledgerTotalPages > 1 ? (
+          <nav
+            className="mt-3 flex flex-col gap-2 rounded-[var(--radius-lg)] border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.62)] p-2 sm:flex-row sm:items-center sm:justify-between"
+            aria-label={isArabic ? 'صفحات سجل الحركة' : 'Movement ledger pages'}
+          >
+            <p className="text-center text-[11px] font-semibold text-[var(--color-text-secondary)] sm:text-start">
+              {isArabic
+                ? `عرض ${formatNumber(ledgerVisibleStart, locale)}-${formatNumber(ledgerVisibleEnd, locale)} من ${formatNumber(displayOperations.length, locale)} حركة`
+                : `Showing ${formatNumber(ledgerVisibleStart, locale)}-${formatNumber(ledgerVisibleEnd, locale)} of ${formatNumber(displayOperations.length, locale)} movements`}
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-1.5" dir="ltr">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLedgerPage((page) => Math.max(1, page - 1))}
+                disabled={safeLedgerPage === 1}
+                className="h-8 px-2 text-[11px] sm:h-9 sm:px-3"
+              >
+                {isArabic ? 'السابق' : 'Previous'}
+              </Button>
+
+              {ledgerPageNumbers.map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  onClick={() => setLedgerPage(pageNumber)}
+                  aria-current={pageNumber === safeLedgerPage ? 'page' : undefined}
+                  className={`h-8 min-w-8 rounded-lg border px-2 text-[11px] font-black transition sm:h-9 sm:min-w-9 sm:px-3 ${
+                    pageNumber === safeLedgerPage
+                      ? 'border-[color:rgb(var(--color-primary-rgb)/0.5)] bg-[color:rgb(var(--color-primary-rgb)/0.16)] text-[var(--color-primary)]'
+                      : 'border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.8)] text-[var(--color-text)] hover:border-[color:rgb(var(--color-primary-rgb)/0.36)] hover:text-[var(--color-primary)]'
+                  }`}
+                >
+                  {formatNumber(pageNumber, locale)}
+                </button>
+              ))}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLedgerPage((page) => Math.min(ledgerTotalPages, page + 1))}
+                disabled={safeLedgerPage === ledgerTotalPages}
+                className="h-8 px-2 text-[11px] sm:h-9 sm:px-3"
+              >
+                {isArabic ? 'التالي' : 'Next'}
+              </Button>
+            </div>
+          </nav>
+        ) : null}
       </Card>
       </>
       ) : null}
@@ -767,7 +845,23 @@ const AdminUserTransactions = () => {
                 <div className="space-y-2 text-sm text-[var(--color-text)]">
                   <p><span className="text-[var(--color-text-secondary)]">{isArabic ? 'الوصف:' : 'Description:'}</span> {detailsItem.raw?.description || detailsItem.subtitle || '-'}</p>
                   <p><span className="text-[var(--color-text-secondary)]">{isArabic ? 'المرجع:' : 'Reference:'}</span> {detailsItem.raw?.reference || '-'}</p>
-                  <p><span className="text-[var(--color-text-secondary)]">{isArabic ? 'الرصيد بعد العملية:' : 'Balance after:'}</span> {detailsItem.raw?.balanceAfter !== null && detailsItem.raw?.balanceAfter !== undefined ? formatMoney(convertAmountBetweenCurrencies(detailsItem.raw.balanceAfter, detailsItem.raw?.currency || detailsItem.originalCurrencyCode || detailsItem.currencyCode, displayCurrencyCode, currencies), displayCurrencyCode) : '-'}</p>
+                  <p>
+                    <span className="text-[var(--color-text-secondary)]">{isArabic ? 'الرصيد بعد العملية:' : 'Balance after:'}</span>{' '}
+                    {detailsItem.raw?.balanceAfter !== null && detailsItem.raw?.balanceAfter !== undefined ? (() => {
+                      const convertedBalanceAfter = convertAmountBetweenCurrencies(
+                        detailsItem.raw.balanceAfter,
+                        detailsItem.raw?.currency || detailsItem.originalCurrencyCode || detailsItem.currencyCode,
+                        displayCurrencyCode,
+                        currencies
+                      );
+
+                      return (
+                        <span className={convertedBalanceAfter < 0 ? negativeWalletBalanceClassName : ''}>
+                          {formatMoney(convertedBalanceAfter, displayCurrencyCode)}
+                        </span>
+                      );
+                    })() : '-'}
+                  </p>
                   <p><span className="text-[var(--color-text-secondary)]">{isArabic ? 'مصدر السجل:' : 'Ledger source:'}</span> {detailsItem.raw?.sourceType || (isArabic ? 'محفظة مباشرة' : 'Direct wallet entry')}</p>
                 </div>
               ) : detailsItem.source === 'order' ? (

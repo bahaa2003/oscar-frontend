@@ -158,7 +158,7 @@ const QuickFilterTab = ({ label, count, active, onClick, variant = 'default' }) 
       type="button"
       onClick={onClick}
       className={cn(
-        'relative inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all',
+        'relative inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-all',
         active
           ? isAlert
             ? 'border-[color:rgb(var(--color-error-rgb)/0.55)] bg-[color:rgb(var(--color-error-rgb)/0.14)] text-[var(--color-error)] shadow-sm'
@@ -404,16 +404,7 @@ const AdminOrders = () => {
 
     try {
       await updateOrderStatus(order.id, nextStatus, { ...order, rejectionReason });
-      await Promise.allSettled([
-        Promise.resolve(loadUsers({ force: true })),
-        Promise.resolve(loadAdminOrders({
-          page,
-          limit,
-          search: serverSearchTerm || undefined,
-          startDate: appliedStartDate || undefined,
-          endDate: appliedEndDate || undefined,
-        })),
-      ]);
+      await Promise.resolve(loadUsers({ force: true }));
       addToast(
         isArabic
           ? `تم تحديث حالة الطلب إلى ${nextStatusLabel}`
@@ -425,7 +416,7 @@ const AdminOrders = () => {
     } finally {
       setActionOrderId('');
     }
-  }, [addToast, appliedEndDate, appliedStartDate, isArabic, limit, loadAdminOrders, loadUsers, page, serverSearchTerm, updateOrderStatus]);
+  }, [addToast, isArabic, loadUsers, updateOrderStatus]);
 
   const confirmStatusUpdate = useCallback(() => {
     if (!statusConfirm?.order) return;
@@ -524,112 +515,115 @@ const AdminOrders = () => {
         resultCount={filteredOrders.length}
         panelClassName="admin-premium-panel"
         compact
+        collapsible
+        defaultCollapsed
+        titleText={isArabic ? 'فلاتر' : 'Filters'}
         searchPlaceholder={isArabic
           ? 'ابحث برقم الطلب، معرف الطلب، أو معرف اللاعب...'
           : 'Search by order number, order ID, or player ID...'}
         helperText={null}
-      />
+      >
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[color:rgb(var(--color-surface-rgb)/0.68)] px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <QuickFilterTab
+                label={isArabic ? 'الكل' : 'All'}
+                count={0}
+                active={statusFilter === 'all'}
+                onClick={() => handleQuickFilter('all')}
+              />
+              <QuickFilterTab
+                label={isArabic ? 'قيد التنفيذ' : 'Processing'}
+                count={summary.processing}
+                active={statusFilter === 'processing'}
+                onClick={() => handleQuickFilter('processing')}
+              />
+              <QuickFilterTab
+                label={isArabic ? 'مراجعة يدوية' : 'Manual review'}
+                count={summary.manualReview}
+                active={statusFilter === 'manual_review'}
+                onClick={() => handleQuickFilter('manual_review')}
+                variant="alert"
+              />
+              <QuickFilterTab
+                label={isArabic ? 'مكتملة' : 'Completed'}
+                count={summary.completed}
+                active={statusFilter === 'completed'}
+                onClick={() => handleQuickFilter('completed')}
+              />
+              <QuickFilterTab
+                label={isArabic ? 'غير مكتملة' : 'Failed'}
+                count={summary.incomplete}
+                active={statusFilter === 'incomplete'}
+                onClick={() => handleQuickFilter('incomplete')}
+              />
+            </div>
 
-      {/* ── Quick-filter tabs + Provider Dropdown ──────────────────────── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Status quick-filter tabs */}
-        <div className="flex flex-wrap items-center gap-2">
-          <QuickFilterTab
-            label={isArabic ? 'الكل' : 'All'}
-            count={0}
-            active={statusFilter === 'all'}
-            onClick={() => handleQuickFilter('all')}
-          />
-          <QuickFilterTab
-            label={isArabic ? 'قيد التنفيذ' : 'Processing'}
-            count={summary.processing}
-            active={statusFilter === 'processing'}
-            onClick={() => handleQuickFilter('processing')}
-          />
-          <QuickFilterTab
-            label={isArabic ? 'مراجعة يدوية' : 'Manual review'}
-            count={summary.manualReview}
-            active={statusFilter === 'manual_review'}
-            onClick={() => handleQuickFilter('manual_review')}
-            variant="alert"
-          />
-          <QuickFilterTab
-            label={isArabic ? 'مكتملة' : 'Completed'}
-            count={summary.completed}
-            active={statusFilter === 'completed'}
-            onClick={() => handleQuickFilter('completed')}
-          />
-          <QuickFilterTab
-            label={isArabic ? 'غير مكتملة' : 'Failed'}
-            count={summary.incomplete}
-            active={statusFilter === 'incomplete'}
-            onClick={() => handleQuickFilter('incomplete')}
-          />
+            <label className="flex shrink-0 items-center gap-1.5 text-xs">
+              <Building2 className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
+              <span className="text-[var(--color-text-secondary)]">{isArabic ? 'المزود:' : 'Provider:'}</span>
+              <select
+                id="provider-filter"
+                value={providerFilter}
+                onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
+                className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none transition-colors focus:border-[var(--color-primary)]"
+              >
+                <option value="all">{isArabic ? 'كل المزودين' : 'All providers'}</option>
+                {availableProviders.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {getProviderDisplayName(slug, isArabic ? 'ar' : 'en')}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[color:rgb(var(--color-surface-rgb)/0.68)] px-2.5 py-2 sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--color-text-secondary)]">
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>{isArabic ? 'نطاق التاريخ' : 'Date Range'}</span>
+            </div>
+
+            <div className="flex flex-1 flex-wrap items-center gap-1.5">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none transition-colors focus:border-[var(--color-primary)]"
+                max={endDate || undefined}
+              />
+              <span className="text-[11px] text-[var(--color-text-secondary)]">{isArabic ? 'إلى' : 'to'}</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2 text-xs text-[var(--color-text)] outline-none transition-colors focus:border-[var(--color-primary)]"
+                min={startDate || undefined}
+              />
+
+              <button
+                type="button"
+                onClick={handleApplyDateFilter}
+                disabled={!startDate && !endDate}
+                className="inline-flex h-8 items-center gap-1 rounded-lg bg-[var(--color-primary)] px-2.5 text-xs font-bold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isArabic ? 'تصفية' : 'Filter'}
+              </button>
+
+              {hasDateFilter && (
+                <button
+                  type="button"
+                  onClick={handleClearDateFilter}
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2.5 text-xs text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-hover)]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  {isArabic ? 'مسح' : 'Clear'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-
-        {/* Provider filter dropdown */}
-        <label className="flex shrink-0 items-center gap-2 text-sm">
-          <Building2 className="h-4 w-4 text-[var(--color-text-secondary)]" />
-          <span className="text-[var(--color-text-secondary)]">{isArabic ? 'المزود:' : 'Provider:'}</span>
-          <select
-            id="provider-filter"
-            value={providerFilter}
-            onChange={(e) => { setProviderFilter(e.target.value); setPage(1); }}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-2.5 py-1.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors"
-          >
-            <option value="all">{isArabic ? 'كل المزودين' : 'All providers'}</option>
-            {availableProviders.map((slug) => (
-              <option key={slug} value={slug}>
-                {getProviderDisplayName(slug, isArabic ? 'ar' : 'en')}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {/* ── Date Range Filter ──────────────────────────────────────────── */}
-      <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
-        <div className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
-          <CalendarDays className="h-4 w-4" />
-          <span>{isArabic ? 'نطاق التاريخ' : 'Date Range'}</span>
-        </div>
-
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors"
-            max={endDate || undefined}
-          />
-          <span className="text-xs text-[var(--color-text-secondary)]">{isArabic ? 'إلى' : 'to'}</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)] transition-colors"
-            min={startDate || undefined}
-          />
-
-          <button
-            onClick={handleApplyDateFilter}
-            disabled={!startDate && !endDate}
-            className="inline-flex items-center gap-1 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isArabic ? 'تصفية' : 'Filter'}
-          </button>
-
-          {hasDateFilter && (
-            <button
-              onClick={handleClearDateFilter}
-              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-1.5 text-sm text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-hover)]"
-            >
-              <X className="h-3.5 w-3.5" />
-              {isArabic ? 'مسح' : 'Clear'}
-            </button>
-          )}
-        </div>
-      </div>
+      </OrdersFiltersBar>
 
       {filteredOrders.length ? (
         <OrdersMobileCards

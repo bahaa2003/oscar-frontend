@@ -1,6 +1,6 @@
-import buyCardsImage from '../assets/سلايد 1.jpg';
-import chatAppsImage from '../assets/سلايد 2.jpg';
-import gamesChargingImage from '../assets/سلايد 3.jpg';
+import buyCardsImage from '../assets/buyCards.webp';
+import chatAppsImage from '../assets/chatApps.webp';
+import gamesChargingImage from '../assets/gamesCharging.webp';
 import brandIconImage from '../assets/ms-removebg-preview.webp';
 import { calculateProductPrice } from './pricing';
 import { formatNumber } from './intl';
@@ -129,6 +129,10 @@ export const formatWalletAmount = (value, currencyCode = 'USD', options = {}) =>
   })}`;
 };
 
+export const isNegativeWalletAmount = (value) => toFiniteMoneyNumber(value, 0) < 0;
+
+export const negativeWalletBalanceClassName = 'negative-wallet-balance';
+
 export const getCategoryDisplayKey = (category) => {
   const raw = String(category?.id || '').trim().toLowerCase();
   if (CATEGORY_DISPLAY_CONFIG[raw]) return raw;
@@ -161,7 +165,12 @@ export const getCategoryDisplaySubtitle = (category, language = 'ar') => {
   return language === 'ar' ? config.subtitleAr : config.subtitleEn;
 };
 
-export const createStorefrontProducts = (products, { language = 'ar', userGroup = 'Normal', userGroupPercentage = null } = {}) => (
+export const createStorefrontProducts = (products, {
+  language = 'ar',
+  userGroup = 'Normal',
+  userGroupPercentage = null,
+  preferLocalGroupPrice = false,
+} = {}) => (
   Array.isArray(products) ? products : []
 ).map((product) => ({
   ...product,
@@ -174,9 +183,9 @@ export const createStorefrontProducts = (products, { language = 'ar', userGroup 
     product?.descriptionAr,
     product?.externalProductName,
   ].join(' ')),
-  storefrontPrice: calculateProductPrice(product, userGroup, userGroupPercentage),
+  storefrontPrice: calculateProductPrice(product, userGroup, userGroupPercentage, { preferLocalGroupPrice }),
   storefrontStatus: getProductStatus(product, language),
-})).filter((product) => product.storefrontStatus.isVisible)
+})).filter((product) => product.storefrontStatus.isPurchasable)
   .sort((left, right) => compareStorefrontProducts(left, right, language));
 
 export const filterStorefrontProducts = (products, { searchTerm = '', activeCategory = 'all', language = 'ar' } = {}) => {

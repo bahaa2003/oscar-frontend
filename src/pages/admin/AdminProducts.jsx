@@ -19,6 +19,9 @@ import { validateProductForm, getProductStatus, getAvailableProductStatuses } fr
 const getProviderProductSearchToken = (product) =>
     `${product?.name || ''} ${getProviderProductPriceValue(product) || ''}`.toLowerCase();
 
+const getAdminProductSearchToken = (product) =>
+    `${product?.name || ''} ${product?.nameAr || ''} ${product?.externalProductName || ''}`.toLowerCase();
+
 const getProviderProductPriceValue = (product) => (
     product?.rawPrice
     ?? product?.priceCoins
@@ -327,6 +330,7 @@ const AdminProducts = () => {
     const [providerProducts, setProviderProducts] = useState([]);
     const [providerProductQuery, setProviderProductQuery] = useState('');
     const [isSyncingPrice, setIsSyncingPrice] = useState(false);
+    const [adminProductQuery, setAdminProductQuery] = useState('');
     const [selectedMainCategoryId, setSelectedMainCategoryId] = useState('');
     const [selectedSubCategoryId, setSelectedSubCategoryId] = useState('');
     const [productForm, setProductForm] = useState({
@@ -441,7 +445,7 @@ const AdminProducts = () => {
     ), [sortedAdminCategories]);
 
     const filteredAdminProducts = useMemo(() => {
-        if (!selectedMainCategoryId && !selectedSubCategoryId) return sortedAdminProducts;
+        const normalizedQuery = String(adminProductQuery || '').trim().toLowerCase();
 
         const selectedSubIds = new Set(
             subAdminCategories
@@ -452,12 +456,19 @@ const AdminProducts = () => {
 
         return sortedAdminProducts.filter((product) => {
             const productCategory = String(product?.category || '').trim();
-            if (!productCategory) return false;
-            if (selectedSubCategoryId) return productCategory === selectedSubCategoryId;
-            if (!selectedMainCategoryId) return true;
-            return productCategory === selectedMainCategoryId || selectedSubIds.has(productCategory);
+            const matchesCategory = (() => {
+                if (!selectedMainCategoryId && !selectedSubCategoryId) return true;
+                if (!productCategory) return false;
+                if (selectedSubCategoryId) return productCategory === selectedSubCategoryId;
+                return productCategory === selectedMainCategoryId || selectedSubIds.has(productCategory);
+            })();
+
+            if (!matchesCategory) return false;
+            if (!normalizedQuery) return true;
+
+            return getAdminProductSearchToken(product).includes(normalizedQuery);
         });
-    }, [selectedMainCategoryId, selectedSubCategoryId, sortedAdminProducts, subAdminCategories]);
+    }, [adminProductQuery, selectedMainCategoryId, selectedSubCategoryId, sortedAdminProducts, subAdminCategories]);
 
     useEffect(() => {
         if (!selectedSubCategoryId) return;
@@ -1328,44 +1339,60 @@ const AdminProducts = () => {
             <div className="admin-premium-panel p-2.5">
                 <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                     <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-                    <label className="flex min-w-0 flex-1 items-center gap-2">
-                        <span className="shrink-0 text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                            {isEnglish ? 'Main' : 'رئيسي'}
-                        </span>
-                        <select
-                            value={selectedMainCategoryId}
-                            onChange={(event) => {
-                                setSelectedMainCategoryId(event.target.value);
-                                setSelectedSubCategoryId('');
-                            }}
-                            className={`${selectClassName} h-9 rounded-lg px-2 text-xs`}
-                        >
-                            <option value="">{isEnglish ? 'All main categories' : 'كل الأقسام الرئيسية'}</option>
-                            {mainAdminCategories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name || category.nameAr || category.id}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                        <label className="flex min-w-0 flex-[1.2] items-center gap-2">
+                            <span className="shrink-0 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                                {isEnglish ? 'Search' : 'بحث'}
+                            </span>
+                            <span className="relative min-w-0 flex-1">
+                                <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                                <input
+                                    type="search"
+                                    value={adminProductQuery}
+                                    onChange={(event) => setAdminProductQuery(event.target.value)}
+                                    placeholder={isEnglish ? 'Search by product name' : 'بحث باسم المنتج'}
+                                    className={`${inputBaseClassName} h-9 rounded-lg px-2 pr-8 text-xs`}
+                                />
+                            </span>
+                        </label>
 
-                    <label className="flex min-w-0 flex-1 items-center gap-2">
-                        <span className="shrink-0 text-[11px] font-bold text-gray-600 dark:text-gray-300">
-                            {isEnglish ? 'Sub' : 'فرعي'}
-                        </span>
-                        <select
-                            value={selectedSubCategoryId}
-                            onChange={(event) => setSelectedSubCategoryId(event.target.value)}
-                            className={`${selectClassName} h-9 rounded-lg px-2 text-xs`}
-                        >
-                            <option value="">{isEnglish ? 'All sub-categories' : 'كل الأقسام الفرعية'}</option>
-                            {productFilterSubCategories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name || category.nameAr || category.id}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                        <label className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="shrink-0 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                                {isEnglish ? 'Main' : 'رئيسي'}
+                            </span>
+                            <select
+                                value={selectedMainCategoryId}
+                                onChange={(event) => {
+                                    setSelectedMainCategoryId(event.target.value);
+                                    setSelectedSubCategoryId('');
+                                }}
+                                className={`${selectClassName} h-9 rounded-lg px-2 text-xs`}
+                            >
+                                <option value="">{isEnglish ? 'All main categories' : 'كل الأقسام الرئيسية'}</option>
+                                {mainAdminCategories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name || category.nameAr || category.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="shrink-0 text-[11px] font-bold text-gray-600 dark:text-gray-300">
+                                {isEnglish ? 'Sub' : 'فرعي'}
+                            </span>
+                            <select
+                                value={selectedSubCategoryId}
+                                onChange={(event) => setSelectedSubCategoryId(event.target.value)}
+                                className={`${selectClassName} h-9 rounded-lg px-2 text-xs`}
+                            >
+                                <option value="">{isEnglish ? 'All sub-categories' : 'كل الأقسام الفرعية'}</option>
+                                {productFilterSubCategories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name || category.nameAr || category.id}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1379,10 +1406,11 @@ const AdminProducts = () => {
                             variant="secondary"
                             className="h-8 rounded-lg px-3 text-xs"
                             onClick={() => {
+                                setAdminProductQuery('');
                                 setSelectedMainCategoryId('');
                                 setSelectedSubCategoryId('');
                             }}
-                            disabled={!selectedMainCategoryId && !selectedSubCategoryId}
+                            disabled={!adminProductQuery && !selectedMainCategoryId && !selectedSubCategoryId}
                         >
                             {isEnglish ? 'Clear' : 'مسح'}
                         </Button>
@@ -2130,7 +2158,7 @@ const AdminProducts = () => {
                                         ...prev,
                                         dynamicFields: [
                                             ...(prev.dynamicFields || []),
-                                            { name: '', label: '', type: 'text', required: true },
+                                            createDynamicFieldRow({ name: '', label: '', type: 'text', required: true }),
                                         ],
                                     }))}
                                 >
@@ -2143,7 +2171,7 @@ const AdminProducts = () => {
                                 <div className="space-y-2">
                                     {(productForm.dynamicFields || []).map((item, index) => (
                                         <div
-                                            key={`${item?.name || 'dynamic'}-${index}`}
+                                            key={item?.id || `dynamic-${index}`}
                                             className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/40 sm:grid-cols-2 md:grid-cols-12 md:items-end"
                                         >
                                             {/* العنوان (Label) */}

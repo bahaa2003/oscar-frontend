@@ -9,7 +9,7 @@
   justify-content: center;
   padding: clamp(0.25rem, 1.2vw, 0.75rem) clamp(0.6rem, 2vw, 1.25rem) 1rem;
   color: #f7fbff;
-  font-family: "Tajawal", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Alexandria", "Poppins", ui-sans-serif, system-ui, sans-serif;
 }
 
 .purchase-phone {
@@ -69,6 +69,14 @@
   min-height: 2.45rem;
 }
 
+.purchase-header--back-right .purchase-glass-button {
+  order: 2;
+}
+
+.purchase-header--back-right .purchase-balance {
+  order: 1;
+}
+
 .purchase-glass-button {
   display: inline-flex;
   width: 2.45rem;
@@ -90,6 +98,12 @@
 .purchase-glass-button:hover {
   transform: translateY(-1px);
   border-color: rgb(27 229 255 / 0.42);
+}
+
+.purchase-glass-button:disabled {
+  cursor: wait;
+  opacity: 0.46;
+  transform: none;
 }
 
 .purchase-glass-button svg {
@@ -378,6 +392,25 @@
   padding: 0.55rem 0.7rem;
 }
 
+.purchase-compact-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.purchase-compact-field-grid .purchase-input-shell > svg {
+  right: 0.62rem;
+}
+
+.purchase-compact-field-grid .purchase-input-shell--user::after {
+  right: 2.05rem;
+}
+
+.purchase-compact-field-grid .purchase-limits small,
+.purchase-compact-field-grid .purchase-limits strong {
+  line-height: 1.05;
+}
+
 .purchase-field-card h2,
 .purchase-summary-card h2 {
   margin: 0;
@@ -547,6 +580,45 @@
   margin-top: 0.55rem;
 }
 
+.purchase-submit-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background:
+    radial-gradient(16rem circle at 50% 36%, rgb(22 231 255 / 0.16), transparent 58%),
+    rgb(2 6 17 / 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.purchase-submit-box {
+  display: inline-flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  border: 1px solid rgb(22 231 255 / 0.32);
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  color: #ffffff;
+  background:
+    linear-gradient(135deg, rgb(2 132 199 / 0.72), rgb(124 58 237 / 0.72) 54%, rgb(217 70 239 / 0.72)),
+    rgb(3 8 22 / 0.88);
+  box-shadow:
+    0 0 30px rgb(22 231 255 / 0.22),
+    0 22px 48px -28px rgb(0 0 0 / 0.7);
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.purchase-submit-box svg {
+  flex: 0 0 auto;
+}
+
 .purchase-secondary-button {
   color: rgb(221 229 255 / 0.86);
   border: 1px solid transparent;
@@ -570,19 +642,24 @@
 }
 
 .purchase-phone--success {
-  min-height: min(28rem, calc(100svh - 7rem));
+  min-height: min(22.5rem, calc(100svh - 7rem));
 }
 
 .purchase-success-back {
   position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 0.55rem;
+  right: 0.55rem;
+  left: auto;
+  z-index: 40;
+  width: 2rem;
+  height: 2rem;
+  pointer-events: auto;
 }
 
 .purchase-confetti {
   position: absolute;
   inset: 0 0 auto;
-  height: 7rem;
+  height: 5rem;
   pointer-events: none;
 }
 
@@ -614,16 +691,16 @@
 .purchase-success-mark {
   position: relative;
   display: grid;
-  height: clamp(5.5rem, 20vw, 7rem);
+  height: clamp(3.7rem, 16vw, 4.8rem);
   place-items: end center;
-  padding-bottom: 0.45rem;
+  padding-bottom: 0.3rem;
 }
 
 .purchase-success-bloom {
   position: absolute;
   bottom: 0;
-  width: clamp(5.5rem, 22vw, 7rem);
-  height: clamp(5.5rem, 22vw, 7rem);
+  width: clamp(3.9rem, 18vw, 5rem);
+  height: clamp(3.9rem, 18vw, 5rem);
   border-radius: 999px;
   background:
     radial-gradient(circle, rgb(0 225 255 / 0.2), transparent 48%),
@@ -635,8 +712,8 @@
 .purchase-check-ring {
   position: relative;
   display: grid;
-  width: clamp(4.2rem, 17vw, 5.2rem);
-  height: clamp(4.2rem, 17vw, 5.2rem);
+  width: clamp(3.15rem, 14vw, 3.9rem);
+  height: clamp(3.15rem, 14vw, 3.9rem);
   place-items: center;
   color: var(--purchase-cyan);
   border: 3px solid transparent;
@@ -652,8 +729,8 @@
 }
 
 .purchase-check-ring svg {
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 1.7rem;
+  height: 1.7rem;
   filter: drop-shadow(0 0 12px rgb(0 233 255 / 0.65)) drop-shadow(0 0 28px rgb(0 233 255 / 0.22));
 }
 
@@ -662,7 +739,7 @@
   background: linear-gradient(90deg, var(--purchase-cyan), var(--purchase-violet) 50%, var(--purchase-pink));
   background-clip: text;
   color: transparent;
-  font-size: clamp(0.98rem, 3.9vw, 1.22rem);
+  font-size: clamp(0.88rem, 3.4vw, 1.08rem);
   font-weight: 800;
   line-height: 1.2;
   text-align: center;
@@ -672,30 +749,30 @@
 }
 
 .purchase-success-message {
-  margin: 0.35rem 0 0.65rem;
+  margin: 0.25rem 0 0.45rem;
   color: rgb(245 248 255 / 0.82);
-  font-size: clamp(0.72rem, 2.8vw, 0.82rem);
+  font-size: clamp(0.68rem, 2.55vw, 0.76rem);
   font-weight: 600;
   line-height: 1.35;
   text-align: center;
 }
 
 .purchase-summary-card {
-  padding: 0.58rem 0.72rem;
+  padding: 0.46rem 0.58rem;
 }
 
 .purchase-summary-card h2 {
-  margin-bottom: 0.35rem;
-  padding-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.25rem;
   border-bottom: 1px solid rgb(116 165 255 / 0.13);
 }
 
 .purchase-summary-row {
   display: grid;
-  grid-template-columns: 1.8rem minmax(0, 1fr);
-  gap: 0.48rem;
+  grid-template-columns: 1.45rem minmax(0, 1fr);
+  gap: 0.4rem;
   align-items: center;
-  min-height: 2.25rem;
+  min-height: 1.85rem;
   direction: ltr;
 }
 
@@ -705,8 +782,8 @@
 
 .purchase-summary-icon {
   display: inline-grid;
-  width: 1.65rem;
-  height: 1.65rem;
+  width: 1.35rem;
+  height: 1.35rem;
   place-items: center;
   color: #aa9aff;
   border: 1px solid rgb(85 122 255 / 0.16);
@@ -718,8 +795,8 @@
 }
 
 .purchase-summary-icon svg {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 0.78rem;
+  height: 0.78rem;
   filter: drop-shadow(0 0 7px rgb(162 142 255 / 0.58));
 }
 
@@ -728,14 +805,14 @@
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 0.55rem;
+  gap: 0.45rem;
   direction: rtl;
 }
 
 .purchase-summary-text span {
   flex: 0 0 auto;
   color: rgb(222 232 255 / 0.62);
-  font-size: clamp(0.66rem, 2.45vw, 0.76rem);
+  font-size: clamp(0.62rem, 2.25vw, 0.72rem);
   font-weight: 700;
 }
 
@@ -743,7 +820,7 @@
   min-width: 0;
   overflow: hidden;
   color: #fbfdff;
-  font-size: clamp(0.68rem, 2.55vw, 0.78rem);
+  font-size: clamp(0.64rem, 2.35vw, 0.74rem);
   font-weight: 800;
   line-height: 1.25;
   text-align: left;
@@ -751,10 +828,42 @@
   white-space: nowrap;
 }
 
+.purchase-summary-copy {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.purchase-summary-copy strong {
+  flex: 1 1 auto;
+}
+
+.purchase-summary-copy svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: 0 0 auto;
+  color: var(--purchase-cyan);
+  filter: drop-shadow(0 0 7px rgb(34 211 238 / 0.42));
+  opacity: 0.9;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.purchase-summary-copy:hover svg {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
 .purchase-actions {
   display: grid;
-  gap: 0.48rem;
-  margin-top: 0.58rem;
+  gap: 0.38rem;
+  margin-top: 0.45rem;
 }
 
 .purchase-sr-only {
@@ -955,6 +1064,20 @@
   color: #7c3aed;
 }
 
+:root:not(.dark) .purchase-submit-shield {
+  background:
+    radial-gradient(16rem circle at 50% 36%, rgb(2 132 199 / 0.12), transparent 58%),
+    rgb(248 251 255 / 0.5);
+}
+
+:root:not(.dark) .purchase-submit-box {
+  color: #ffffff;
+  border-color: rgb(2 132 199 / 0.3);
+  background:
+    linear-gradient(135deg, #0284c7, #7c3aed 54%, #d946ef),
+    #0f172a;
+}
+
 :root:not(.dark) .purchase-check-ring,
 :root:not(.dark) .purchase-loading-orb {
   background:
@@ -969,6 +1092,408 @@
 :root:not(.dark) .purchase-skeleton {
   background: linear-gradient(90deg, rgb(148 178 210 / 0.16), rgb(255 255 255 / 0.9), rgb(148 178 210 / 0.16));
   background-size: 220% 100%;
+}
+
+.product-purchase-page {
+  font-family: "Alexandria", "Cairo", "Tajawal", ui-sans-serif, system-ui, sans-serif;
+}
+
+.purchase-phone--buy.purchase-clean-card {
+  max-width: 24rem !important;
+  padding: 1rem !important;
+  border: 1px solid #26384f;
+  border-radius: 1.15rem;
+  background: #101827;
+  box-shadow: 0 22px 54px -38px rgb(0 0 0 / 0.78);
+}
+
+.purchase-phone--buy .purchase-bg-lines,
+.purchase-phone--buy .purchase-orbit,
+.purchase-phone--buy .purchase-badges,
+.purchase-phone--buy .purchase-product-orb::after,
+.purchase-phone--buy .purchase-input-shell--user::after {
+  display: none;
+}
+
+.purchase-phone--buy .purchase-glass-button,
+.purchase-phone--buy .purchase-card,
+.purchase-phone--buy .purchase-input-shell,
+.purchase-phone--buy .purchase-primary-button {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.purchase-phone--buy .purchase-header {
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.purchase-phone--buy .purchase-close-button {
+  width: 2.15rem !important;
+  height: 2.15rem !important;
+  flex: 0 0 auto;
+  color: #d8e4f4;
+  border: 1px solid #33465f;
+  border-radius: 0.75rem !important;
+  background: #172234;
+  box-shadow: none;
+}
+
+.purchase-phone--buy .purchase-close-button svg {
+  filter: none;
+}
+
+.purchase-status-line {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.4rem;
+}
+
+.purchase-status-line span {
+  display: inline-flex;
+  min-height: 1.85rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.65rem;
+  color: #dce8f8;
+  border: 1px solid #2c425c;
+  border-radius: 999px;
+  background: #172234;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.purchase-status-line svg {
+  width: 0.88rem;
+  height: 0.88rem;
+  color: #38bdf8;
+  filter: none;
+}
+
+.purchase-product-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid #283b52;
+  border-radius: 1rem;
+  background: #141f30;
+}
+
+.purchase-phone--buy .purchase-product-hero {
+  height: auto !important;
+  margin: 0;
+}
+
+.purchase-phone--buy .purchase-product-orb {
+  width: 4.5rem !important;
+  height: 4.5rem !important;
+  border: 1px solid #344a63;
+  border-radius: 0.95rem !important;
+  background: #0f1724;
+  box-shadow: none;
+}
+
+.purchase-phone--buy .purchase-product-image,
+.purchase-phone--buy .purchase-product-fallback {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0.45rem;
+  object-fit: contain;
+  filter: none;
+}
+
+.purchase-phone--buy .purchase-product-fallback {
+  color: #9fb1c7;
+  background: #182438;
+}
+
+.purchase-product-copy {
+  min-width: 0;
+  text-align: start;
+}
+
+.purchase-phone--buy .purchase-product-title {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #f3f7fb;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+  text-align: start;
+  text-shadow: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.purchase-product-description {
+  display: -webkit-box;
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  color: #9fb0c4;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.purchase-phone--buy .purchase-card {
+  border: 1px solid #283b52;
+  background: #141f30;
+  box-shadow: none;
+}
+
+.purchase-phone--buy .purchase-price-card {
+  justify-content: space-between;
+  min-height: 0 !important;
+  margin: 0.75rem 0 !important;
+  padding: 0.75rem !important;
+  text-align: start;
+}
+
+.purchase-phone--buy .purchase-price-card > div {
+  width: auto;
+  min-width: 0;
+}
+
+.purchase-phone--buy .purchase-price-card p {
+  margin: 0 0 0.25rem;
+  color: #9fb0c4;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: start;
+}
+
+.purchase-phone--buy .purchase-price-card strong {
+  display: block;
+  overflow: visible;
+  background: none;
+  color: #f8fafc;
+  font-size: 1.05rem !important;
+  font-weight: 850;
+  line-height: 1.25 !important;
+  text-overflow: unset;
+  white-space: normal;
+  word-break: break-word;
+  filter: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: currentColor;
+}
+
+.purchase-phone--buy .purchase-price-icon {
+  position: static;
+  width: 2.2rem !important;
+  height: 2.2rem !important;
+  color: #38bdf8;
+  border-radius: 0.8rem !important;
+  background: #0f2638;
+  box-shadow: none;
+  transform: none;
+}
+
+.purchase-phone--buy .purchase-price-icon svg {
+  width: 1rem;
+  height: 1rem;
+  filter: none;
+}
+
+.purchase-phone--buy .purchase-compact-field-grid,
+.purchase-phone--buy .purchase-form-stack {
+  display: grid;
+  grid-template-columns: 1fr !important;
+  gap: 0.7rem;
+}
+
+.purchase-phone--buy .purchase-field-card {
+  margin: 0;
+  padding: 0.75rem !important;
+  border-radius: 0.95rem;
+}
+
+.purchase-phone--buy .purchase-field-card h2 {
+  margin: 0 0 0.45rem;
+  overflow: hidden;
+  color: #eaf1f8;
+  font-size: 0.8rem !important;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: start;
+  text-overflow: ellipsis;
+  text-shadow: none;
+  white-space: nowrap;
+}
+
+.purchase-phone--buy .purchase-input-shell {
+  min-height: 2.85rem !important;
+  margin-top: 0;
+  border: 1px solid #33465f;
+  border-radius: 0.85rem !important;
+  background: #0f1724;
+  box-shadow: none;
+}
+
+.purchase-phone--buy .purchase-input-shell input,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+  min-height: 2.85rem !important;
+  padding: 0 2.45rem 0 0.85rem !important;
+  color: #f8fafc !important;
+  background: transparent !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  text-align: start;
+}
+
+.purchase-phone--buy .purchase-input-shell input::placeholder,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder {
+  color: #78899e !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+}
+
+.purchase-phone--buy .purchase-input-shell > svg,
+.purchase-phone--buy .purchase-compact-field-grid .purchase-input-shell > svg {
+  right: 0.85rem;
+  width: 1rem;
+  height: 1rem;
+  color: #38bdf8;
+  filter: none;
+}
+
+.purchase-phone--buy .purchase-limits {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.55rem !important;
+  padding: 0.5rem 0.6rem;
+  color: #9fb0c4;
+  border-radius: 0.75rem;
+  background: #0f1724;
+}
+
+.purchase-phone--buy .purchase-limits span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.purchase-phone--buy .purchase-limits span:last-child {
+  text-align: start;
+}
+
+.purchase-phone--buy .purchase-limits small {
+  color: #9fb0c4;
+  font-size: 0.68rem !important;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.purchase-phone--buy .purchase-limits strong {
+  color: #eef5fb;
+  font-size: 0.73rem !important;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.purchase-phone--buy .purchase-buy-button {
+  min-height: 2.95rem !important;
+  margin-top: 0.85rem !important;
+  gap: 0.5rem !important;
+  border-radius: 0.95rem !important;
+  background: #0ea5e9;
+  box-shadow: none;
+  font-size: 0.95rem !important;
+  font-weight: 800;
+}
+
+.purchase-phone--buy .purchase-buy-button:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.purchase-phone--buy .purchase-buy-button svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  filter: none;
+}
+
+.purchase-phone--buy .purchase-submit-shield {
+  background: rgb(16 24 39 / 0.72);
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-clean-card {
+  color: #0f172a;
+  border-color: #d7e0ea;
+  background: #ffffff;
+  box-shadow: 0 20px 48px -36px rgb(15 23 42 / 0.3);
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-close-button,
+:root:not(.dark) .purchase-status-line span,
+:root:not(.dark) .purchase-phone--buy .purchase-card,
+:root:not(.dark) .purchase-product-summary,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell,
+:root:not(.dark) .purchase-phone--buy .purchase-limits {
+  border-color: #e1e8f0;
+  background: #f8fafc;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-close-button {
+  color: #334155;
+}
+
+:root:not(.dark) .purchase-status-line span {
+  color: #334155;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-product-orb {
+  border-color: #e1e8f0;
+  background: #ffffff;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-product-fallback {
+  color: #64748b;
+  background: #eef5fb;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-product-title,
+:root:not(.dark) .purchase-phone--buy .purchase-price-card strong,
+:root:not(.dark) .purchase-phone--buy .purchase-field-card h2,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+:root:not(.dark) .purchase-phone--buy .purchase-limits strong {
+  color: #0f172a !important;
+}
+
+:root:not(.dark) .purchase-product-description,
+:root:not(.dark) .purchase-phone--buy .purchase-price-card p,
+:root:not(.dark) .purchase-phone--buy .purchase-limits small {
+  color: #64748b;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-price-icon {
+  color: #0284c7;
+  background: #e8f6fd;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input::placeholder,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+:root:not(.dark) .purchase-phone--buy .purchase-buy-button {
+  color: #ffffff;
+  background: #0284c7;
 }
 
 @media (max-width: 420px) {
@@ -988,11 +1513,2521 @@
     width: 2rem;
     height: 2rem;
   }
+
+  .purchase-phone--buy.purchase-clean-card {
+    max-width: 100% !important;
+    padding: 0.85rem !important;
+  }
+
+  .purchase-product-summary {
+    gap: 0.7rem;
+    padding: 0.65rem;
+  }
+
+  .purchase-phone--buy .purchase-product-orb {
+    width: 4rem !important;
+    height: 4rem !important;
+  }
+
+  .purchase-status-line span {
+    min-height: 1.75rem;
+    padding-inline: 0.55rem;
+    font-size: 0.7rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .purchase-loading-orb,
   .purchase-skeleton {
     animation: none;
+  }
+}
+
+/* Ultra premium mobile purchase modal */
+.product-purchase-page {
+  --purchase-electric-blue: #1e90ff;
+  --purchase-neon-purple: #a020f0;
+  --purchase-violet-glow: #c86cff;
+  --purchase-ice: #f8f8fc;
+  --purchase-ink-premium: #080a28;
+}
+
+.purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  width: min(100%, 25.75rem) !important;
+  max-width: 25.75rem !important;
+  min-height: 0 !important;
+  padding: 1.55rem 1.2rem 1.15rem !important;
+  overflow: hidden;
+  color: var(--purchase-ink-premium) !important;
+  border: 1px solid rgb(255 255 255 / 0.82) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(17rem circle at 92% 5%, rgb(200 108 255 / 0.18), transparent 55%),
+    radial-gradient(16rem circle at 8% 6%, rgb(30 144 255 / 0.16), transparent 54%),
+    radial-gradient(19rem circle at 50% 102%, rgb(160 32 240 / 0.14), transparent 56%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(248 248 252 / 0.96)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    inset 0 -1px 0 rgb(160 32 240 / 0.08),
+    0 1.8rem 4.8rem -2.9rem rgb(30 144 255 / 0.36),
+    0 2.2rem 5.4rem -3.15rem rgb(160 32 240 / 0.48),
+    0 0 2.2rem rgb(200 108 255 / 0.14) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal::before,
+.purchase-phone--buy.purchase-premium-modal::after,
+.purchase-modal-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.purchase-phone--buy.purchase-premium-modal::before {
+  z-index: -1;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.7), transparent 38%),
+    radial-gradient(14rem circle at 50% 38%, rgb(255 255 255 / 0.52), transparent 62%);
+}
+
+.purchase-phone--buy.purchase-premium-modal::after {
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.54),
+    inset 0 0 4rem rgb(30 144 255 / 0.06),
+    inset 0 -2.4rem 4.2rem rgb(200 108 255 / 0.1);
+}
+
+.purchase-phone--buy .purchase-modal-ambient {
+  z-index: -1;
+  background:
+    radial-gradient(0.7rem circle at 14% 44%, rgb(30 144 255 / 0.2), transparent 74%),
+    radial-gradient(0.55rem circle at 84% 54%, rgb(200 108 255 / 0.2), transparent 74%),
+    linear-gradient(90deg, transparent, rgb(30 144 255 / 0.05), transparent 50%, rgb(160 32 240 / 0.045), transparent);
+  opacity: 0.78;
+}
+
+.purchase-phone--buy .purchase-modal-header {
+  position: relative;
+  display: grid;
+  min-height: 5.65rem;
+  place-items: start center;
+}
+
+.purchase-phone--buy .purchase-modal-close,
+.purchase-phone--buy .purchase-header-icon {
+  position: absolute;
+  top: 0;
+  display: grid;
+  width: 3.65rem !important;
+  height: 3.65rem !important;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.86) !important;
+  border-radius: 1.25rem !important;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(247 248 255 / 0.82)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.98),
+    0 0.9rem 1.55rem -1rem rgb(30 144 255 / 0.34),
+    0 1.1rem 1.8rem -1rem rgb(160 32 240 / 0.3) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.purchase-phone--buy .purchase-modal-close {
+  right: auto !important;
+  left: 0 !important;
+  color: #050722 !important;
+}
+
+.purchase-phone--buy .purchase-modal-close svg {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+  filter: none !important;
+}
+
+.purchase-phone--buy .purchase-header-icon {
+  right: 0;
+  left: auto;
+  color: var(--purchase-neon-purple);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.98),
+    0 0.9rem 1.6rem -1rem rgb(160 32 240 / 0.44),
+    0 0 1.35rem rgb(200 108 255 / 0.18) !important;
+}
+
+.purchase-phone--buy .purchase-header-icon svg {
+  filter:
+    drop-shadow(0 0 0.45rem rgb(160 32 240 / 0.28))
+    drop-shadow(0 0 0.9rem rgb(200 108 255 / 0.22));
+}
+
+.purchase-title-block {
+  display: grid;
+  justify-items: center;
+  padding-top: 0.9rem;
+}
+
+.purchase-modal-title {
+  margin: 0;
+  color: var(--purchase-ink-premium);
+  font-size: 1.85rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.22;
+  text-align: center;
+}
+
+.purchase-title-ornament {
+  display: block;
+  width: 6.5rem;
+  height: 0.22rem;
+  margin-top: 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--purchase-electric-blue), var(--purchase-neon-purple), var(--purchase-violet-glow));
+  box-shadow:
+    0 0 0.7rem rgb(30 144 255 / 0.32),
+    0 0 0.9rem rgb(200 108 255 / 0.36);
+}
+
+.purchase-phone--buy .purchase-card {
+  border: 1px solid rgb(255 255 255 / 0.84) !important;
+  background:
+    radial-gradient(12rem circle at 90% 0%, rgb(30 144 255 / 0.08), transparent 52%),
+    radial-gradient(12rem circle at 0% 100%, rgb(200 108 255 / 0.1), transparent 54%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.88), rgb(246 247 253 / 0.82)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.98),
+    inset 0 -1px 0 rgb(160 32 240 / 0.045),
+    0 1.15rem 2.1rem -1.65rem rgb(30 144 255 / 0.42),
+    0 1.35rem 2.4rem -1.75rem rgb(160 32 240 / 0.34) !important;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.purchase-info-card {
+  position: relative;
+  display: grid;
+  direction: ltr;
+  grid-template-areas: "total quantity";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.15rem;
+  min-height: 8.1rem;
+  margin-top: 0.15rem;
+  padding: 1.25rem 1.15rem !important;
+  border-radius: 1.55rem !important;
+}
+
+.purchase-info-card::before {
+  position: absolute;
+  top: 1.35rem;
+  bottom: 1.35rem;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: linear-gradient(180deg, transparent, rgb(160 32 240 / 0.18), rgb(30 144 255 / 0.12), transparent);
+  transform: translateX(-50%);
+}
+
+.purchase-info-cell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  direction: rtl;
+  min-width: 0;
+  align-content: center;
+  gap: 0.75rem;
+}
+
+.purchase-info-cell--total {
+  grid-area: total;
+}
+
+.purchase-info-cell--quantity {
+  grid-area: quantity;
+}
+
+.purchase-field-heading,
+.purchase-user-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+}
+
+.purchase-phone--buy .purchase-field-heading h2,
+.purchase-phone--buy .purchase-user-heading h2 {
+  margin: 0 !important;
+  overflow: hidden;
+  color: var(--purchase-ink-premium) !important;
+  font-size: 1.28rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0;
+  line-height: 1.2 !important;
+  text-align: start !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-mini-icon {
+  display: inline-grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.9), rgb(239 242 255 / 0.76));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 0.75rem 1.35rem -0.95rem rgb(30 144 255 / 0.5);
+}
+
+.purchase-mini-icon--purple {
+  color: var(--purchase-neon-purple);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 0.8rem 1.45rem -0.9rem rgb(160 32 240 / 0.58),
+    0 0 1rem rgb(200 108 255 / 0.18);
+}
+
+.purchase-mini-icon--blue {
+  color: var(--purchase-electric-blue);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 0.8rem 1.4rem -0.9rem rgb(30 144 255 / 0.62),
+    0 0 1rem rgb(30 144 255 / 0.16);
+}
+
+.purchase-total-amount {
+  display: block;
+  direction: ltr;
+  max-width: 100%;
+  overflow: hidden;
+  background: linear-gradient(100deg, var(--purchase-electric-blue), var(--purchase-neon-purple) 58%, var(--purchase-violet-glow));
+  background-clip: text;
+  color: transparent;
+  font-size: 2.85rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  filter:
+    drop-shadow(0 0 0.55rem rgb(30 144 255 / 0.18))
+    drop-shadow(0 0 0.75rem rgb(160 32 240 / 0.14));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.purchase-phone--buy .purchase-input-shell,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell {
+  min-height: 3.5rem !important;
+  margin-top: 0 !important;
+  overflow: hidden;
+  border: 1px solid rgb(160 32 240 / 0.18) !important;
+  border-radius: 1.28rem !important;
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.76), rgb(248 248 252 / 0.68)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.92),
+    inset 0 -0.65rem 1.2rem rgb(160 32 240 / 0.035),
+    0 0.85rem 1.6rem -1.35rem rgb(30 144 255 / 0.28) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.purchase-phone--buy .purchase-input-shell input,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+  min-height: 3.5rem !important;
+  padding: 0 1.05rem !important;
+  color: var(--purchase-ink-premium) !important;
+  background: transparent !important;
+  font-size: 1rem !important;
+  font-weight: 650 !important;
+  line-height: 1.35 !important;
+  text-align: start !important;
+}
+
+.purchase-phone--buy .purchase-input-shell input::placeholder,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input::placeholder,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder {
+  color: rgb(91 92 140 / 0.54) !important;
+  font-size: 1rem !important;
+  font-weight: 650 !important;
+}
+
+.purchase-user-card {
+  display: grid;
+  gap: 0.95rem;
+  margin-top: 0.9rem !important;
+  padding: 1.1rem 1.15rem 1.2rem !important;
+  border-radius: 1.55rem !important;
+}
+
+.purchase-user-heading {
+  justify-content: flex-start;
+}
+
+.purchase-input-shell--user::after {
+  display: none !important;
+}
+
+.purchase-modal-actions {
+  display: grid !important;
+  direction: ltr;
+  grid-template-areas: "cancel buy";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem !important;
+  margin-top: 1.2rem !important;
+}
+
+.purchase-action-buy {
+  grid-area: buy;
+  direction: rtl;
+}
+
+.purchase-action-cancel {
+  grid-area: cancel;
+  direction: rtl;
+}
+
+.purchase-phone--buy .purchase-primary-button,
+.purchase-phone--buy .purchase-secondary-button {
+  min-height: 3.55rem !important;
+  border-radius: 1.18rem !important;
+  font-size: 1.05rem !important;
+  font-weight: 850 !important;
+  letter-spacing: 0;
+  line-height: 1.2 !important;
+}
+
+.purchase-phone--buy .purchase-buy-button {
+  margin-top: 0 !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  background: linear-gradient(105deg, var(--purchase-electric-blue), var(--purchase-neon-purple) 68%, var(--purchase-violet-glow)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.34),
+    0 1.1rem 1.9rem -1.15rem rgb(30 144 255 / 0.8),
+    0 1.1rem 2.1rem -1.1rem rgb(160 32 240 / 0.78),
+    0 0 1.25rem rgb(200 108 255 / 0.22) !important;
+}
+
+.purchase-phone--buy .purchase-buy-button svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+  filter: drop-shadow(0 0 0.45rem rgb(255 255 255 / 0.42)) !important;
+}
+
+.purchase-phone--buy .purchase-cancel-button {
+  color: var(--purchase-ink-premium) !important;
+  border: 1.5px solid transparent !important;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.94), rgb(248 248 252 / 0.88)) padding-box,
+    linear-gradient(105deg, var(--purchase-electric-blue), var(--purchase-neon-purple), var(--purchase-violet-glow)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    0 0.9rem 1.7rem -1.35rem rgb(30 144 255 / 0.46),
+    0 0.9rem 1.8rem -1.35rem rgb(160 32 240 / 0.42) !important;
+}
+
+.purchase-phone--buy .purchase-primary-button:hover:not(:disabled),
+.purchase-phone--buy .purchase-secondary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.purchase-phone--buy .purchase-primary-button:disabled,
+.purchase-phone--buy .purchase-secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  transform: none;
+}
+
+.purchase-showcase {
+  position: relative;
+  height: 17.2rem;
+  margin: 1.25rem -0.15rem 0;
+  overflow: hidden;
+  border-radius: 1.65rem;
+  background:
+    radial-gradient(12rem circle at 50% 58%, rgb(255 255 255 / 0.78), transparent 64%),
+    radial-gradient(11rem circle at 33% 50%, rgb(30 144 255 / 0.22), transparent 58%),
+    radial-gradient(12rem circle at 69% 50%, rgb(200 108 255 / 0.27), transparent 58%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.36));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.72),
+    inset 0 -1.5rem 3rem rgb(160 32 240 / 0.08);
+}
+
+.purchase-showcase::before {
+  position: absolute;
+  inset: auto -2rem -2.3rem;
+  height: 7.5rem;
+  content: "";
+  background:
+    radial-gradient(7rem 3.4rem at 22% 70%, rgb(160 32 240 / 0.18), transparent 70%),
+    radial-gradient(8rem 3.6rem at 74% 72%, rgb(30 144 255 / 0.16), transparent 72%);
+  filter: blur(0.4rem);
+}
+
+.purchase-ring-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.purchase-ring-glow {
+  position: absolute;
+  top: 1.35rem;
+  width: 14.6rem;
+  height: 14.6rem;
+  border-radius: 999px;
+  background:
+    conic-gradient(from 212deg, rgb(30 144 255 / 0.65), rgb(200 108 255 / 0.7), rgb(160 32 240 / 0.55), rgb(30 144 255 / 0.65));
+  filter: blur(1.45rem);
+  opacity: 0.55;
+}
+
+.purchase-energy-ring {
+  position: absolute;
+  top: 2.15rem;
+  width: 12.2rem;
+  height: 12.2rem;
+  border: 0.58rem solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(rgb(248 248 252 / 0.2), rgb(248 248 252 / 0.2)) padding-box,
+    conic-gradient(from 218deg, var(--purchase-electric-blue), #61efff 18%, var(--purchase-neon-purple) 54%, var(--purchase-violet-glow) 76%, var(--purchase-electric-blue)) border-box;
+  box-shadow:
+    0 0 0.65rem rgb(30 144 255 / 0.78),
+    0 0 1.5rem rgb(30 144 255 / 0.36),
+    0 0 1.9rem rgb(200 108 255 / 0.42),
+    inset 0 0 1.2rem rgb(255 255 255 / 0.22);
+}
+
+.purchase-energy-ring::before {
+  position: absolute;
+  inset: 0.7rem;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 34% 28%, rgb(30 144 255 / 0.16), transparent 35%),
+    radial-gradient(circle at 72% 58%, rgb(200 108 255 / 0.18), transparent 44%),
+    radial-gradient(circle, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.04) 62%, transparent 78%);
+  box-shadow: inset 0 0 2.1rem rgb(255 255 255 / 0.22);
+}
+
+.purchase-energy-ring::after {
+  position: absolute;
+  inset: -1.1rem;
+  content: "";
+  border-radius: inherit;
+  background: conic-gradient(from 12deg, transparent 0 10%, rgb(255 255 255 / 0.72) 13%, transparent 17% 48%, rgb(200 108 255 / 0.52) 52%, transparent 57% 100%);
+  filter: blur(0.25rem);
+  opacity: 0.62;
+  animation: purchase-ring-sheen 7s linear infinite;
+}
+
+.purchase-ring-core {
+  position: absolute;
+  top: 4.5rem;
+  width: 8.4rem;
+  height: 8.4rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.34), rgb(200 108 255 / 0.12) 48%, transparent 76%);
+  filter: blur(0.15rem);
+}
+
+.purchase-display-base {
+  position: absolute;
+  bottom: 1.15rem;
+  width: 13.1rem;
+  height: 3.15rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(7rem 1.3rem at 50% 22%, rgb(255 255 255 / 0.66), transparent 68%),
+    linear-gradient(100deg, #1194ff, #7350f6 48%, #db47ff);
+  box-shadow:
+    inset 0 0.28rem 0.8rem rgb(255 255 255 / 0.34),
+    inset 0 -0.65rem 0.95rem rgb(28 15 112 / 0.34),
+    0 0 0.85rem rgb(30 144 255 / 0.42),
+    0 0 1.35rem rgb(200 108 255 / 0.38),
+    0 1rem 1.45rem -0.72rem rgb(54 36 166 / 0.5);
+  transform: perspective(15rem) rotateX(58deg);
+  transform-origin: center;
+}
+
+.purchase-display-base::after {
+  position: absolute;
+  inset: 0.28rem 1.05rem auto;
+  height: 0.38rem;
+  content: "";
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.82), rgb(255 255 255 / 0.36));
+  filter: blur(0.08rem);
+}
+
+.purchase-lightning {
+  position: absolute;
+  z-index: 2;
+  width: 2.35rem;
+  height: 5.8rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0), rgb(255 255 255 / 0.85), rgb(30 144 255 / 0.52), rgb(255 255 255 / 0));
+  clip-path: polygon(55% 0, 84% 0, 62% 42%, 91% 42%, 32% 100%, 47% 56%, 20% 56%);
+  filter:
+    drop-shadow(0 0 0.45rem rgb(30 144 255 / 0.54))
+    drop-shadow(0 0 0.65rem rgb(200 108 255 / 0.38));
+  opacity: 0.44;
+}
+
+.purchase-lightning--one {
+  top: 3.7rem;
+  left: 2.05rem;
+  transform: rotate(-22deg) scale(0.86);
+}
+
+.purchase-lightning--two {
+  top: 5.2rem;
+  right: 2.15rem;
+  transform: rotate(19deg) scale(0.78);
+}
+
+.purchase-lightning--three {
+  top: 9.6rem;
+  left: 3.5rem;
+  transform: rotate(18deg) scale(0.55);
+  opacity: 0.28;
+}
+
+.purchase-lightning--four {
+  top: 1.7rem;
+  right: 5rem;
+  transform: rotate(-10deg) scale(0.48);
+  opacity: 0.24;
+}
+
+@keyframes purchase-ring-sheen {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 390px) {
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    padding: 1.25rem 0.9rem 0.95rem !important;
+    border-radius: 26px !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-header {
+    min-height: 5.2rem;
+  }
+
+  .purchase-phone--buy .purchase-modal-close,
+  .purchase-phone--buy .purchase-header-icon {
+    width: 3.35rem !important;
+    height: 3.35rem !important;
+    border-radius: 1.12rem !important;
+  }
+
+  .purchase-modal-title {
+    font-size: 1.62rem;
+  }
+
+  .purchase-info-card {
+    gap: 0.85rem;
+    padding: 1rem 0.85rem !important;
+  }
+
+  .purchase-phone--buy .purchase-field-heading h2,
+  .purchase-phone--buy .purchase-user-heading h2 {
+    font-size: 1.08rem !important;
+  }
+
+  .purchase-mini-icon {
+    width: 2.15rem;
+    height: 2.15rem;
+  }
+
+  .purchase-total-amount {
+    font-size: 2.25rem;
+  }
+
+  .purchase-modal-actions {
+    gap: 0.75rem !important;
+  }
+
+  .purchase-phone--buy .purchase-primary-button,
+  .purchase-phone--buy .purchase-secondary-button {
+    min-height: 3.35rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .purchase-showcase {
+    height: 15.3rem;
+  }
+
+  .purchase-ring-glow {
+    width: 13rem;
+    height: 13rem;
+  }
+
+  .purchase-energy-ring {
+    width: 10.8rem;
+    height: 10.8rem;
+  }
+
+  .purchase-display-base {
+    width: 11.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchase-energy-ring::after,
+  .purchase-product-energy-ring::after {
+    animation: none;
+  }
+}
+
+/* Compact purchase review modal with product preview */
+.product-purchase-page {
+  font-family: "Tajawal", "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+.purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  width: min(100%, 25.5rem) !important;
+  max-width: 25.5rem !important;
+  padding: 1.08rem 1rem 0.95rem !important;
+  border-radius: 20px !important;
+}
+
+.purchase-phone--buy .purchase-modal-header {
+  min-height: 3.65rem !important;
+}
+
+.purchase-phone--buy .purchase-modal-close,
+.purchase-phone--buy .purchase-header-icon {
+  width: 2.55rem !important;
+  height: 2.55rem !important;
+  border-radius: 0.85rem !important;
+}
+
+.purchase-phone--buy .purchase-modal-close svg,
+.purchase-phone--buy .purchase-header-icon svg {
+  width: 1.05rem !important;
+  height: 1.05rem !important;
+}
+
+.purchase-title-block {
+  max-width: calc(100% - 6.2rem);
+  min-width: 0;
+  padding-top: 0.25rem !important;
+}
+
+.purchase-modal-title {
+  display: -webkit-box;
+  font-size: 1.22rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.purchase-title-ornament {
+  width: 4.1rem !important;
+  height: 0.14rem !important;
+  margin-top: 0.35rem !important;
+}
+
+.purchase-product-top-description {
+  display: -webkit-box;
+  width: min(100%, 21rem);
+  margin: -0.05rem auto 0.62rem !important;
+  overflow: hidden;
+  color: rgb(61 63 109 / 0.72);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.42;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.purchase-info-card {
+  gap: 0.65rem !important;
+  min-height: 5.4rem !important;
+  margin-top: 0 !important;
+  padding: 0.72rem 0.68rem !important;
+  border-radius: 1rem !important;
+}
+
+.purchase-info-card::before {
+  top: 0.8rem !important;
+  bottom: 0.8rem !important;
+}
+
+.purchase-info-cell {
+  gap: 0.4rem !important;
+}
+
+.purchase-field-heading,
+.purchase-user-heading {
+  gap: 0.42rem !important;
+}
+
+.purchase-phone--buy .purchase-field-heading h2,
+.purchase-phone--buy .purchase-user-heading h2 {
+  font-size: 0.86rem !important;
+  font-weight: 700 !important;
+}
+
+.purchase-mini-icon {
+  width: 1.65rem !important;
+  height: 1.65rem !important;
+}
+
+.purchase-mini-icon svg {
+  width: 0.92rem !important;
+  height: 0.92rem !important;
+}
+
+.purchase-total-amount {
+  font-size: 1.68rem !important;
+}
+
+.purchase-phone--buy .purchase-input-shell,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell {
+  min-height: 2.35rem !important;
+  border-radius: 0.82rem !important;
+}
+
+.purchase-phone--buy .purchase-input-shell input,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+  min-height: 2.35rem !important;
+  padding: 0 0.72rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+}
+
+.purchase-phone--buy .purchase-input-shell input::placeholder,
+.purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input::placeholder,
+:root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input::placeholder {
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+}
+
+.purchase-user-card {
+  gap: 0.52rem !important;
+  margin-top: 0.58rem !important;
+  padding: 0.72rem 0.68rem 0.76rem !important;
+  border-radius: 1rem !important;
+}
+
+.purchase-modal-actions {
+  gap: 0.55rem !important;
+  margin-top: 0.7rem !important;
+}
+
+.purchase-phone--buy .purchase-primary-button,
+.purchase-phone--buy .purchase-secondary-button {
+  min-height: 2.45rem !important;
+  gap: 0.38rem !important;
+  border-radius: 0.82rem !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+}
+
+.purchase-phone--buy .purchase-buy-button svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.purchase-product-showcase {
+  display: block;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0.72rem 0 0 !important;
+  padding: 0.72rem 0.68rem 0.68rem !important;
+  border: 1px solid rgb(255 255 255 / 0.78);
+  border-radius: 1rem !important;
+  background:
+    radial-gradient(6.8rem circle at 50% 34%, rgb(30 144 255 / 0.16), transparent 65%),
+    radial-gradient(7.2rem circle at 50% 52%, rgb(200 108 255 / 0.18), transparent 68%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(248 248 252 / 0.72)) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.86),
+    0 0.9rem 1.8rem -1.35rem rgb(30 144 255 / 0.34) !important;
+}
+
+.purchase-product-showcase::before {
+  display: none !important;
+}
+
+.purchase-product-display {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.54rem;
+  min-width: 0;
+}
+
+.purchase-product-image-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: 7.1rem;
+  height: 6.65rem;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.purchase-product-orbit-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.purchase-product-ring-glow {
+  position: absolute;
+  top: 0.1rem;
+  left: 50%;
+  width: 6.15rem;
+  height: 6.15rem;
+  border-radius: 999px;
+  background:
+    conic-gradient(from 215deg, rgb(30 144 255 / 0.62), rgb(200 108 255 / 0.68), rgb(160 32 240 / 0.54), rgb(30 144 255 / 0.62));
+  filter: blur(0.75rem);
+  opacity: 0.52;
+  transform: translateX(-50%);
+}
+
+.purchase-product-energy-ring {
+  position: absolute;
+  top: 0.45rem;
+  left: 50%;
+  width: 5.35rem;
+  height: 5.35rem;
+  border: 0.32rem solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(rgb(248 248 252 / 0.2), rgb(248 248 252 / 0.2)) padding-box,
+    conic-gradient(from 218deg, var(--purchase-electric-blue), #61efff 18%, var(--purchase-neon-purple) 54%, var(--purchase-violet-glow) 76%, var(--purchase-electric-blue)) border-box;
+  box-shadow:
+    0 0 0.4rem rgb(30 144 255 / 0.7),
+    0 0 0.9rem rgb(30 144 255 / 0.28),
+    0 0 1.15rem rgb(200 108 255 / 0.34),
+    inset 0 0 0.75rem rgb(255 255 255 / 0.2);
+  transform: translateX(-50%);
+}
+
+.purchase-product-energy-ring::before {
+  position: absolute;
+  inset: 0.42rem;
+  content: "";
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 34% 28%, rgb(30 144 255 / 0.18), transparent 36%),
+    radial-gradient(circle at 72% 58%, rgb(200 108 255 / 0.18), transparent 44%),
+    radial-gradient(circle, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.04) 62%, transparent 78%);
+  box-shadow: inset 0 0 1.2rem rgb(255 255 255 / 0.2);
+}
+
+.purchase-product-energy-ring::after {
+  position: absolute;
+  inset: -0.55rem;
+  content: "";
+  border-radius: inherit;
+  background: conic-gradient(from 12deg, transparent 0 10%, rgb(255 255 255 / 0.76) 13%, transparent 17% 48%, rgb(200 108 255 / 0.5) 52%, transparent 57% 100%);
+  filter: blur(0.16rem);
+  opacity: 0.58;
+  animation: purchase-ring-sheen 7s linear infinite;
+}
+
+.purchase-product-ring-core {
+  position: absolute;
+  top: 1.62rem;
+  left: 50%;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.34), rgb(200 108 255 / 0.13) 48%, transparent 76%);
+  filter: blur(0.12rem);
+  transform: translateX(-50%);
+}
+
+.purchase-product-display-base {
+  position: absolute;
+  left: 50%;
+  bottom: 0.38rem;
+  width: 6.25rem;
+  height: 1.42rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(3.5rem 0.62rem at 50% 20%, rgb(255 255 255 / 0.64), transparent 68%),
+    linear-gradient(100deg, #1194ff, #7350f6 48%, #db47ff);
+  box-shadow:
+    inset 0 0.16rem 0.42rem rgb(255 255 255 / 0.34),
+    inset 0 -0.32rem 0.48rem rgb(28 15 112 / 0.34),
+    0 0 0.45rem rgb(30 144 255 / 0.42),
+    0 0 0.8rem rgb(200 108 255 / 0.38),
+    0 0.55rem 0.82rem -0.42rem rgb(54 36 166 / 0.5);
+  transform: translateX(-50%) perspective(8rem) rotateX(58deg);
+  transform-origin: center;
+}
+
+.purchase-product-display-base::after {
+  position: absolute;
+  inset: 0.15rem 0.55rem auto;
+  height: 0.2rem;
+  content: "";
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.36));
+  filter: blur(0.05rem);
+}
+
+.purchase-product-spark {
+  position: absolute;
+  z-index: 1;
+  width: 0.9rem;
+  height: 2.15rem;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0), rgb(255 255 255 / 0.85), rgb(30 144 255 / 0.52), rgb(255 255 255 / 0));
+  clip-path: polygon(55% 0, 84% 0, 62% 42%, 91% 42%, 32% 100%, 47% 56%, 20% 56%);
+  filter:
+    drop-shadow(0 0 0.28rem rgb(30 144 255 / 0.54))
+    drop-shadow(0 0 0.4rem rgb(200 108 255 / 0.38));
+  opacity: 0.38;
+}
+
+.purchase-product-spark--one {
+  top: 1.25rem;
+  left: 0.38rem;
+  transform: rotate(-22deg) scale(0.86);
+}
+
+.purchase-product-spark--two {
+  top: 1.75rem;
+  right: 0.34rem;
+  transform: rotate(19deg) scale(0.76);
+}
+
+.purchase-product-spark--three {
+  top: 3.65rem;
+  left: 1.15rem;
+  transform: rotate(18deg) scale(0.54);
+  opacity: 0.24;
+}
+
+.purchase-showcase-product-image {
+  position: relative;
+  z-index: 2;
+  width: 5.65rem;
+  height: 5.65rem;
+  padding: 0.22rem;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0.35rem 0.55rem rgb(8 10 40 / 0.1))
+    drop-shadow(0 0 0.55rem rgb(30 144 255 / 0.15));
+}
+
+.purchase-showcase-product-fallback {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 5.05rem;
+  height: 5.05rem;
+  place-items: center;
+  color: var(--purchase-neon-purple);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgb(30 144 255 / 0.08), rgb(200 108 255 / 0.12));
+}
+
+.purchase-product-caption {
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.purchase-product-caption h2 {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--purchase-ink-premium);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.28;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.purchase-product-caption p {
+  display: -webkit-box;
+  margin: 0 auto;
+  max-width: 18rem;
+  overflow: hidden;
+  color: rgb(61 63 109 / 0.72);
+  font-size: 0.73rem;
+  font-weight: 500;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+:root:not(.dark) .purchase-product-showcase {
+  border-color: #e1e8f0;
+  background:
+    radial-gradient(6.8rem circle at 50% 34%, rgb(2 132 199 / 0.12), transparent 65%),
+    radial-gradient(7.2rem circle at 50% 52%, rgb(124 58 237 / 0.12), transparent 68%),
+    linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+:root:not(.dark) .purchase-product-image-stage {
+  border-color: transparent;
+  background: transparent;
+}
+
+:root:not(.dark) .purchase-product-caption h2 {
+  color: #0f172a;
+}
+
+:root:not(.dark) .purchase-product-caption p {
+  color: #64748b;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-info-card,
+.purchase-phone--buy.purchase-premium-modal .purchase-user-card,
+.purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid transparent !important;
+  background:
+    radial-gradient(9rem 6rem at 16% 0%, rgb(30 144 255 / 0.18), transparent 66%) padding-box,
+    radial-gradient(10rem 6rem at 88% 6%, rgb(255 53 196 / 0.14), transparent 68%) padding-box,
+    linear-gradient(180deg, rgb(255 255 255 / 0.76), rgb(248 248 252 / 0.9)) padding-box,
+    linear-gradient(120deg, #1e90ff 0%, #61efff 20%, #a020f0 58%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 0 1.25rem rgb(30 144 255 / 0.09),
+    0 0 0.55rem rgb(30 144 255 / 0.3),
+    0 0 1.15rem rgb(160 32 240 / 0.2),
+    0 0.95rem 1.8rem -1.25rem rgb(255 53 196 / 0.4) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-info-card::after,
+.purchase-phone--buy.purchase-premium-modal .purchase-user-card::after,
+.purchase-phone--buy.purchase-premium-modal .purchase-product-showcase::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent 8%, rgb(97 239 255 / 0.28), rgb(160 32 240 / 0.22), rgb(255 53 196 / 0.2), transparent 92%),
+    radial-gradient(16rem 3.2rem at 50% -12%, rgb(97 239 255 / 0.2), transparent 72%);
+  opacity: 0.78;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-info-card::before {
+  z-index: 2;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-info-cell,
+.purchase-phone--buy.purchase-premium-modal .purchase-user-card > *,
+.purchase-phone--buy.purchase-premium-modal .purchase-product-display {
+  position: relative;
+  z-index: 1;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-mini-icon {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1e90ff, #61efff 18%, #a020f0 58%, #ff35c4) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.36),
+    0 0 0.45rem rgb(30 144 255 / 0.38),
+    0 0 0.8rem rgb(255 53 196 / 0.28) !important;
+}
+
+.purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  border: 1px solid transparent !important;
+  background:
+    radial-gradient(18rem 10rem at 8% 0%, rgb(30 144 255 / 0.22), transparent 64%) padding-box,
+    radial-gradient(19rem 11rem at 94% 3%, rgb(255 53 196 / 0.18), transparent 66%) padding-box,
+    radial-gradient(20rem 14rem at 50% 105%, rgb(160 32 240 / 0.16), transparent 70%) padding-box,
+    linear-gradient(180deg, rgb(255 255 255 / 0.9), rgb(247 248 255 / 0.96)) padding-box,
+    linear-gradient(125deg, #1e90ff 0%, #61efff 18%, #a020f0 58%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.94),
+    inset 0 0 2.1rem rgb(97 239 255 / 0.08),
+    0 0 0.75rem rgb(30 144 255 / 0.34),
+    0 0 1.55rem rgb(160 32 240 / 0.25),
+    0 0 2.25rem rgb(255 53 196 / 0.17),
+    0 1.65rem 3.4rem -2.1rem rgb(8 10 40 / 0.58) !important;
+}
+
+.purchase-phone--buy.purchase-clean-card.purchase-premium-modal::before {
+  background:
+    radial-gradient(9rem circle at 12% 10%, rgb(97 239 255 / 0.16), transparent 70%),
+    radial-gradient(10rem circle at 88% 12%, rgb(255 53 196 / 0.13), transparent 72%) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell {
+  position: relative;
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(246 248 255 / 0.96)) padding-box,
+    linear-gradient(120deg, #1e90ff 0%, #61efff 22%, #a020f0 62%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 0 1rem rgb(30 144 255 / 0.06),
+    0 0 0.34rem rgb(30 144 255 / 0.24),
+    0 0 0.8rem rgb(160 32 240 / 0.16) !important;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell:focus-within,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell:focus-within {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.98),
+    inset 0 0 1.15rem rgb(97 239 255 / 0.12),
+    0 0 0 2px rgb(97 239 255 / 0.24),
+    0 0 0.75rem rgb(30 144 255 / 0.48),
+    0 0 1.25rem rgb(160 32 240 / 0.34),
+    0 0 1.7rem rgb(255 53 196 / 0.2) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell input,
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input {
+  color: #080a28 !important;
+  font-weight: 750 !important;
+  text-align: center;
+  caret-color: #a020f0;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell input::placeholder,
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input::placeholder,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input::placeholder,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input::placeholder {
+  color: rgb(61 63 109 / 0.58) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell--user::after {
+  background: linear-gradient(180deg, transparent, rgb(160 32 240 / 0.22), rgb(30 144 255 / 0.18), transparent) !important;
+}
+
+@media (max-width: 390px) {
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    padding: 0.78rem 0.62rem 0.7rem !important;
+    border-radius: 18px !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-header {
+    min-height: 3.35rem !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-close,
+  .purchase-phone--buy .purchase-header-icon {
+    width: 2.3rem !important;
+    height: 2.3rem !important;
+  }
+
+  .purchase-modal-title {
+    font-size: 1.1rem !important;
+  }
+
+  .purchase-info-card {
+    gap: 0.48rem !important;
+    padding: 0.62rem 0.55rem !important;
+  }
+
+  .purchase-phone--buy .purchase-field-heading h2,
+  .purchase-phone--buy .purchase-user-heading h2 {
+    font-size: 0.78rem !important;
+  }
+
+  .purchase-mini-icon {
+    width: 1.48rem !important;
+    height: 1.48rem !important;
+  }
+
+  .purchase-total-amount {
+    font-size: 1.4rem !important;
+  }
+
+  .purchase-phone--buy .purchase-input-shell,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell,
+  .purchase-phone--buy .purchase-input-shell input,
+  .purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+    min-height: 2.18rem !important;
+  }
+
+  .purchase-modal-actions {
+    gap: 0.45rem !important;
+  }
+
+  .purchase-phone--buy .purchase-primary-button,
+  .purchase-phone--buy .purchase-secondary-button {
+    min-height: 2.28rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .purchase-product-showcase {
+    margin-top: 0.58rem !important;
+    padding: 0.62rem 0.55rem !important;
+  }
+
+  .purchase-product-image-stage {
+    width: 6.3rem;
+    height: 5.9rem;
+  }
+
+  .purchase-product-ring-glow {
+    width: 5.55rem;
+    height: 5.55rem;
+  }
+
+  .purchase-product-energy-ring {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+
+  .purchase-product-ring-core {
+    top: 1.45rem;
+    width: 3.2rem;
+    height: 3.2rem;
+  }
+
+  .purchase-product-display-base {
+    bottom: 0.35rem;
+    width: 5.45rem;
+    height: 1.2rem;
+  }
+
+  .purchase-showcase-product-image,
+  .purchase-showcase-product-fallback {
+    width: 5.05rem;
+    height: 5.05rem;
+  }
+
+  .purchase-product-caption h2 {
+    font-size: 0.86rem;
+  }
+
+  .purchase-product-caption p {
+    font-size: 0.68rem;
+  }
+}
+
+/* Phone layout polish */
+@media (max-width: 760px) {
+  .product-purchase-page {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    width: min(94vw, 28.5rem) !important;
+    max-width: min(94vw, 28.5rem) !important;
+    padding: 1.15rem 1rem 1rem !important;
+    border-radius: 24px !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-header {
+    min-height: 4.15rem !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-close,
+  .purchase-phone--buy .purchase-header-icon {
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+    border-radius: 1rem !important;
+  }
+
+  .purchase-title-block {
+    max-width: calc(100% - 6.8rem);
+    padding-top: 0.18rem !important;
+  }
+
+  .purchase-modal-title {
+    font-size: 1.35rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .purchase-title-ornament {
+    width: 5rem !important;
+    margin-top: 0.42rem !important;
+  }
+
+  .purchase-product-top-description {
+    width: min(100%, 25rem);
+    margin: 0.02rem auto 0.74rem !important;
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .purchase-info-card {
+    gap: 0.9rem !important;
+    min-height: 6.4rem !important;
+    padding: 0.92rem 0.86rem !important;
+    border-radius: 1.15rem !important;
+  }
+
+  .purchase-info-cell {
+    gap: 0.52rem !important;
+  }
+
+  .purchase-phone--buy .purchase-field-heading h2,
+  .purchase-phone--buy .purchase-user-heading h2 {
+    font-size: 0.95rem !important;
+  }
+
+  .purchase-mini-icon {
+    width: 1.9rem !important;
+    height: 1.9rem !important;
+  }
+
+  .purchase-total-amount {
+    font-size: 1.95rem !important;
+  }
+
+  .purchase-user-card {
+    gap: 0.68rem !important;
+    margin-top: 0.72rem !important;
+    padding: 0.9rem 0.86rem !important;
+    border-radius: 1.15rem !important;
+  }
+
+  .purchase-phone--buy .purchase-input-shell,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell,
+  .purchase-phone--buy .purchase-input-shell input,
+  .purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+    min-height: 2.72rem !important;
+  }
+
+  .purchase-phone--buy .purchase-input-shell input,
+  .purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+    font-size: 0.9rem !important;
+  }
+
+  .purchase-modal-actions {
+    gap: 0.7rem !important;
+    margin-top: 0.82rem !important;
+  }
+
+  .purchase-phone--buy .purchase-primary-button,
+  .purchase-phone--buy .purchase-secondary-button {
+    min-height: 2.85rem !important;
+    border-radius: 1rem !important;
+    font-size: 0.94rem !important;
+  }
+
+  .purchase-product-showcase {
+    margin-top: 0.88rem !important;
+    padding: 0.92rem 0.8rem 0.82rem !important;
+    border-radius: 1.2rem !important;
+  }
+
+  .purchase-product-display {
+    gap: 0.66rem;
+  }
+
+  .purchase-product-image-stage {
+    width: 9rem;
+    height: 8.2rem;
+  }
+
+  .purchase-product-ring-glow {
+    width: 7.55rem;
+    height: 7.55rem;
+  }
+
+  .purchase-product-energy-ring {
+    width: 6.55rem;
+    height: 6.55rem;
+  }
+
+  .purchase-product-ring-core {
+    top: 2rem;
+    width: 4.3rem;
+    height: 4.3rem;
+  }
+
+  .purchase-product-display-base {
+    bottom: 0.48rem;
+    width: 7.6rem;
+    height: 1.58rem;
+  }
+
+  .purchase-showcase-product-image,
+  .purchase-showcase-product-fallback {
+    width: 6.7rem;
+    height: 6.7rem;
+  }
+
+  .purchase-product-caption p {
+    max-width: 23rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 430px) {
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    width: min(94vw, 24.25rem) !important;
+    max-width: min(94vw, 24.25rem) !important;
+    padding: 0.95rem 0.74rem 0.78rem !important;
+    border-radius: 20px !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-header {
+    min-height: 3.55rem !important;
+  }
+
+  .purchase-phone--buy .purchase-modal-close,
+  .purchase-phone--buy .purchase-header-icon {
+    width: 2.35rem !important;
+    height: 2.35rem !important;
+  }
+
+  .purchase-modal-title {
+    font-size: 1.1rem !important;
+  }
+
+  .purchase-product-top-description {
+    width: min(100%, 20rem);
+    margin: -0.04rem auto 0.56rem !important;
+    font-size: 0.72rem;
+    line-height: 1.38;
+  }
+
+  .purchase-info-card {
+    gap: 0.55rem !important;
+    min-height: 5.6rem !important;
+    padding: 0.72rem 0.58rem !important;
+  }
+
+  .purchase-phone--buy .purchase-field-heading h2,
+  .purchase-phone--buy .purchase-user-heading h2 {
+    font-size: 0.78rem !important;
+  }
+
+  .purchase-mini-icon {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+  }
+
+  .purchase-total-amount {
+    font-size: 1.42rem !important;
+  }
+
+  .purchase-phone--buy .purchase-input-shell,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell,
+  .purchase-phone--buy .purchase-input-shell input,
+  .purchase-phone--buy .purchase-input-shell input.purchase-order-input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input,
+  :root:not(.dark) .purchase-phone--buy .purchase-input-shell input.purchase-order-input {
+    min-height: 2.2rem !important;
+  }
+
+  .purchase-modal-actions {
+    gap: 0.45rem !important;
+  }
+
+  .purchase-phone--buy .purchase-primary-button,
+  .purchase-phone--buy .purchase-secondary-button {
+    min-height: 2.32rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .purchase-product-showcase {
+    margin-top: 0.62rem !important;
+    padding: 0.62rem 0.54rem !important;
+  }
+
+  .purchase-product-image-stage {
+    width: 6.7rem;
+    height: 6.15rem;
+  }
+
+  .purchase-product-ring-glow {
+    width: 5.75rem;
+    height: 5.75rem;
+  }
+
+  .purchase-product-energy-ring {
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .purchase-product-ring-core {
+    top: 1.5rem;
+    width: 3.3rem;
+    height: 3.3rem;
+  }
+
+  .purchase-product-display-base {
+    bottom: 0.36rem;
+    width: 5.85rem;
+    height: 1.22rem;
+  }
+
+  .purchase-showcase-product-image,
+  .purchase-showcase-product-fallback {
+    width: 5.12rem;
+    height: 5.12rem;
+  }
+
+  .purchase-product-caption p {
+    font-size: 0.7rem;
+  }
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-close {
+  isolation: isolate;
+  overflow: visible;
+  color: #ffffff !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  background:
+    radial-gradient(circle at 34% 22%, rgb(255 255 255 / 0.32), transparent 34%) padding-box,
+    linear-gradient(145deg, rgb(8 10 40 / 0.78), rgb(160 32 240 / 0.48) 58%, rgb(255 53 196 / 0.42)) padding-box,
+    linear-gradient(135deg, #61efff, #1e90ff 28%, #a020f0 66%, #ff35c4) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -0.45rem 0.9rem rgb(8 10 40 / 0.24),
+    0 0 0.5rem rgb(30 144 255 / 0.42),
+    0 0 1rem rgb(160 32 240 / 0.34),
+    0 0.75rem 1.35rem -0.95rem rgb(255 53 196 / 0.62) !important;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-close::before {
+  position: absolute;
+  inset: -0.24rem;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  border-radius: inherit;
+  background: conic-gradient(from 35deg, #61efff, transparent 24%, #a020f0 54%, transparent 72%, #ff35c4);
+  filter: blur(0.5rem);
+  opacity: 0.48;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-close svg {
+  position: relative;
+  z-index: 1;
+  width: 1rem !important;
+  height: 1rem !important;
+  stroke-width: 3.1 !important;
+  filter:
+    drop-shadow(0 0 0.22rem rgb(255 255 255 / 0.44))
+    drop-shadow(0 0 0.42rem rgb(97 239 255 / 0.36)) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-close:hover:not(:disabled),
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-close:focus-visible {
+  transform: translateY(-1px) scale(1.04);
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.36),
+    0 0 0 2px rgb(97 239 255 / 0.18),
+    0 0 0.72rem rgb(30 144 255 / 0.55),
+    0 0 1.35rem rgb(160 32 240 / 0.46),
+    0 0.9rem 1.45rem -0.95rem rgb(255 53 196 / 0.74) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-modal-actions {
+  width: min(100%, 20.5rem);
+  margin-right: auto !important;
+  margin-left: auto !important;
+  gap: 0.58rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy,
+.purchase-phone--buy.purchase-premium-modal .purchase-action-cancel {
+  position: relative;
+  min-height: 2.5rem !important;
+  gap: 0.38rem !important;
+  overflow: hidden;
+  padding: 0 0.88rem !important;
+  border-radius: 0.82rem !important;
+  font-size: 0.84rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    0 0.35rem 0.9rem -0.58rem rgb(8 10 40 / 0.5),
+    0 0 0.5rem rgb(30 144 255 / 0.22),
+    0 0 0.82rem rgb(160 32 240 / 0.18) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy {
+  border: 1px solid transparent !important;
+  background:
+    radial-gradient(4rem 2rem at 20% 0%, rgb(255 255 255 / 0.28), transparent 62%) padding-box,
+    linear-gradient(110deg, #1e90ff, #61efff 18%, #a020f0 62%, #ff35c4) padding-box,
+    linear-gradient(110deg, #61efff, #1e90ff 28%, #a020f0 62%, #ff35c4) border-box !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-cancel {
+  color: #080a28 !important;
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(247 248 255 / 0.9)) padding-box,
+    linear-gradient(110deg, #1e90ff, #61efff 18%, #a020f0 62%, #ff35c4) border-box !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy svg {
+  width: 0.98rem !important;
+  height: 0.98rem !important;
+  filter: drop-shadow(0 0 0.32rem rgb(255 255 255 / 0.44)) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy:hover:not(:disabled),
+.purchase-phone--buy.purchase-premium-modal .purchase-action-cancel:hover:not(:disabled),
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy:focus-visible,
+.purchase-phone--buy.purchase-premium-modal .purchase-action-cancel:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.38),
+    0 0 0 2px rgb(97 239 255 / 0.16),
+    0 0 0.72rem rgb(30 144 255 / 0.36),
+    0 0 1rem rgb(255 53 196 / 0.24) !important;
+}
+
+@media (max-width: 430px) {
+  .purchase-phone--buy.purchase-premium-modal .purchase-modal-actions {
+    width: min(100%, 18.2rem);
+    gap: 0.46rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-action-buy,
+  .purchase-phone--buy.purchase-premium-modal .purchase-action-cancel {
+    min-height: 2.28rem !important;
+    padding: 0 0.7rem !important;
+    font-size: 0.78rem !important;
+  }
+}
+
+.purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  width: min(100%, 24.75rem) !important;
+  max-width: 24.75rem !important;
+  min-height: 34.25rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  min-height: 8.8rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy > * {
+  position: relative;
+  z-index: 2;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy::after {
+  position: absolute;
+  top: -55%;
+  bottom: -55%;
+  left: -40%;
+  z-index: 1;
+  width: 3.1rem;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.72),
+    rgb(97 239 255 / 0.52),
+    transparent
+  );
+  filter: blur(0.04rem);
+  opacity: 0;
+  transform: translateX(-180%) skewX(-18deg);
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy:hover:not(:disabled)::after,
+.purchase-phone--buy.purchase-premium-modal .purchase-action-buy:focus-visible::after {
+  animation: purchase-buy-button-shine 760ms ease;
+}
+
+@keyframes purchase-buy-button-shine {
+  0% {
+    opacity: 0;
+    transform: translateX(-180%) skewX(-18deg);
+  }
+
+  22% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(520%) skewX(-18deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    width: min(92vw, 27rem) !important;
+    max-width: min(92vw, 27rem) !important;
+    min-height: min(90vh, 39rem) !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+    min-height: 10rem !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+    width: min(92vw, 23.35rem) !important;
+    max-width: min(92vw, 23.35rem) !important;
+    min-height: min(88vh, 35.6rem) !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+    min-height: 8.4rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchase-phone--buy.purchase-premium-modal .purchase-action-buy:hover:not(:disabled)::after,
+  .purchase-phone--buy.purchase-premium-modal .purchase-action-buy:focus-visible::after {
+    animation: none;
+  }
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-dynamic-field-card + .purchase-dynamic-field-card {
+  margin-top: 0.5rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell select.purchase-order-input,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell select.purchase-order-input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: inherit !important;
+  padding: 0 1rem !important;
+  color: #080a28 !important;
+  border: 0;
+  outline: 0;
+  background: transparent !important;
+  font: inherit;
+  font-size: 0.82rem !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+  text-align: center;
+  text-align-last: center;
+  appearance: none;
+  cursor: pointer;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell select.purchase-order-input option {
+  color: #080a28;
+  background: #ffffff;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-input-shell--select::before {
+  position: absolute;
+  left: 0.9rem;
+  z-index: 2;
+  width: 0.48rem;
+  height: 0.48rem;
+  pointer-events: none;
+  content: "";
+  border-right: 2px solid rgb(160 32 240 / 0.72);
+  border-bottom: 2px solid rgb(30 144 255 / 0.72);
+  transform: translateY(-0.12rem) rotate(45deg);
+  filter: drop-shadow(0 0 0.35rem rgb(160 32 240 / 0.34));
+}
+
+/* Polished purchase success window */
+.purchase-success-modal {
+  width: min(94vw, 28rem) !important;
+  max-width: min(94vw, 28rem) !important;
+  min-height: auto !important;
+  max-height: min(92svh, 45rem);
+  padding: 1.35rem !important;
+  overflow-y: auto;
+  border: 1px solid rgb(97 239 255 / 0.34);
+  border-radius: 1.55rem !important;
+  background:
+    radial-gradient(22rem 12rem at 50% -8%, rgb(97 239 255 / 0.16), transparent 66%),
+    radial-gradient(18rem 11rem at 8% 18%, rgb(30 144 255 / 0.12), transparent 70%),
+    radial-gradient(18rem 12rem at 94% 24%, rgb(255 53 196 / 0.12), transparent 72%),
+    linear-gradient(180deg, rgb(4 10 24 / 0.98), rgb(2 6 18 / 0.99));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    inset 0 0 2.2rem rgb(97 239 255 / 0.06),
+    0 0 1rem rgb(30 144 255 / 0.18),
+    0 0 2.1rem rgb(160 32 240 / 0.16),
+    0 1.6rem 4.2rem -2rem rgb(0 0 0 / 0.72);
+}
+
+.purchase-success-modal .purchase-bg-lines {
+  opacity: 0.42;
+}
+
+.purchase-success-modal .purchase-confetti {
+  height: 6.6rem;
+  opacity: 0.72;
+}
+
+.purchase-success-modal .purchase-confetti span {
+  width: 0.28rem;
+  height: 0.28rem;
+  box-shadow: 0 0 0.85rem currentColor;
+}
+
+.purchase-success-modal .purchase-success-back {
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.45rem;
+  height: 2.45rem;
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(145deg, rgb(17 31 63 / 0.86), rgb(5 10 26 / 0.92)) padding-box,
+    linear-gradient(135deg, #61efff, #1e90ff 35%, #a020f0 70%, #ff35c4) border-box;
+}
+
+.purchase-success-modal .purchase-success-mark {
+  height: 6.4rem;
+  padding-bottom: 0.45rem;
+}
+
+.purchase-success-modal .purchase-success-bloom {
+  width: 6.4rem;
+  height: 6.4rem;
+  background:
+    radial-gradient(circle, rgb(97 239 255 / 0.22), transparent 48%),
+    radial-gradient(circle, rgb(160 32 240 / 0.18), transparent 62%),
+    radial-gradient(circle, rgb(255 53 196 / 0.12), transparent 72%);
+  filter: blur(1.45rem);
+}
+
+.purchase-success-modal .purchase-check-ring {
+  width: 4.8rem;
+  height: 4.8rem;
+  background:
+    linear-gradient(rgb(5 15 31 / 0.98), rgb(3 8 22 / 0.98)) padding-box,
+    conic-gradient(from 15deg, #61efff, #1e90ff 88deg, #a020f0 176deg, #ff35c4 275deg, #61efff) border-box;
+  box-shadow:
+    0 0 1.1rem rgb(97 239 255 / 0.28),
+    0 0 2.2rem rgb(160 32 240 / 0.22),
+    0 0 3.2rem rgb(255 53 196 / 0.14),
+    inset 0 0 1.65rem rgb(97 239 255 / 0.08);
+}
+
+.purchase-success-modal .purchase-check-ring svg {
+  width: 2.15rem;
+  height: 2.15rem;
+}
+
+.purchase-success-modal .purchase-success-title {
+  font-size: clamp(1.2rem, 3.6vw, 1.55rem);
+  font-weight: 900;
+}
+
+.purchase-success-modal .purchase-success-message {
+  width: min(100%, 24rem);
+  margin: 0.45rem auto 0.95rem;
+  color: rgb(232 241 255 / 0.82);
+  font-size: clamp(0.84rem, 2.45vw, 0.98rem);
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.purchase-success-modal .purchase-summary-card {
+  padding: 0.9rem 0.95rem;
+  border: 1px solid rgb(97 239 255 / 0.18);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(12rem 7rem at 6% 0%, rgb(97 239 255 / 0.12), transparent 72%),
+    radial-gradient(12rem 7rem at 96% 0%, rgb(255 53 196 / 0.1), transparent 72%),
+    linear-gradient(180deg, rgb(9 18 40 / 0.72), rgb(4 10 26 / 0.78));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 0 1.4rem rgb(97 239 255 / 0.04),
+    0 0.9rem 2.2rem -1.5rem rgb(0 0 0 / 0.75);
+}
+
+.purchase-success-modal .purchase-summary-card h2 {
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.55rem;
+  color: #f8fbff;
+  font-size: clamp(0.92rem, 2.65vw, 1.05rem);
+  font-weight: 900;
+  border-bottom-color: rgb(97 239 255 / 0.18);
+}
+
+.purchase-success-modal .purchase-summary-row {
+  grid-template-columns: 2.05rem minmax(0, 1fr);
+  gap: 0.7rem;
+  min-height: 2.75rem;
+}
+
+.purchase-success-modal .purchase-summary-row + .purchase-summary-row {
+  border-top-color: rgb(97 239 255 / 0.12);
+}
+
+.purchase-success-modal .purchase-summary-icon {
+  width: 1.78rem;
+  height: 1.78rem;
+  color: #d9d4ff;
+  border-color: rgb(97 239 255 / 0.18);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(97 239 255 / 0.22), transparent 62%),
+    linear-gradient(145deg, rgb(30 144 255 / 0.18), rgb(160 32 240 / 0.16), rgb(255 53 196 / 0.12));
+}
+
+.purchase-success-modal .purchase-summary-icon svg {
+  width: 0.98rem;
+  height: 0.98rem;
+}
+
+.purchase-success-modal .purchase-summary-text {
+  gap: 0.75rem;
+}
+
+.purchase-success-modal .purchase-summary-text span {
+  color: rgb(207 220 244 / 0.78);
+  font-size: clamp(0.76rem, 2.35vw, 0.88rem);
+  font-weight: 800;
+}
+
+.purchase-success-modal .purchase-summary-text strong {
+  color: #ffffff;
+  font-size: clamp(0.8rem, 2.45vw, 0.94rem);
+  font-weight: 900;
+}
+
+.purchase-success-modal .purchase-summary-copy svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.purchase-success-actions {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr);
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+}
+
+.purchase-success-modal .purchase-success-primary,
+.purchase-success-modal .purchase-success-secondary {
+  min-height: 2.95rem;
+  border-radius: 1rem;
+  font-size: clamp(0.84rem, 2.45vw, 0.95rem);
+}
+
+.purchase-success-modal .purchase-success-secondary {
+  color: #eef5ff;
+  background:
+    linear-gradient(rgb(7 15 34 / 0.95), rgb(4 10 26 / 0.95)) padding-box,
+    linear-gradient(120deg, #61efff, #1e90ff 28%, #a020f0 65%, #ff35c4) border-box;
+}
+
+:root:not(.dark) .purchase-success-modal {
+  color: #0f172a;
+  border-color: rgb(30 144 255 / 0.28);
+  background:
+    radial-gradient(20rem 12rem at 50% -8%, rgb(97 239 255 / 0.22), transparent 66%),
+    radial-gradient(18rem 11rem at 5% 18%, rgb(30 144 255 / 0.15), transparent 70%),
+    radial-gradient(18rem 12rem at 94% 24%, rgb(255 53 196 / 0.12), transparent 72%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(242 247 255 / 0.97));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.98),
+    inset 0 0 2rem rgb(97 239 255 / 0.08),
+    0 0 0.9rem rgb(30 144 255 / 0.18),
+    0 1.45rem 3.5rem -2.1rem rgb(30 64 175 / 0.42);
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-success-message {
+  color: rgb(51 65 85 / 0.78);
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-check-ring {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.96), rgb(241 246 255 / 0.96)) padding-box,
+    conic-gradient(from 15deg, #61efff, #1e90ff 88deg, #a020f0 176deg, #ff35c4 275deg, #61efff) border-box;
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-summary-card {
+  border-color: rgb(30 144 255 / 0.18);
+  background:
+    radial-gradient(12rem 7rem at 6% 0%, rgb(97 239 255 / 0.16), transparent 72%),
+    radial-gradient(12rem 7rem at 96% 0%, rgb(255 53 196 / 0.1), transparent 72%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.82), rgb(247 250 255 / 0.92));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 0.9rem 2rem -1.45rem rgb(30 144 255 / 0.34);
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-summary-card h2,
+:root:not(.dark) .purchase-success-modal .purchase-summary-text strong {
+  color: #0f172a;
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-summary-text span {
+  color: rgb(51 65 85 / 0.72);
+}
+
+:root:not(.dark) .purchase-success-modal .purchase-success-secondary {
+  color: #0f172a;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.92), rgb(241 246 255 / 0.92)) padding-box,
+    linear-gradient(120deg, #61efff, #1e90ff 28%, #a020f0 65%, #ff35c4) border-box;
+}
+
+/* Dark-mode purchase review modal */
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  color: #f8fbff;
+  background:
+    radial-gradient(18rem 10rem at 8% 0%, rgb(30 144 255 / 0.15), transparent 64%) padding-box,
+    radial-gradient(18rem 11rem at 94% 4%, rgb(255 53 196 / 0.11), transparent 68%) padding-box,
+    radial-gradient(20rem 14rem at 50% 108%, rgb(160 32 240 / 0.12), transparent 72%) padding-box,
+    linear-gradient(180deg, rgb(4 10 25 / 0.98), rgb(2 6 18 / 0.99)) padding-box,
+    linear-gradient(125deg, #1e90ff 0%, #61efff 18%, #a020f0 58%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    inset 0 0 2rem rgb(97 239 255 / 0.05),
+    0 0 0.7rem rgb(30 144 255 / 0.22),
+    0 0 1.55rem rgb(160 32 240 / 0.16),
+    0 1.65rem 3.8rem -2rem rgb(0 0 0 / 0.84) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-modal-title,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-field-heading h2,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-heading h2 {
+  color: #f8fbff !important;
+  text-shadow: 0 0 1rem rgb(97 239 255 / 0.12);
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-top-description {
+  color: rgb(207 220 244 / 0.74);
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(9rem 6rem at 16% 0%, rgb(30 144 255 / 0.14), transparent 66%) padding-box,
+    radial-gradient(10rem 6rem at 88% 6%, rgb(255 53 196 / 0.1), transparent 68%) padding-box,
+    linear-gradient(180deg, rgb(8 18 40 / 0.8), rgb(4 10 26 / 0.88)) padding-box,
+    linear-gradient(120deg, #1e90ff 0%, #61efff 20%, #a020f0 58%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 0 1.1rem rgb(97 239 255 / 0.04),
+    0 0 0.52rem rgb(30 144 255 / 0.2),
+    0 0 1rem rgb(160 32 240 / 0.15),
+    0 0.95rem 1.8rem -1.2rem rgb(0 0 0 / 0.78) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card::after,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card::after,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase::after {
+  background:
+    linear-gradient(90deg, transparent 8%, rgb(97 239 255 / 0.16), rgb(160 32 240 / 0.14), rgb(255 53 196 / 0.12), transparent 92%),
+    radial-gradient(16rem 3.2rem at 50% -12%, rgb(97 239 255 / 0.12), transparent 72%);
+  opacity: 0.68;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell {
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(180deg, rgb(6 16 36 / 0.96), rgb(3 8 22 / 0.98)) padding-box,
+    linear-gradient(120deg, #1e90ff 0%, #61efff 22%, #a020f0 62%, #ff35c4 100%) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 0 1rem rgb(97 239 255 / 0.045),
+    0 0 0.35rem rgb(30 144 255 / 0.2),
+    0 0 0.8rem rgb(160 32 240 / 0.14) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell:focus-within {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.11),
+    inset 0 0 1.1rem rgb(97 239 255 / 0.08),
+    0 0 0 2px rgb(97 239 255 / 0.18),
+    0 0 0.8rem rgb(30 144 255 / 0.34),
+    0 0 1.25rem rgb(160 32 240 / 0.24),
+    0 0 1.7rem rgb(255 53 196 / 0.14) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell select.purchase-order-input {
+  color: #f8fbff !important;
+  caret-color: #61efff;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input::placeholder,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell input.purchase-order-input::placeholder {
+  color: rgb(203 213 225 / 0.48) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell select.purchase-order-input option {
+  color: #f8fbff;
+  background: #071225;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell--select::before {
+  border-right-color: rgb(97 239 255 / 0.75);
+  border-bottom-color: rgb(255 53 196 / 0.65);
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-action-cancel {
+  color: #f3f8ff !important;
+  background:
+    linear-gradient(180deg, rgb(8 18 40 / 0.9), rgb(4 10 26 / 0.96)) padding-box,
+    linear-gradient(110deg, #1e90ff, #61efff 18%, #a020f0 62%, #ff35c4) border-box !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(7rem circle at 50% 34%, rgb(30 144 255 / 0.13), transparent 66%),
+    radial-gradient(7.4rem circle at 50% 54%, rgb(160 32 240 / 0.13), transparent 70%),
+    linear-gradient(180deg, rgb(6 16 36 / 0.78), rgb(3 8 22 / 0.9)) !important;
+}
+
+:is(:root.dark, .dark) .purchase-product-energy-ring {
+  background:
+    linear-gradient(rgb(5 13 30 / 0.68), rgb(5 13 30 / 0.68)) padding-box,
+    conic-gradient(from 218deg, var(--purchase-electric-blue), #61efff 18%, var(--purchase-neon-purple) 54%, var(--purchase-violet-glow) 76%, var(--purchase-electric-blue)) border-box;
+  box-shadow:
+    0 0 0.48rem rgb(30 144 255 / 0.56),
+    0 0 1rem rgb(30 144 255 / 0.22),
+    0 0 1.2rem rgb(160 32 240 / 0.24),
+    inset 0 0 0.75rem rgb(97 239 255 / 0.08);
+}
+
+:is(:root.dark, .dark) .purchase-product-energy-ring::before {
+  background:
+    radial-gradient(circle at 34% 28%, rgb(30 144 255 / 0.2), transparent 36%),
+    radial-gradient(circle at 72% 58%, rgb(160 32 240 / 0.18), transparent 44%),
+    radial-gradient(circle, rgb(97 239 255 / 0.1), rgb(255 255 255 / 0.02) 62%, transparent 78%);
+  box-shadow: inset 0 0 1.2rem rgb(97 239 255 / 0.08);
+}
+
+:is(:root.dark, .dark) .purchase-product-ring-core {
+  background: radial-gradient(circle, rgb(97 239 255 / 0.2), rgb(160 32 240 / 0.12) 48%, transparent 76%);
+}
+
+:is(:root.dark, .dark) .purchase-product-display-base {
+  background:
+    radial-gradient(3.5rem 0.62rem at 50% 20%, rgb(255 255 255 / 0.3), transparent 68%),
+    linear-gradient(100deg, #1194ff, #7350f6 48%, #db47ff);
+  box-shadow:
+    inset 0 0.16rem 0.42rem rgb(255 255 255 / 0.18),
+    inset 0 -0.32rem 0.48rem rgb(2 6 18 / 0.34),
+    0 0 0.45rem rgb(30 144 255 / 0.36),
+    0 0 0.8rem rgb(160 32 240 / 0.3),
+    0 0.55rem 0.82rem -0.42rem rgb(0 0 0 / 0.72);
+}
+
+:is(:root.dark, .dark) .purchase-showcase-product-image {
+  filter:
+    drop-shadow(0 0.45rem 0.7rem rgb(0 0 0 / 0.34))
+    drop-shadow(0 0 0.7rem rgb(97 239 255 / 0.18))
+    drop-shadow(0 0 0.9rem rgb(255 53 196 / 0.12));
+}
+
+/* Calmer purchase review backgrounds */
+:root:not(.dark) .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  background:
+    radial-gradient(18rem 10rem at 8% 0%, rgb(56 189 248 / 0.08), transparent 68%) padding-box,
+    radial-gradient(18rem 11rem at 94% 4%, rgb(168 85 247 / 0.055), transparent 70%) padding-box,
+    radial-gradient(20rem 14rem at 50% 108%, rgb(236 72 153 / 0.045), transparent 74%) padding-box,
+    linear-gradient(180deg, rgb(255 255 255 / 0.96), rgb(246 249 255 / 0.97)) padding-box,
+    linear-gradient(125deg, rgb(125 211 252 / 0.7), rgb(167 139 250 / 0.58) 58%, rgb(244 114 182 / 0.46)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    inset 0 0 1.3rem rgb(125 211 252 / 0.05),
+    0 0 0.45rem rgb(59 130 246 / 0.12),
+    0 1.35rem 3rem -2.1rem rgb(15 23 42 / 0.34) !important;
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(9rem 6rem at 14% 0%, rgb(56 189 248 / 0.07), transparent 68%) padding-box,
+    radial-gradient(10rem 6rem at 88% 6%, rgb(168 85 247 / 0.05), transparent 70%) padding-box,
+    linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(247 250 255 / 0.86)) padding-box,
+    linear-gradient(120deg, rgb(125 211 252 / 0.58), rgb(167 139 250 / 0.48) 58%, rgb(244 114 182 / 0.38)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.86),
+    inset 0 0 1rem rgb(125 211 252 / 0.04),
+    0 0.75rem 1.55rem -1.25rem rgb(30 64 175 / 0.2) !important;
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card::after,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card::after,
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase::after {
+  background:
+    linear-gradient(90deg, transparent 8%, rgb(125 211 252 / 0.12), rgb(167 139 250 / 0.09), rgb(244 114 182 / 0.07), transparent 92%),
+    radial-gradient(15rem 3rem at 50% -12%, rgb(125 211 252 / 0.1), transparent 74%);
+  opacity: 0.58;
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(248 250 255 / 0.95)) padding-box,
+    linear-gradient(120deg, rgb(125 211 252 / 0.62), rgb(167 139 250 / 0.5) 62%, rgb(244 114 182 / 0.4)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.92),
+    inset 0 0 0.8rem rgb(125 211 252 / 0.035),
+    0 0 0.38rem rgb(59 130 246 / 0.12) !important;
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.96),
+    inset 0 0 0.9rem rgb(125 211 252 / 0.06),
+    0 0 0 2px rgb(125 211 252 / 0.16),
+    0 0 0.75rem rgb(99 102 241 / 0.2) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-clean-card.purchase-premium-modal {
+  background:
+    radial-gradient(18rem 10rem at 8% 0%, rgb(56 189 248 / 0.075), transparent 66%) padding-box,
+    radial-gradient(18rem 11rem at 94% 4%, rgb(168 85 247 / 0.06), transparent 70%) padding-box,
+    radial-gradient(20rem 14rem at 50% 108%, rgb(236 72 153 / 0.045), transparent 74%) padding-box,
+    linear-gradient(180deg, rgb(7 12 24 / 0.99), rgb(4 8 18 / 0.995)) padding-box,
+    linear-gradient(125deg, rgb(56 189 248 / 0.58), rgb(167 139 250 / 0.46) 58%, rgb(244 114 182 / 0.36)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    inset 0 0 1.35rem rgb(125 211 252 / 0.035),
+    0 0 0.55rem rgb(30 144 255 / 0.12),
+    0 1.65rem 3.6rem -2rem rgb(0 0 0 / 0.78) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(9rem 6rem at 16% 0%, rgb(56 189 248 / 0.075), transparent 68%) padding-box,
+    radial-gradient(10rem 6rem at 88% 6%, rgb(168 85 247 / 0.055), transparent 70%) padding-box,
+    linear-gradient(180deg, rgb(10 17 32 / 0.82), rgb(6 11 24 / 0.9)) padding-box,
+    linear-gradient(120deg, rgb(56 189 248 / 0.48), rgb(167 139 250 / 0.38) 58%, rgb(244 114 182 / 0.3)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    inset 0 0 0.9rem rgb(125 211 252 / 0.025),
+    0 0.9rem 1.7rem -1.2rem rgb(0 0 0 / 0.72) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-info-card::after,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-user-card::after,
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase::after {
+  background:
+    linear-gradient(90deg, transparent 8%, rgb(125 211 252 / 0.08), rgb(167 139 250 / 0.065), rgb(244 114 182 / 0.05), transparent 92%),
+    radial-gradient(15rem 3rem at 50% -12%, rgb(125 211 252 / 0.07), transparent 74%);
+  opacity: 0.5;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell {
+  background:
+    linear-gradient(180deg, rgb(8 15 29 / 0.96), rgb(5 10 22 / 0.98)) padding-box,
+    linear-gradient(120deg, rgb(56 189 248 / 0.5), rgb(167 139 250 / 0.4) 62%, rgb(244 114 182 / 0.32)) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    inset 0 0 0.85rem rgb(125 211 252 / 0.025),
+    0 0 0.42rem rgb(30 144 255 / 0.11) !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-input-shell:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    inset 0 0 0.9rem rgb(125 211 252 / 0.045),
+    0 0 0 2px rgb(125 211 252 / 0.13),
+    0 0 0.75rem rgb(99 102 241 / 0.18) !important;
+}
+
+/* Purchase modal showcase scale polish */
+.purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  min-height: 10.9rem !important;
+  padding: 1.05rem 0.9rem 0.95rem !important;
+  background:
+    radial-gradient(9.4rem circle at 50% 32%, rgb(30 144 255 / 0.17), transparent 68%),
+    radial-gradient(10rem circle at 50% 56%, rgb(160 32 240 / 0.16), transparent 72%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.62), rgb(248 248 252 / 0.82)) !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-image-stage {
+  width: 9.75rem !important;
+  height: 8.95rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-ring-glow {
+  width: 8.45rem !important;
+  height: 8.45rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-energy-ring {
+  width: 7.35rem !important;
+  height: 7.35rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-ring-core {
+  top: 2.2rem !important;
+  width: 4.9rem !important;
+  height: 4.9rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-product-display-base {
+  bottom: 0.52rem !important;
+  width: 8.35rem !important;
+  height: 1.78rem !important;
+}
+
+.purchase-phone--buy.purchase-premium-modal .purchase-showcase-product-image,
+.purchase-phone--buy.purchase-premium-modal .purchase-showcase-product-fallback {
+  width: 7.25rem !important;
+  height: 7.25rem !important;
+}
+
+:root:not(.dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(9.4rem circle at 50% 32%, rgb(2 132 199 / 0.13), transparent 68%),
+    radial-gradient(10rem circle at 50% 56%, rgb(124 58 237 / 0.12), transparent 72%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.78), rgb(247 250 255 / 0.9)) padding-box,
+    linear-gradient(120deg, rgb(125 211 252 / 0.58), rgb(167 139 250 / 0.48) 58%, rgb(244 114 182 / 0.38)) border-box !important;
+}
+
+:is(:root.dark, .dark) .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+  background:
+    radial-gradient(9.4rem circle at 50% 32%, rgb(30 144 255 / 0.14), transparent 68%),
+    radial-gradient(10rem circle at 50% 56%, rgb(160 32 240 / 0.13), transparent 72%),
+    linear-gradient(180deg, rgb(6 16 36 / 0.82), rgb(3 8 22 / 0.92)) padding-box,
+    linear-gradient(120deg, rgb(56 189 248 / 0.48), rgb(167 139 250 / 0.38) 58%, rgb(244 114 182 / 0.3)) border-box !important;
+}
+
+@media (max-width: 430px) {
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-showcase {
+    min-height: 9.85rem !important;
+    padding: 0.9rem 0.62rem 0.78rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-image-stage {
+    width: 8.6rem !important;
+    height: 7.85rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-ring-glow {
+    width: 7.35rem !important;
+    height: 7.35rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-energy-ring {
+    width: 6.38rem !important;
+    height: 6.38rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-ring-core {
+    top: 1.9rem !important;
+    width: 4.25rem !important;
+    height: 4.25rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-product-display-base {
+    bottom: 0.44rem !important;
+    width: 7.35rem !important;
+    height: 1.52rem !important;
+  }
+
+  .purchase-phone--buy.purchase-premium-modal .purchase-showcase-product-image,
+  .purchase-phone--buy.purchase-premium-modal .purchase-showcase-product-fallback {
+    width: 6.45rem !important;
+    height: 6.45rem !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .purchase-success-modal {
+    width: min(90vw, 23.5rem) !important;
+    max-width: min(90vw, 23.5rem) !important;
+    padding: 1rem 0.82rem 0.88rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .purchase-success-modal .purchase-success-mark {
+    height: 5.35rem;
+  }
+
+  .purchase-success-modal .purchase-check-ring {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .purchase-success-modal .purchase-summary-card {
+    padding: 0.72rem 0.68rem;
+  }
+
+  .purchase-success-modal .purchase-summary-row {
+    grid-template-columns: 1.8rem minmax(0, 1fr);
+    gap: 0.55rem;
+    min-height: 2.42rem;
+  }
+
+  .purchase-success-modal .purchase-summary-icon {
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 0.62rem;
+  }
+
+  .purchase-success-actions {
+    gap: 0.5rem;
+  }
+
+  .purchase-success-modal .purchase-success-primary,
+  .purchase-success-modal .purchase-success-secondary {
+    min-height: 2.58rem;
+    border-radius: 0.85rem;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .purchase-success-actions {
+    grid-template-columns: 1fr;
   }
 }

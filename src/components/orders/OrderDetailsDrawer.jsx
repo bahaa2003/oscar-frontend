@@ -159,7 +159,7 @@ const OrderDetailsDrawer = ({
   };
   const orderNumber = order?.siteOrderNumber || order?.orderNumber || '';
   const orderDurationText = isCompletedOrderStatus(order?.statusKey || order?.status)
-    ? formatOrderDuration(order?.createdAt, order?.updatedAt || order?.lastUpdated)
+    ? formatOrderDuration(order?.createdAt, order?.updatedAt || order?.lastUpdated, isArabic ? 'ar' : 'en')
     : '';
 
   useEffect(() => {

@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../ui/Toast';
 import { formatDateTime } from '../../utils/intl';
-import { formatWalletAmount } from '../../utils/storefront';
+import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 
 const isCreditTransaction = (transaction = {}) => {
   const type = String(transaction.type || '').toLowerCase();
@@ -95,6 +95,8 @@ const TransactionCard = ({ transaction, index }) => {
   const originalAmount = Number(transaction.originalAmount);
   const showOriginalAmount = showOriginalCurrency && Number.isFinite(originalAmount) && originalAmount > 0;
   const { Icon, iconClassName, amountClassName } = getTransactionVisual(transaction);
+  const isNegativeBalanceBefore = isNegativeWalletAmount(transaction?.balanceBefore);
+  const isNegativeBalanceAfter = isNegativeWalletAmount(transaction?.balanceAfter);
 
   const handleCopyReference = async (event) => {
     event.stopPropagation();
@@ -163,11 +165,15 @@ const TransactionCard = ({ transaction, index }) => {
         </span>
         {hasBalanceSnapshot ? (
           <span className="max-w-[9.5rem] truncate text-[10px] font-medium text-gray-500 dark:text-gray-400 [direction:ltr]">
-            {formatWalletAmount(transaction.balanceBefore, transaction.currency)}
+            <span className={isNegativeBalanceBefore ? negativeWalletBalanceClassName : ''}>
+              {formatWalletAmount(transaction.balanceBefore, transaction.currency)}
+            </span>
             {' '}
             &rarr;
             {' '}
-            {formatWalletAmount(transaction.balanceAfter, transaction.currency)}
+            <span className={isNegativeBalanceAfter ? negativeWalletBalanceClassName : ''}>
+              {formatWalletAmount(transaction.balanceAfter, transaction.currency)}
+            </span>
           </span>
         ) : null}
       </div>

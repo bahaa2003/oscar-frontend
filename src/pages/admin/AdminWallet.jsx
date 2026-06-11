@@ -23,6 +23,7 @@ import useTopupStore from '../../store/useTopupStore';
 import useSystemStore from '../../store/useSystemStore';
 import { formatDateTime, formatNumber, getNumericLocale } from '../../utils/intl';
 import { formatCurrencyAmount } from '../../utils/pricing';
+import { negativeWalletBalanceClassName } from '../../utils/storefront';
 import {
   resolveOrderExecutionCurrency,
   resolveTopupExecutionCurrency,
@@ -268,15 +269,15 @@ const mergeOperations = (...groups) => {
   return merged.sort(sortByNewestDate);
 };
 
-const SummaryCard = ({ icon: Icon, label, value, note }) => (
-  <Card className="admin-premium-stat h-full p-3 sm:p-3.5">
+const SummaryCard = ({ icon: Icon, label, value, note, tone = 'default' }) => (
+  <Card className={`admin-premium-stat h-full p-3 sm:p-3.5 ${tone === 'danger' ? 'border-[rgba(220,38,38,0.18)] bg-[linear-gradient(135deg,rgba(254,242,242,0.92),rgba(255,255,255,0.82))]' : ''}`.trim()}>
     <div className="flex items-start gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.95rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] text-[var(--color-primary)] sm:h-10 sm:w-10">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.95rem] border sm:h-10 sm:w-10 ${tone === 'danger' ? 'border-[rgba(220,38,38,0.22)] bg-[rgba(248,113,113,0.12)] text-[var(--color-error)]' : 'border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] text-[var(--color-primary)]'}`}>
         <Icon className="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" />
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-medium text-[var(--color-text-secondary)] sm:text-[11px]">{label}</p>
-        <p className="mt-1 break-words text-[0.96rem] font-semibold leading-6 text-[var(--color-text)] sm:text-lg">{value}</p>
+        <p className={`mt-1 break-words text-[0.96rem] font-semibold leading-6 sm:text-lg ${tone === 'danger' ? negativeWalletBalanceClassName : 'text-[var(--color-text)]'}`}>{value}</p>
         {note ? <p className="mt-1 text-[10px] leading-4.5 text-[var(--color-muted)] sm:text-[11px]">{note}</p> : null}
       </div>
     </div>
@@ -443,6 +444,16 @@ const AdminWallet = () => {
       const safeAmount = asNumber(amount);
       const sign = safeAmount > 0 ? '+' : safeAmount < 0 ? '-' : '';
       return `${sign}${formatMoney(safeAmount, currencyCode)}`;
+    },
+    [formatMoney]
+  );
+
+  const formatBalanceMoney = useCallback(
+    (amount, currencyCode = 'USD') => {
+      const safeAmount = asNumber(amount);
+      return safeAmount < 0
+        ? `-${formatMoney(safeAmount, currencyCode)}`
+        : formatMoney(safeAmount, currencyCode);
     },
     [formatMoney]
   );
@@ -665,25 +676,28 @@ const AdminWallet = () => {
       {
         icon: Wallet,
         label: isArabic ? 'رصيد الأدمن' : 'Admin balance',
-        value: formatMoney(adminProfile?.coins ?? 0, adminProfile?.currency || 'USD'),
+        value: formatBalanceMoney(adminProfile?.coins ?? 0, adminProfile?.currency || 'USD'),
         note: adminProfile?.name || (isArabic ? 'الحساب الحالي' : 'Current account'),
+        tone: asNumber(adminProfile?.coins) < 0 ? 'danger' : 'default',
       },
       {
         icon: Users,
         label: isArabic ? 'رصيد العملاء' : 'Customer balances',
-        value: formatMoney(totalCustomerBalanceUsd, 'USD'),
+        value: formatBalanceMoney(totalCustomerBalanceUsd, 'USD'),
         note: isArabic
           ? `${formatCount(customerWallets.length)} محفظة عميل`
           : `${formatCount(customerWallets.length)} customer wallets`,
+        tone: totalCustomerBalanceUsd < 0 ? 'danger' : 'default',
       },
       {
         icon: TrendingUp,
         label: isArabic ? 'الأرباح' : 'Profits',
-        value: formatMoney(totalProfitUsd, 'USD'),
+        value: formatBalanceMoney(totalProfitUsd, 'USD'),
         note: isArabic ? 'من الطلبات المكتملة داخل المدة' : 'From completed orders in range',
+        tone: totalProfitUsd < 0 ? 'danger' : 'default',
       },
     ],
-    [adminProfile?.coins, adminProfile?.currency, adminProfile?.name, customerWallets.length, formatCount, formatMoney, isArabic, totalCustomerBalanceUsd, totalProfitUsd]
+    [adminProfile?.coins, adminProfile?.currency, adminProfile?.name, customerWallets.length, formatBalanceMoney, formatCount, isArabic, totalCustomerBalanceUsd, totalProfitUsd]
   );
 
   return (
@@ -731,6 +745,7 @@ const AdminWallet = () => {
               label={card.label}
               value={card.value}
               note={card.note}
+              tone={card.tone}
             />
           ))}
         </div>

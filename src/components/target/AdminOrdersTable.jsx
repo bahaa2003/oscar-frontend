@@ -48,6 +48,16 @@ const AdminOrdersTable = ({ requests = [], onStatusChange, onViewDetails, canCon
               <div>
                 <p className="font-bold text-[var(--color-text)]">{request.appNameSnapshot || request.productName}</p>
                 <p className="text-xs text-[var(--color-text-secondary)]">{formatDateTime(request.createdAt, 'en-US')}</p>
+                {request.agentAccountId ? (
+                  <button
+                    type="button"
+                    onClick={() => copyText(request.agentAccountId)}
+                    className="mt-1.5 inline-flex max-w-full items-center rounded-md border border-[color:rgb(var(--color-primary-rgb)/0.2)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--color-primary)]"
+                    title="نسخ أيدي حساب الوكيل"
+                  >
+                    <span className="truncate">وكيل: {request.agentAccountId}</span>
+                  </button>
+                ) : null}
                 {(request.userId || request.userName || request.userEmail) ? (
                   <div className="mt-1.5 max-w-52 text-[10px] text-[var(--color-text-secondary)]">
                     {request.userId ? (

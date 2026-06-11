@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  CreditCard,
   Eye,
   EyeOff,
   Globe,
@@ -28,7 +29,7 @@ import {
   validateFullName,
   validatePassword,
 } from '../utils/validation';
-import { COUNTRY_CATALOG } from '../data/countryCatalog';
+import { COUNTRY_CATALOG, buildCurrencyCatalogFromCountries } from '../data/countryCatalog';
 import { getDefaultRouteForRole } from '../utils/authRoles';
 import { getAccountAccessRoute, normalizeAccountStatus } from '../utils/accountStatus';
 import styles from './Auth.module.css';
@@ -61,6 +62,51 @@ const StepTwo = ({ children }) => (
   </motion.div>
 );
 
+const GOOGLE_PROFILE_SETUP_STORAGE_PREFIX = 'auth:google-profile-setup:v1:';
+const DEFAULT_GOOGLE_SETUP_COUNTRY = 'EG';
+
+const getCountryDisplayName = (country, isArabic) => (
+  isArabic
+    ? country?.nameAr || country?.translations?.ara?.common || country?.name?.common || country?.cca2
+    : country?.name?.common || country?.cca2
+);
+
+const getCountryCurrencyCodes = (country) => (
+  Object.keys(country?.currencies || {})
+    .map((code) => String(code || '').trim().toUpperCase())
+    .filter(Boolean)
+);
+
+const getGoogleSetupStorageKey = (userId) => (
+  `${GOOGLE_PROFILE_SETUP_STORAGE_PREFIX}${String(userId || '').trim()}`
+);
+
+const hasCompletedGoogleProfileSetup = (user) => {
+  if (!user?.id || typeof window === 'undefined') return false;
+
+  try {
+    return window.localStorage.getItem(getGoogleSetupStorageKey(user.id)) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markGoogleProfileSetupComplete = (user) => {
+  if (!user?.id || typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(getGoogleSetupStorageKey(user.id), '1');
+  } catch {
+    // Best-effort marker only.
+  }
+};
+
+const isGoogleAccount = (user) => {
+  const signupMethod = String(user?.signupMethod || '').trim().toLowerCase();
+  const authProvider = String(user?.authProvider || '').trim().toLowerCase();
+  return signupMethod === 'google' || authProvider === 'google';
+};
+
 const Auth = () => {
   const fallbackCountries = useMemo(() => COUNTRY_CATALOG, []);
   const navigate = useNavigate();
@@ -75,6 +121,7 @@ const Auth = () => {
     verifyTwoFactor,
     loginWithGoogle,
     signup,
+    completeGoogleProfileSetup,
     isLoading,
     error: storeError,
     isAuthenticated,
@@ -90,8 +137,8 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
-  const [country, setCountry] = useState('US');
-  const [currency, setCurrency] = useState('USD');
+  const [country, setCountry] = useState(DEFAULT_GOOGLE_SETUP_COUNTRY);
+  const [currency, setCurrency] = useState('EGP');
   const [countries] = useState(COUNTRY_CATALOG);
   const [errors, setErrors] = useState({});
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -99,10 +146,15 @@ const Auth = () => {
   const [registerStep, setRegisterStep] = useState(1);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState(null);
   const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [googleSetupResult, setGoogleSetupResult] = useState(null);
+  const [isSavingGoogleSetup, setIsSavingGoogleSetup] = useState(false);
+  const googleSetupBlockingRef = useRef(false);
+  const isGoogleSetupMode = Boolean(googleSetupResult?.user);
+  const isArabic = dir === 'rtl';
 
 const countryOptions = useMemo(() => {
     const source = countries.length ? countries : fallbackCountries;
-    return [...source].sort((a, b) => (a?.name?.common || '').localeCompare(b?.name?.common || ''));
+    return [...source];
   }, [countries, fallbackCountries]);
 
   const selectedCountry = useMemo(
@@ -110,23 +162,55 @@ const countryOptions = useMemo(() => {
     [countryOptions, country]
   );
 
-  const availableCurrencyOptions = useMemo(() => {
-    const list = Array.isArray(systemCurrencies) ? systemCurrencies : [];
-    if (!list.length) return [];
-
-    const normalized = list.map((item) => ({
+  const catalogCurrencyOptions = useMemo(
+    () => buildCurrencyCatalogFromCountries().map((item) => ({
       code: item.code,
       label: `${item.code}${item.symbol ? ` (${item.symbol})` : ''}`,
-    }));
+      name: item.name,
+      symbol: item.symbol,
+    })),
+    []
+  );
 
-    const usdIndex = normalized.findIndex((item) => item.code === 'USD');
-    if (usdIndex > 0) {
-      const [usd] = normalized.splice(usdIndex, 1);
-      normalized.unshift(usd);
-    }
+  const availableCurrencyOptions = useMemo(() => {
+    const byCode = new Map();
 
-    return normalized;
-  }, [systemCurrencies]);
+    catalogCurrencyOptions.forEach((item) => {
+      if (!item.code) return;
+      byCode.set(item.code, item);
+    });
+
+    const list = Array.isArray(systemCurrencies) ? systemCurrencies : [];
+    list.forEach((item) => {
+      const code = String(item?.code || '').trim().toUpperCase();
+      if (!code) return;
+      byCode.set(code, {
+        code,
+        label: `${code}${item.symbol ? ` (${item.symbol})` : ''}`,
+        name: item.name || code,
+        symbol: item.symbol || code,
+      });
+    });
+
+    return Array.from(byCode.values());
+  }, [catalogCurrencyOptions, systemCurrencies]);
+
+  const selectedCountryCurrencyCodes = useMemo(
+    () => getCountryCurrencyCodes(selectedCountry),
+    [selectedCountry]
+  );
+
+  const preferredCurrencyOptions = useMemo(() => {
+    if (!selectedCountryCurrencyCodes.length) return availableCurrencyOptions;
+
+    const countryCurrencySet = new Set(selectedCountryCurrencyCodes);
+    return [
+      ...selectedCountryCurrencyCodes
+        .map((code) => availableCurrencyOptions.find((item) => item.code === code))
+        .filter(Boolean),
+      ...availableCurrencyOptions.filter((item) => !countryCurrencySet.has(item.code)),
+    ];
+  }, [availableCurrencyOptions, selectedCountryCurrencyCodes]);
 
   useEffect(() => {
     loadCurrencies();
@@ -166,17 +250,23 @@ const countryOptions = useMemo(() => {
 
   useEffect(() => {
     setCurrency((previous) => {
-      if (availableCurrencyOptions.some((item) => item.code === previous)) {
+      const countryDefaultCurrency = selectedCountryCurrencyCodes[0];
+      if (
+        previous
+        && availableCurrencyOptions.some((item) => item.code === previous)
+        && (!countryDefaultCurrency || selectedCountryCurrencyCodes.includes(previous))
+      ) {
         return previous;
       }
 
-      return availableCurrencyOptions[0]?.code || '';
+      return countryDefaultCurrency || availableCurrencyOptions[0]?.code || '';
     });
-  }, [availableCurrencyOptions]);
+  }, [availableCurrencyOptions, selectedCountryCurrencyCodes]);
 
   useEffect(() => {
     if (location.search.includes('token=')) return;
     if (location.search.includes('status=')) return;
+    if (isGoogleSetupMode || googleSetupBlockingRef.current) return;
 
     const normalizedStatus = normalizeAccountStatus(user?.status || blockedStatus);
     const blockedRoute = getAccountAccessRoute(normalizedStatus);
@@ -189,7 +279,7 @@ const countryOptions = useMemo(() => {
     if (isAuthenticated && user) {
       navigate(getDefaultRouteForRole(user?.role), { replace: true });
     }
-  }, [blockedStatus, isAuthenticated, location.search, navigate, user]);
+  }, [blockedStatus, isAuthenticated, isGoogleSetupMode, location.search, navigate, user]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -200,7 +290,15 @@ const countryOptions = useMemo(() => {
     oauthHandledRef.current = true;
 
     const handleGoogleCallback = async () => {
+      googleSetupBlockingRef.current = true;
       const result = await loginWithGoogle();
+
+      if (result?.user && (result?.canAccessApp || result?.status === 'pending') && shouldPromptGoogleProfileSetup(result.user)) {
+        startGoogleProfileSetup(result);
+        return;
+      }
+
+      googleSetupBlockingRef.current = false;
 
       if (result?.redirectTo) {
         if (result?.status === 'legacy_pending') {
@@ -310,6 +408,60 @@ const countryOptions = useMemo(() => {
     && Boolean(confirmPassword);
   const isStepTwoReady = Boolean(country) && Boolean(currency);
 
+  const resolveDefaultCurrencyForCountry = (countryCode, preferredCurrency = '') => {
+    const normalizedCountryCode = String(countryCode || '').trim().toUpperCase();
+    const normalizedPreferredCurrency = String(preferredCurrency || '').trim().toUpperCase();
+    const countryItem = countryOptions.find((item) => item.cca2 === normalizedCountryCode);
+    const countryCurrencyCodes = getCountryCurrencyCodes(countryItem);
+
+    if (normalizedPreferredCurrency && countryCurrencyCodes.includes(normalizedPreferredCurrency)) {
+      return normalizedPreferredCurrency;
+    }
+
+    return countryCurrencyCodes[0] || normalizedPreferredCurrency || availableCurrencyOptions[0]?.code || '';
+  };
+
+  const handleCountryChange = (nextCountryCode) => {
+    const normalizedCountryCode = String(nextCountryCode || '').trim().toUpperCase();
+    setCountry(normalizedCountryCode);
+    setCurrency(resolveDefaultCurrencyForCountry(normalizedCountryCode));
+  };
+
+  const getAuthTargetRoute = (result) => (
+    result?.status === 'pending'
+      ? getDefaultRouteForRole(result?.user?.role)
+      : result?.redirectTo || getDefaultRouteForRole(result?.user?.role || useAuthStore.getState().user?.role)
+  );
+
+  const shouldPromptGoogleProfileSetup = (googleUser) => {
+    if (!isGoogleAccount(googleUser) || !googleUser?.id) return false;
+    if (hasCompletedGoogleProfileSetup(googleUser)) return false;
+
+    const userCountryCode = String(googleUser.country || '').trim().toUpperCase();
+    const userCurrencyCode = String(googleUser.currency || '').trim().toUpperCase();
+    const countryItem = countryOptions.find((item) => item.cca2 === userCountryCode);
+    const countryCurrencyCodes = getCountryCurrencyCodes(countryItem);
+
+    return !countryItem || !userCurrencyCode || !countryCurrencyCodes.includes(userCurrencyCode);
+  };
+
+  const startGoogleProfileSetup = (result) => {
+    const googleUser = result?.user || useAuthStore.getState().user;
+    const userCountryCode = String(googleUser?.country || '').trim().toUpperCase();
+    const countryItem = countryOptions.find((item) => item.cca2 === userCountryCode);
+    const setupCountryCode = countryItem?.cca2 || DEFAULT_GOOGLE_SETUP_COUNTRY;
+    const setupCurrencyCode = resolveDefaultCurrencyForCountry(setupCountryCode, googleUser?.currency);
+
+    googleSetupBlockingRef.current = true;
+    setCountry(setupCountryCode);
+    setCurrency(setupCurrencyCode);
+    setGoogleSetupResult({
+      ...result,
+      user: googleUser,
+      targetRoute: getAuthTargetRoute(result),
+    });
+  };
+
   const goToRegisterStepTwo = () => {
     if (!validateRegisterStepOne()) return;
     setRegisterStep(2);
@@ -317,6 +469,15 @@ const countryOptions = useMemo(() => {
 
   const consumeAuthResult = (result, { source = 'email', mode = 'login' } = {}) => {
     if (!result) return;
+
+    if (source === 'google' && result?.user && (result?.canAccessApp || result?.status === 'pending') && shouldPromptGoogleProfileSetup(result.user)) {
+      startGoogleProfileSetup(result);
+      return;
+    }
+
+    if (source === 'google') {
+      googleSetupBlockingRef.current = false;
+    }
 
     if (result.redirectTo) {
       if (result.status === 'verification_required') {
@@ -369,8 +530,50 @@ const countryOptions = useMemo(() => {
     }
   };
 
+  const handleGoogleProfileSetupSubmit = async (event) => {
+    event.preventDefault();
+
+    const selectedSetupCountry = countryOptions.find((item) => item.cca2 === country);
+    const nextErrors = {
+      country: selectedSetupCountry ? null : 'اختر الدولة أولًا',
+      currency: currency ? null : 'اختر العملة أولًا',
+    };
+
+    setScopedErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) return;
+
+    setIsSavingGoogleSetup(true);
+    try {
+      const countryName = getCountryDisplayName(selectedSetupCountry, isArabic);
+      const updatedUser = await completeGoogleProfileSetup({
+        country,
+        countryName,
+        currency,
+      });
+      const setupUser = updatedUser || googleSetupResult?.user;
+      markGoogleProfileSetupComplete(setupUser);
+      setGoogleSetupResult(null);
+      googleSetupBlockingRef.current = false;
+      oauthHandledRef.current = false;
+      addToast(isArabic ? 'تم حفظ الدولة والعملة بنجاح.' : 'Country and currency saved successfully.', 'success');
+      navigate(googleSetupResult?.targetRoute || getDefaultRouteForRole(setupUser?.role), { replace: true });
+    } catch (setupError) {
+      addToast(
+        setupError?.message || (isArabic ? 'تعذر حفظ الدولة والعملة.' : 'Could not save country and currency.'),
+        'error'
+      );
+    } finally {
+      setIsSavingGoogleSetup(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    if (isGoogleSetupMode) {
+      await handleGoogleProfileSetupSubmit(event);
+      return;
+    }
 
     if (isLogin && twoFactorChallenge) {
       await handleTwoFactorSubmit();
@@ -442,8 +645,12 @@ const countryOptions = useMemo(() => {
   };
 
   const handleGoogleAuth = async () => {
+    googleSetupBlockingRef.current = true;
     const result = await loginWithGoogle();
-    if (!result) return;
+    if (!result) {
+      googleSetupBlockingRef.current = false;
+      return;
+    }
     consumeAuthResult(result, { source: 'google', mode: isLogin ? 'login' : 'signup' });
   };
 
@@ -515,13 +722,79 @@ const countryOptions = useMemo(() => {
           <section className={styles.formCard} data-auth-no-sparkle>
             <header className="mb-6 text-center">
               <h1 className={styles.formTitle}>
-                {isLogin ? t('auth.login') : t('auth.register')}
+                {isGoogleSetupMode
+                  ? (isArabic ? 'اختيار الدولة والعملة' : 'Choose country and currency')
+                  : isLogin ? t('auth.login') : t('auth.register')}
               </h1>
+              {isGoogleSetupMode ? (
+                <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-[var(--color-text-secondary)]">
+                  {isArabic
+                    ? 'قبل ما تدخل لحسابك، اختار بلدك وعملة المحفظة المناسبة لك.'
+                    : 'Before entering your account, choose your country and wallet currency.'}
+                </p>
+              ) : null}
             </header>
 
             <form onSubmit={handleSubmit} className={styles.formStack}>
               <AnimatePresence mode="wait" initial={false}>
-                {isLogin && twoFactorChallenge ? (
+                {isGoogleSetupMode ? (
+                  <motion.div key="google-profile-setup" {...stepMotion} className="space-y-4">
+                    <div className="rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.24)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] p-3 text-center">
+                      <span className="text-3xl" aria-hidden="true">
+                        {selectedCountry?.flag || '🌍'}
+                      </span>
+                      <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">
+                        {getCountryDisplayName(selectedCountry, isArabic)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+                        {isArabic ? 'الدولة' : 'Country'}
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={country}
+                          onChange={(event) => handleCountryChange(event.target.value)}
+                          className={cn(authSelectClassName, styles.authSelect, dir === 'rtl' ? 'pr-10' : 'pl-10')}
+                        >
+                          {countryOptions.map((item) => (
+                            <option key={item.cca2} value={item.cca2}>
+                              {`${item.flag || ''} ${getCountryDisplayName(item, isArabic)}`}
+                            </option>
+                          ))}
+                        </select>
+                        <Globe className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)] ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
+                      </div>
+                      {errors.country && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.country}</p>}
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+                        {isArabic ? 'عملة المحفظة' : 'Wallet currency'}
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={currency}
+                          onChange={(event) => setCurrency(event.target.value)}
+                          disabled={!preferredCurrencyOptions.length}
+                          className={cn(authSelectClassName, styles.authSelect, dir === 'rtl' ? 'pr-10' : 'pl-10')}
+                        >
+                          {!preferredCurrencyOptions.length && (
+                            <option value="">{t('auth.noCurrenciesConfigured')}</option>
+                          )}
+                          {preferredCurrencyOptions.map((item) => (
+                            <option key={item.code} value={item.code}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <CreditCard className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)] ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
+                      </div>
+                      {errors.currency && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.currency}</p>}
+                    </div>
+                  </motion.div>
+                ) : isLogin && twoFactorChallenge ? (
                   <motion.div key="login-2fa" {...stepMotion} className={styles.verificationStep}>
                     <div className={styles.successBadge}>
                       <Mail className="h-5 w-5" />
@@ -638,12 +911,12 @@ const countryOptions = useMemo(() => {
                       <div className="relative">
                         <select
                           value={country}
-                          onChange={(event) => setCountry(event.target.value)}
+                          onChange={(event) => handleCountryChange(event.target.value)}
                           className={cn(authSelectClassName, styles.authSelect, dir === 'rtl' ? 'pr-10' : 'pl-10')}
                         >
                           {countryOptions.map((item) => (
                             <option key={item.cca2} value={item.cca2}>
-                              {item.name?.common || item.cca2}
+                              {`${item.flag || ''} ${getCountryDisplayName(item, isArabic)}`}
                             </option>
                           ))}
                         </select>
@@ -662,10 +935,10 @@ const countryOptions = useMemo(() => {
                         disabled={!availableCurrencyOptions.length}
                         className={cn(authSelectClassName, styles.authSelect)}
                       >
-                        {!availableCurrencyOptions.length && (
+                        {!preferredCurrencyOptions.length && (
                           <option value="">{t('auth.noCurrenciesConfigured')}</option>
                         )}
-                        {availableCurrencyOptions.map((item) => (
+                        {preferredCurrencyOptions.map((item) => (
                           <option key={item.code} value={item.code}>
                             {item.label}
                           </option>
@@ -707,7 +980,18 @@ const countryOptions = useMemo(() => {
                 )}
               </AnimatePresence>
 
-              {isLogin && twoFactorChallenge ? (
+              {isGoogleSetupMode ? (
+                <Button
+                  type="submit"
+                  className={styles.primaryButton}
+                  disabled={isSavingGoogleSetup || !country || !currency}
+                >
+                  {isSavingGoogleSetup
+                    ? (isArabic ? 'جاري الحفظ...' : 'Saving...')
+                    : (isArabic ? 'إكمال الدخول' : 'Continue')}
+                  {!isSavingGoogleSetup && <ArrowRight className={`h-4 w-4 ${dir === 'rtl' ? 'mr-1 rotate-180' : 'ml-1'}`} />}
+                </Button>
+              ) : isLogin && twoFactorChallenge ? (
                 <div className={styles.stepActions}>
                   <Button
                     type="button"
@@ -767,7 +1051,7 @@ const countryOptions = useMemo(() => {
                 </div>
               )}
 
-              {!twoFactorChallenge && (
+              {!twoFactorChallenge && !isGoogleSetupMode && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-3">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -799,6 +1083,7 @@ const countryOptions = useMemo(() => {
               </div>
               )}
 
+              {!isGoogleSetupMode && (
               <div className="mt-6 space-y-2 text-center">
                 {isLogin && (
                   <button
@@ -821,6 +1106,7 @@ const countryOptions = useMemo(() => {
                   </button>
                 </span>
               </div>
+              )}
             </form>
           </section>
         </motion.div>

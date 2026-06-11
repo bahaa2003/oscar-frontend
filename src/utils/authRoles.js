@@ -3,6 +3,7 @@ export const SUPERVISOR_ROLES = ['supervisor', 'manager', 'moderator'];
 
 export const isAdminRole = (role) => ADMIN_ROLES.includes(String(role || '').trim().toLowerCase());
 export const isSupervisorRole = (role) => SUPERVISOR_ROLES.includes(String(role || '').trim().toLowerCase());
+export const isBackofficeRole = (role) => isAdminRole(role) || isSupervisorRole(role);
 
 export const hasRequiredRole = (userRole, allowedRoles = []) => {
   if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {

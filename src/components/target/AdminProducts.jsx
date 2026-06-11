@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Edit3, ImagePlus, Plus, Trash2 } from 'lucide-react';
+import { Edit3, Hash, Plus, Trash2 } from 'lucide-react';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import coinsImage from '../../assets/عملات.webp';
 import Button, { cn } from '../ui/Button';
@@ -12,6 +12,7 @@ import { isPaymentMethodAllowed } from '../../utils/paymentSettings';
 const ProductModal = ({ isOpen, onClose, product, paymentMethods, onSave }) => {
   const [name, setName] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
+  const [agentAccountId, setAgentAccountId] = useState('');
   const [image, setImage] = useState(null);
   const [paymentMethodIds, setPaymentMethodIds] = useState([]);
 
@@ -26,6 +27,7 @@ const ProductModal = ({ isOpen, onClose, product, paymentMethods, onSave }) => {
 
     setName(product?.name || '');
     setUnitPrice(product?.unitPrice ? String(product.unitPrice) : '');
+    setAgentAccountId(product?.agentAccountId || '');
     setImage(product?.image ? { preview: product.image, fileName: 'صورة التطبيق' } : null);
     setPaymentMethodIds(selectedIds);
   }, [isOpen, paymentMethods, product]);
@@ -41,6 +43,7 @@ const ProductModal = ({ isOpen, onClose, product, paymentMethods, onSave }) => {
     onSave({
       name: name.trim(),
       unitPrice: Number(unitPrice),
+      agentAccountId: agentAccountId.trim(),
       image: image?.file || image?.preview || '',
       imageFile: image?.file || null,
       imagePreview: image?.preview || '',
@@ -70,6 +73,13 @@ const ProductModal = ({ isOpen, onClose, product, paymentMethods, onSave }) => {
           <Input label="اسم التطبيق" value={name} onChange={(event) => setName(event.target.value)} placeholder="مثال: PUBG Mobile" />
           <Input label="سعر الوحدة" type="number" min="0" step="0.01" value={unitPrice} onChange={(event) => setUnitPrice(event.target.value)} placeholder="1.35" />
         </div>
+
+        <Input
+          label="أيدي حساب الوكيل"
+          value={agentAccountId}
+          onChange={(event) => setAgentAccountId(event.target.value)}
+          placeholder="رقم ID حساب الوكيل الذي سيتم التحويل عليه"
+        />
 
         <UploadProof label="صورة التطبيق" value={image} onChange={setImage} />
 
@@ -172,6 +182,12 @@ const AdminProducts = ({ products, paymentMethods, onAdd, onUpdate, onDelete }) 
                   </p>
                   {product.isActive === false ? (
                     <p className="mt-1 text-xs font-bold text-[var(--color-error)]">غير نشط</p>
+                  ) : null}
+                  {product.agentAccountId ? (
+                    <p className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] px-2 py-1 text-xs font-bold text-[var(--color-text)]">
+                      <Hash className="h-3.5 w-3.5 shrink-0 text-[var(--color-primary)]" />
+                      <span className="truncate">وكيل: {product.agentAccountId}</span>
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex gap-2">

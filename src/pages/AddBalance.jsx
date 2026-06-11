@@ -8,7 +8,7 @@ import { useLanguage } from '../context/LanguageContext';
 import useAuthStore from '../store/useAuthStore';
 import useSystemStore from '../store/useSystemStore';
 import { resolveImageUrl } from '../utils/imageUrl';
-import { formatWalletAmount } from '../utils/storefront';
+import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../utils/storefront';
 import { getActivePaymentGroups } from '../utils/paymentSettings';
 
 const getMethodsCountLabel = (count, isRTL) => {
@@ -45,10 +45,18 @@ const getMethodPresentation = (method) => {
         return { icon: Smartphone, color: 'from-orange-500 via-amber-500 to-red-500', glow: 'shadow-[0_0_0_1px_rgba(249,115,22,0.18),0_12px_24px_-16px_rgba(249,115,22,0.72)]' };
     }
     if (String(method?.type || '') === 'bank_transfer') {
-        return { icon: Building2, color: 'from-sky-500 via-blue-500 to-indigo-500', glow: 'shadow-[0_0_0_1px_rgba(59,130,246,0.18),0_12px_24px_-16px_rgba(59,130,246,0.72)]' };
+        return {
+            icon: Building2,
+            color: 'from-[color:var(--color-primary)] via-[color:var(--color-primary-soft)] to-[color:var(--color-primary-hover)]',
+            glow: 'shadow-[0_0_0_1px_rgb(var(--color-primary-rgb)/0.18),0_12px_24px_-16px_rgb(var(--color-primary-rgb)/0.72)]',
+        };
     }
 
-    return { icon: Smartphone, color: 'from-emerald-500 via-cyan-500 to-sky-500', glow: 'shadow-[0_0_0_1px_rgba(34,197,94,0.16),0_12px_24px_-16px_rgba(34,197,94,0.68)]' };
+    return {
+        icon: Smartphone,
+        color: 'from-[color:var(--color-primary)] via-[color:var(--color-primary-soft)] to-[color:var(--color-primary-hover)]',
+        glow: 'shadow-[0_0_0_1px_rgb(var(--color-primary-rgb)/0.16),0_12px_24px_-16px_rgb(var(--color-primary-rgb)/0.68)]',
+    };
 };
 
 const CompactPaymentMethodTile = ({ method, presentation, onSelect, index, isRTL }) => {
@@ -65,10 +73,10 @@ const CompactPaymentMethodTile = ({ method, presentation, onSelect, index, isRTL
             whileHover={{ y: -8, scale: 1.05 }}
             whileTap={{ scale: 0.94 }}
             onClick={() => onSelect(method)}
-            className="group relative isolate flex min-h-[112px] flex-col items-center justify-between overflow-hidden rounded-[18px] border border-gray-200/50 bg-gradient-to-br from-white via-white/95 to-gray-50/80 p-3 text-center shadow-[0_8px_16px_-6px_rgba(0,0,0,0.08)] transition-all hover:border-[#c89a3a]/60 hover:shadow-[0_16px_32px_-12px_rgba(200,154,58,0.25)] hover:from-white hover:to-[#faf8f3]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c89a3a] dark:border-gray-700/50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800/90 dark:to-gray-900/80 dark:hover:border-[#d8b45f]/60 dark:hover:from-gray-800 dark:hover:to-gray-900 sm:min-h-[132px] sm:rounded-[22px] sm:p-4"
+            className="group relative isolate flex min-h-[112px] flex-col items-center justify-between overflow-hidden rounded-[18px] border border-gray-200/50 bg-gradient-to-br from-white via-white/95 to-gray-50/80 p-3 text-center shadow-[0_8px_16px_-6px_rgba(0,0,0,0.08)] transition-all hover:border-[color:rgb(var(--color-primary-rgb)/0.55)] hover:shadow-[0_16px_32px_-12px_rgb(var(--color-primary-rgb)/0.22)] hover:from-white hover:to-[color:rgb(var(--color-primary-rgb)/0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(var(--color-primary-rgb)/0.55)] dark:border-gray-700/50 dark:bg-gradient-to-br dark:from-gray-900 dark:via-gray-800/90 dark:to-gray-900/80 dark:hover:border-[color:rgb(var(--color-primary-rgb)/0.55)] dark:hover:from-gray-800 dark:hover:to-gray-900 sm:min-h-[132px] sm:rounded-[22px] sm:p-4"
         >
             <div className="absolute inset-0 -z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#c89a3a]/5 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[color:rgb(var(--color-primary-rgb)/0.06)] via-transparent to-transparent" />
             </div>
 
             {hasImage ? (
@@ -118,7 +126,7 @@ const AddBalance = () => {
     const currentBalance = Number(user?.coins || 0);
     const currentCurrency = String(user?.currency || 'USD').toUpperCase();
     const balanceDisplayValue = formatWalletAmount(currentBalance, currentCurrency);
-    const isNegativeBalance = currentBalance < 0;
+    const isNegativeBalance = isNegativeWalletAmount(currentBalance);
 
     const paymentGroups = useMemo(
         () => getActivePaymentGroups(paymentSettings, { fallbackToDefault: false }),
@@ -141,7 +149,7 @@ const AddBalance = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pb-6 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 sm:pb-10" dir={dir}>
+        <div className="min-h-screen bg-transparent pb-6 sm:pb-10" dir={dir}>
             <div className="mx-auto w-full max-w-5xl space-y-4 px-3 sm:space-y-5 sm:px-4">
                 
                 {/* Hero Section */}
@@ -152,8 +160,8 @@ const AddBalance = () => {
                     className="relative overflow-hidden rounded-[22px] border border-gray-200/60 bg-gradient-to-br from-white via-white/95 to-gray-50/80 p-4 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.08)] backdrop-blur-sm dark:border-gray-800/60 dark:from-gray-900 dark:via-gray-900/95 dark:to-gray-800/80 sm:rounded-[28px] sm:p-6 lg:p-7"
                 >
                     <div className="absolute inset-0 -z-10">
-                        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-br from-blue-200/30 to-transparent blur-3xl dark:from-blue-900/20" />
-                        <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-gradient-to-br from-purple-200/20 to-transparent blur-3xl dark:from-purple-900/10" />
+                        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-gradient-to-br from-[color:rgb(var(--color-primary-rgb)/0.14)] to-transparent blur-3xl" />
+                        <div className="absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-gradient-to-br from-[color:rgb(var(--color-primary-rgb)/0.1)] to-transparent blur-3xl" />
                     </div>
 
                     <div className="relative z-10 grid gap-4 sm:gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-center">
@@ -165,7 +173,7 @@ const AddBalance = () => {
                             className={isRTL ? 'text-right lg:text-right' : 'text-left'}
                         >
                             <div className={`flex flex-wrap items-center gap-2 ${isRTL ? 'justify-end' : 'justify-start'}`}>
-                                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/60 bg-gradient-to-r from-blue-50 to-blue-50/50 px-3 py-1.5 text-[11px] font-bold text-blue-700 shadow-sm dark:border-blue-900/40 dark:from-blue-950/50 dark:to-blue-900/30 dark:text-blue-300 sm:gap-2 sm:px-4 sm:py-2 sm:text-xs">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] px-3 py-1.5 text-[11px] font-bold text-[var(--color-primary)] shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-xs">
                                     <Zap className="h-3.5 w-3.5" />
                                     {isRTL ? 'شحن يدوي' : 'Manual Top-up'}
                                 </span>
@@ -182,7 +190,7 @@ const AddBalance = () => {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: 0.25 }}
-                                className="mt-3 text-2xl font-black tracking-tight text-gray-950 dark:text-white sm:mt-4 sm:text-3xl lg:text-4xl"
+                                className="mt-3 text-3xl font-black tracking-tight text-gray-950 dark:text-white sm:mt-4 sm:text-4xl lg:text-5xl"
                             >
                                 {t('wallet.addBalance')}
                             </motion.h1>
@@ -195,13 +203,13 @@ const AddBalance = () => {
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
-                            className="relative w-full max-w-sm justify-self-stretch overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-400 p-0.5 shadow-sm dark:shadow-sm lg:justify-self-end"
+                            className="relative w-full max-w-sm justify-self-stretch overflow-hidden rounded-2xl bg-[linear-gradient(90deg,var(--color-primary),var(--color-primary-hover))] p-0.5 shadow-sm dark:shadow-sm lg:justify-self-end"
                         >
-                            <div className="relative overflow-hidden rounded-[15px] bg-gradient-to-br from-white to-blue-50/30 p-3 dark:from-gray-950 dark:to-blue-950/30 sm:p-4">
+                            <div className="relative overflow-hidden rounded-[15px] bg-gradient-to-br from-white to-[color:rgb(var(--color-primary-rgb)/0.05)] p-3 dark:from-gray-950 dark:to-[color:rgb(var(--color-primary-rgb)/0.08)] sm:p-4">
                                 {/* Background Elements */}
                                 <div className="absolute inset-0 opacity-30 dark:opacity-20">
-                                    <div className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-gradient-to-br from-blue-400/40 to-transparent blur-2xl" />
-                                    <div className="absolute -bottom-16 -left-16 h-32 w-32 rounded-full bg-gradient-to-br from-cyan-300/30 to-transparent blur-2xl" />
+                                    <div className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-gradient-to-br from-[color:rgb(var(--color-primary-rgb)/0.32)] to-transparent blur-2xl" />
+                                    <div className="absolute -bottom-16 -left-16 h-32 w-32 rounded-full bg-gradient-to-br from-[color:rgb(var(--color-primary-rgb)/0.22)] to-transparent blur-2xl" />
                                 </div>
 
                                 <div className="relative z-10 flex flex-col justify-between h-full">
@@ -211,7 +219,7 @@ const AddBalance = () => {
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ duration: 0.6, delay: 0.3 }}
-                                            className="text-xs font-semibold tracking-wider text-blue-700/70 uppercase dark:text-blue-300/60"
+                                            className="text-xs font-semibold tracking-wider text-[color:rgb(var(--color-primary-rgb)/0.74)] uppercase dark:text-[color:rgb(var(--color-primary-rgb)/0.64)]"
                                         >
                                             {t('wallet.currentBalance')}
                                         </motion.p>
@@ -224,8 +232,8 @@ const AddBalance = () => {
                                         >
                                             <span className={`text-lg font-black tracking-tight sm:text-xl ${
                                                 isNegativeBalance 
-                                                    ? 'text-red-600 dark:text-red-400' 
-                                                    : 'bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent dark:from-blue-300 dark:to-cyan-300'
+                                                    ? negativeWalletBalanceClassName 
+                                                    : 'bg-[linear-gradient(90deg,var(--color-primary),var(--color-primary-hover))] bg-clip-text text-transparent'
                                             }`}>
                                                 {balanceDisplayValue}
                                             </span>
@@ -237,14 +245,14 @@ const AddBalance = () => {
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ duration: 0.6, delay: 0.4 }}
-                                            className="mt-3 flex items-center justify-between border-t border-blue-200/40 pt-2.5 dark:border-blue-900/40"
+                                            className="mt-3 flex items-center justify-between border-t border-[color:rgb(var(--color-primary-rgb)/0.16)] pt-2.5 dark:border-[color:rgb(var(--color-primary-rgb)/0.16)]"
                                         >
-                                            <span className="inline-flex items-center gap-2 rounded-md border border-blue-300/50 bg-gradient-to-r from-blue-100/50 to-cyan-100/30 px-2 py-1 text-xs font-semibold text-blue-700 shadow-sm dark:border-blue-900/50 dark:from-blue-950/40 dark:to-cyan-950/30 dark:text-blue-300">
-                                                <span className="inline-flex h-2 w-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500" />
+                                            <span className="inline-flex items-center gap-2 rounded-md border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] px-2 py-1 text-xs font-semibold text-[var(--color-primary)] shadow-sm">
+                                                <span className="inline-flex h-2 w-2 rounded-full bg-[linear-gradient(90deg,var(--color-primary),var(--color-primary-hover))]" />
                                                 {currentCurrency}
                                             </span>
 
-                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300/30 bg-gradient-to-br from-blue-500/20 to-cyan-500/10 text-blue-600 dark:border-blue-900/30 dark:text-blue-300">
+                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.22)] bg-[color:rgb(var(--color-primary-rgb)/0.12)] text-[var(--color-primary)]">
                                                 <Wallet className="h-5 w-5" />
                                             </span>
                                         </motion.div>
@@ -266,7 +274,7 @@ const AddBalance = () => {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.5, delay: 0.35 }}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-purple-200/50 bg-gradient-to-r from-purple-50 to-purple-50/50 px-3 py-1.5 text-[11px] font-bold text-purple-700 dark:border-purple-900/40 dark:from-purple-950/50 dark:to-purple-900/30 dark:text-purple-300 sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] px-3 py-1.5 text-[11px] font-bold text-[var(--color-primary)] sm:gap-2 sm:px-4 sm:py-2 sm:text-xs"
                         >
                             <CreditCard className="h-3.5 w-3.5" />
                             {isRTL ? 'خيارات الدفع' : 'Payment Options'}
@@ -321,7 +329,7 @@ const AddBalance = () => {
                                                         decoding="async"
                                                     />
                                                 ) : (
-                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-[0_12px_24px_-8px_rgba(59,130,246,0.3)] transition-all sm:h-14 sm:w-14 sm:rounded-[18px]">
+                                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-[linear-gradient(135deg,var(--color-primary),var(--color-primary-hover))] text-white shadow-[0_12px_24px_-8px_rgb(var(--color-primary-rgb)/0.28)] transition-all sm:h-14 sm:w-14 sm:rounded-[18px]">
                                                         <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
                                                     </div>
                                                 )}
@@ -334,7 +342,7 @@ const AddBalance = () => {
                                                         {group.currency && (
                                                             <motion.span
                                                                 whileHover={{ scale: 1.05 }}
-                                                                className="shrink-0 rounded-lg border border-blue-300/50 bg-gradient-to-r from-blue-100/60 to-blue-50/40 px-2.5 py-1 text-xs font-bold tracking-wide text-blue-700 shadow-sm dark:border-blue-900/40 dark:from-blue-950/40 dark:to-blue-900/30 dark:text-blue-300"
+                                                                className="shrink-0 rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] px-2.5 py-1 text-xs font-bold tracking-wide text-[var(--color-primary)] shadow-sm"
                                                             >
                                                                 {String(group.currency).toUpperCase()}
                                                             </motion.span>
@@ -349,7 +357,7 @@ const AddBalance = () => {
                                             <div className={`flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-start ${isRTL ? 'flex-row-reverse' : ''}`}>
                                                 <motion.span
                                                     whileHover={{ scale: 1.08 }}
-                                                    className="rounded-full border border-purple-300/60 bg-gradient-to-r from-purple-100/70 to-purple-50/50 px-3 py-1.5 text-xs font-bold text-purple-700 shadow-sm transition-all dark:border-purple-900/40 dark:from-purple-950/50 dark:to-purple-900/30 dark:text-purple-300 sm:px-4 sm:py-2 sm:text-sm"
+                                                    className="rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] px-3 py-1.5 text-xs font-bold text-[var(--color-primary)] shadow-sm transition-all sm:px-4 sm:py-2 sm:text-sm"
                                                 >
                                                     {getMethodsCountLabel(group.methods.length, isRTL)}
                                                 </motion.span>

@@ -1,20 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Box,
   Check,
-  ChevronLeft,
-  Clock3,
+  Copy,
   FileText,
-  Gem,
   Hash,
   Home,
   LockKeyhole,
+  LoaderCircle,
   Package,
-  Plus,
+  ShoppingBag,
   UserRound,
   WalletCards,
+  X,
   Zap,
 } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
@@ -23,7 +23,6 @@ import useSystemStore from '../store/useSystemStore';
 import useMediaStore from '../store/useMediaStore';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
-import { resolveImageUrl } from '../utils/imageUrl';
 import {
   calculateProductPrice,
   getCurrencyMeta,
@@ -36,8 +35,10 @@ import {
   resolveProductOrderFields,
   sanitizeOrderFieldValue,
 } from '../utils/productPurchase';
-import { normalizeMoneyAmount } from '../utils/money';
+import { formatRawPriceString, normalizeMoneyAmount, toRawPriceString } from '../utils/money';
 import { devLogger } from '../utils/devLogger';
+import { resolveImageUrl } from '../utils/imageUrl';
+import { isBackofficeRole } from '../utils/authRoles';
 import './ProductPurchasePage.css';
 
 const getCopy = (language = 'ar') => {
@@ -52,41 +53,39 @@ const getCopy = (language = 'ar') => {
       userIdPlaceholder: 'Enter your user ID',
       buyNow: 'Buy Now',
       buying: 'Processing...',
-      fastShipping: 'Fast Shipping',
-      available24h: 'Available 24h',
-      successTitle: 'Process Completed Successfully',
-      successMessage: 'Thank you, your order has been shipped successfully.',
+      successTitle: 'Top-up Completed',
+      successMessage: 'Your order has been shipped successfully. The details are shown below.',
       orderSummary: 'Order Summary',
       product: 'Product',
       price: 'Total Price',
       orderNumber: 'Order Number',
       orderDetails: 'View Order Details',
       backHome: 'Back to Home',
+      close: 'Close',
       loading: 'Loading product...',
       balance: 'Balance',
     };
   }
 
   return {
-    total: 'السعر الإجمالي',
+    total: 'الإجمالي',
     quantity: 'الكمية',
     quantityPlaceholder: 'أدخل الكمية',
     minQuantity: 'الحد الأدنى',
     maxQuantity: 'الحد الأقصى',
-    userId: 'معرف المستخدم',
-    userIdPlaceholder: 'أدخل معرف المستخدم',
+    userId: 'ID المستخدم',
+    userIdPlaceholder: 'أدخل ID المستخدم',
     buyNow: 'شراء الآن',
     buying: 'جاري تنفيذ الطلب...',
-    fastShipping: 'شحن فوري',
-    available24h: 'متاح 24 ساعة',
-    successTitle: 'تمت العملية بنجاح',
-    successMessage: 'شكراً لك، تم شحن طلبك بنجاح.',
+    successTitle: 'تم الشحن بنجاح',
+    successMessage: 'تم تنفيذ طلبك بنجاح، وتفاصيل الشحن ظاهرة بالأسفل.',
     orderSummary: 'ملخص الطلب',
     product: 'المنتج',
     price: 'السعر الإجمالي',
     orderNumber: 'رقم الطلب',
     orderDetails: 'عرض تفاصيل الطلب',
     backHome: 'العودة للرئيسية',
+    close: 'إغلاق',
     loading: 'جاري تحميل المنتج...',
     balance: 'الرصيد',
   };
@@ -94,12 +93,25 @@ const getCopy = (language = 'ar') => {
 
 const formatCount = (value) => Number(value || 0).toLocaleString('en-US');
 
+const normalizeDisplayDecimal = (value) => {
+  const raw = String(value ?? '0').trim();
+  if (!/^-?\d+(\.\d+)?$/.test(raw)) return raw || '0';
+
+  const fraction = raw.split('.')[1] || '';
+  const looksLikeFloatArtifact = fraction.length > 10 && /(0{6,}\d+$|9{6,}\d*$)/.test(fraction);
+  if (looksLikeFloatArtifact) {
+    return toRawPriceString(normalizeMoneyAmount(Number(raw)));
+  }
+
+  return toRawPriceString(raw);
+};
+
 const multiplyRawDecimalByInteger = (value, multiplier = 1) => {
   const raw = String(value ?? '0').trim();
   const integerMultiplier = Math.max(0, Math.trunc(Number(multiplier) || 0));
 
   if (!raw || integerMultiplier === 0) return '0';
-  if (!/^-?\d+(\.\d+)?$/.test(raw)) return raw;
+  if (!/^-?\d+(\.\d+)?$/.test(raw)) return normalizeDisplayDecimal(raw);
 
   const isNegative = raw.startsWith('-');
   const unsigned = isNegative ? raw.slice(1) : raw;
@@ -110,36 +122,46 @@ const multiplyRawDecimalByInteger = (value, multiplier = 1) => {
   const digits = multiplied.toString().padStart(scale + 1, '0');
 
   if (scale === 0) {
-    return `${isNegative ? '-' : ''}${digits}`;
+    return normalizeDisplayDecimal(`${isNegative ? '-' : ''}${digits}`);
   }
 
   const whole = digits.slice(0, -scale) || '0';
   const fraction = digits.slice(-scale);
 
-  return `${isNegative ? '-' : ''}${whole}.${fraction}`;
+  return normalizeDisplayDecimal(`${isNegative ? '-' : ''}${whole}.${fraction}`);
+};
+
+const formatTotalPriceString = (value, fractionDigits = 2) => {
+  const raw = normalizeDisplayDecimal(value);
+  const match = String(raw).trim().match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
+
+  if (!match) return formatRawPriceString(raw);
+
+  const [, sign, integerPart, fractionPart = ''] = match;
+  const safeFractionDigits = Math.max(0, Math.trunc(Number(fractionDigits) || 0));
+  const paddedFraction = fractionPart.padEnd(safeFractionDigits + 1, '0');
+  const keptFraction = paddedFraction.slice(0, safeFractionDigits);
+  const shouldRoundUp = Number(paddedFraction[safeFractionDigits] || 0) >= 5;
+
+  const scaledRaw = `${integerPart}${keptFraction}` || '0';
+  const roundedScaled = shouldRoundUp ? (BigInt(scaledRaw) + 1n).toString() : scaledRaw;
+
+  if (safeFractionDigits === 0) {
+    return formatRawPriceString(`${sign}${roundedScaled}`);
+  }
+
+  const paddedRounded = roundedScaled.padStart(safeFractionDigits + 1, '0');
+  const nextIntegerPart = paddedRounded.slice(0, -safeFractionDigits) || '0';
+  const roundedFractionPart = paddedRounded.slice(-safeFractionDigits);
+  const nextFractionPart = /^0+$/.test(roundedFractionPart) ? '' : roundedFractionPart;
+  const displayValue = `${sign}${nextIntegerPart}${nextFractionPart ? `.${nextFractionPart}` : ''}`;
+
+  return formatRawPriceString(displayValue);
 };
 
 const isQuantityOnlyUser = (user) => (
   String(user?.billingMode || user?.group?.billingMode || '').trim().toLowerCase() === 'quantity_only'
 );
-
-const ProductImage = ({ product, className = '' }) => {
-  if (product?.image) {
-    return (
-      <img
-        src={resolveImageUrl(product.image)}
-        alt={product?.name || ''}
-        className={className}
-      />
-    );
-  }
-
-  return (
-    <span className={`purchase-product-fallback ${className}`} aria-hidden="true">
-      <Package size={44} strokeWidth={1.7} />
-    </span>
-  );
-};
 
 const SummaryValue = ({ value, dir = 'auto' }) => {
   if (value === null || value === undefined || value === '') {
@@ -159,7 +181,46 @@ const formatQuantityInput = (value) => {
   return Number.isFinite(numericValue) ? numericValue.toLocaleString('en-US') : '';
 };
 
-const ProductPurchasePage = () => {
+const normalizePurchaseFieldLabel = (label, language = 'ar') => {
+  const text = String(label || '').trim();
+  if (language !== 'ar') return text;
+
+  const compact = text.replace(/\s+/g, '');
+  if (compact === 'معرفالمستخدم') return 'ايدي المستخدم';
+
+  return text;
+};
+
+const getPurchaseOrderFieldKey = (field, index = 0) => (
+  String(field?.key || field?.name || field?.id || `orderField_${index}`).trim() || `orderField_${index}`
+);
+
+const normalizePurchaseFieldOptions = (field) => (
+  Array.isArray(field?.options) ? field.options : []
+).map((option, index) => {
+  if (option && typeof option === 'object') {
+    const value = String(option.value ?? option.id ?? option.key ?? option.label ?? index).trim();
+    const label = String(option.label ?? option.name ?? option.title ?? value).trim();
+    return { value, label: label || value };
+  }
+
+  const value = String(option ?? '').trim();
+  return { value, label: value };
+}).filter((option) => option.value);
+
+const getPurchaseFieldPlaceholder = (field, label, language = 'ar') => {
+  const placeholder = String(field?.placeholder || '').trim();
+  if (placeholder) return placeholder;
+
+  return language === 'ar' ? `أدخل ${label}` : `Enter ${label}`;
+};
+
+const isPrimaryPurchaseFieldKey = (key) => {
+  const normalized = String(key || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  return ['playerid', 'userid', 'uid'].includes(normalized);
+};
+
+const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmittingChange, embedded = false }) => {
   const navigate = useNavigate();
   const { productId } = useParams();
   const { language, dir } = useLanguage();
@@ -175,16 +236,14 @@ const ProductPurchasePage = () => {
 
   const copy = useMemo(() => getCopy(language), [language]);
 
-  const [product, setProduct] = useState(null);
+  const [product, setProduct] = useState(providedProduct || null);
   const [quantityInput, setQuantityInput] = useState('');
-  const [userId, setUserId] = useState('');
+  const [orderFieldValues, setOrderFieldValues] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrder, setSuccessOrder] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const productDescription = product
-    ? (language === 'en' ? (product.description || product.descriptionAr) : (product.descriptionAr || product.description))
-    : '';
+  const [isLoading, setIsLoading] = useState(!providedProduct);
+  const activeProvidedProductIdRef = useRef('');
+  const successCloseRequestedRef = useRef(false);
 
   const quantityMeta = useMemo(() => {
     if (!product) return null;
@@ -196,7 +255,112 @@ const ProductPurchasePage = () => {
     return resolveProductOrderFields(product, language);
   }, [language, product]);
 
+  const purchaseOrderFields = useMemo(() => {
+    const sourceFields = orderFields.length > 0
+      ? orderFields
+      : [{
+        key: 'playerId',
+        label: copy.userId,
+        placeholder: copy.userIdPlaceholder,
+        type: 'text',
+        required: true,
+        options: [],
+      }];
+    const seenKeys = new Set();
+
+    return sourceFields
+      .map((field, index) => ({
+        ...field,
+        key: getPurchaseOrderFieldKey(field, index),
+        type: String(field?.type || 'text').toLowerCase(),
+        required: field?.required !== false,
+      }))
+      .filter((field) => {
+        const normalizedKey = String(field.key || '').trim().toLowerCase();
+        if (!normalizedKey || seenKeys.has(normalizedKey)) return false;
+        seenKeys.add(normalizedKey);
+        return true;
+      });
+  }, [copy.userId, copy.userIdPlaceholder, orderFields]);
+
+  const stopCloseEvent = (event) => {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    event?.nativeEvent?.stopImmediatePropagation?.();
+  };
+
+  const handleClose = (event) => {
+    stopCloseEvent(event);
+    if (isSubmitting) return;
+
+    if (typeof onClose === 'function') {
+      onClose();
+      return;
+    }
+
+    navigate(-1);
+  };
+
+  const handleSuccessClose = (event) => {
+    stopCloseEvent(event);
+    if (successCloseRequestedRef.current) return;
+
+    successCloseRequestedRef.current = true;
+    window.setTimeout(() => {
+      successCloseRequestedRef.current = false;
+    }, 500);
+    setIsSubmitting(false);
+
+    if (typeof onSubmittingChange === 'function') {
+      onSubmittingChange(false);
+    }
+
+    if (typeof onClose === 'function') {
+      onClose({ force: true });
+      return;
+    }
+
+    navigate(-1);
+  };
+
+  const handleCopyText = async (value, label) => {
+    const text = String(value || '').trim();
+    if (!text) return;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast(
+        language === 'en' ? `${label || 'Value'} copied` : `تم نسخ ${label || 'القيمة'}`,
+        'success'
+      );
+    } catch {
+      addToast(
+        language === 'en' ? 'Copy failed' : 'تعذر النسخ',
+        'error'
+      );
+    }
+  };
+
   useEffect(() => {
+    if (!providedProduct) return;
+
+    const nextProvidedProductId = String(providedProduct.id || providedProduct._id || '').trim();
+    const isDifferentProduct = activeProvidedProductIdRef.current !== nextProvidedProductId;
+
+    setProduct(providedProduct);
+    setIsLoading(false);
+
+    if (isDifferentProduct) {
+      activeProvidedProductIdRef.current = nextProvidedProductId;
+      setSuccessOrder(null);
+      setQuantityInput('');
+      setOrderFieldValues({});
+    }
+  }, [providedProduct]);
+
+  useEffect(() => {
+    if (providedProduct) return;
+
     if (!productId) {
       navigate('/products');
       return;
@@ -244,13 +408,31 @@ const ProductPurchasePage = () => {
     return () => {
       isActive = false;
     };
-  }, [productId, navigate, loadProducts]);
+  }, [providedProduct, productId, navigate, loadProducts]);
 
   useEffect(() => {
     if (product) {
       setQuantityInput('');
+      setOrderFieldValues({});
     }
   }, [product?.id]);
+
+  useEffect(() => {
+    setOrderFieldValues((currentValues) => {
+      const nextValues = {};
+      purchaseOrderFields.forEach((field, index) => {
+        const key = getPurchaseOrderFieldKey(field, index);
+        nextValues[key] = currentValues[key] || '';
+      });
+
+      const currentKeys = Object.keys(currentValues);
+      const nextKeys = Object.keys(nextValues);
+      const isUnchanged = currentKeys.length === nextKeys.length
+        && nextKeys.every((key) => currentValues[key] === nextValues[key]);
+
+      return isUnchanged ? currentValues : nextValues;
+    });
+  }, [purchaseOrderFields]);
 
   useEffect(() => {
     if (!currencies || currencies.length === 0) {
@@ -260,6 +442,7 @@ const ProductPurchasePage = () => {
 
   useEffect(() => {
     if (!successOrder) {
+      successCloseRequestedRef.current = false;
       delete document.body.dataset.purchaseSuccess;
       return undefined;
     }
@@ -270,9 +453,18 @@ const ProductPurchasePage = () => {
     };
   }, [successOrder]);
 
+  useEffect(() => {
+    if (typeof onSubmittingChange !== 'function') return undefined;
+
+    onSubmittingChange(isSubmitting);
+    return () => {
+      onSubmittingChange(false);
+    };
+  }, [isSubmitting, onSubmittingChange]);
+
   if (isLoading || !product || !quantityMeta) {
     return (
-      <div className="product-purchase-page" dir={dir}>
+      <div className={`product-purchase-page ${embedded ? '!min-h-0 !p-0' : ''}`} dir={dir}>
         <section className="purchase-phone purchase-phone--loading" aria-busy="true" aria-label={copy.loading}>
           <div className="purchase-bg-lines" />
           <div className="purchase-loading-orb" />
@@ -291,23 +483,56 @@ const ProductPurchasePage = () => {
     : quantityMeta.minQty;
   const isQuantityOnly = isQuantityOnlyUser(user);
   const userCurrencyCode = String(user?.currency || 'USD').toUpperCase();
+  const buyerRole = String(user?.role || '').trim().toLowerCase();
+  const shouldUseCustomerOrderFlow = isBackofficeRole(buyerRole);
+  const pricingOptions = { preferLocalGroupPrice: shouldUseCustomerOrderFlow };
   const pricingGroup = user?.groupId || user?.group || 'Normal';
   const pricingGroupPercentage = user?.groupPercentage ?? null;
   
-  const unitPriceBase = calculateProductPrice(product, pricingGroup, pricingGroupPercentage);
-  const unitPrice = resolveProductUnitPrice(product, userCurrencyCode, currencies, pricingGroup, pricingGroupPercentage);
+  const unitPriceBase = calculateProductPrice(product, pricingGroup, pricingGroupPercentage, pricingOptions);
+  const unitPrice = resolveProductUnitPrice(product, userCurrencyCode, currencies, pricingGroup, pricingGroupPercentage, pricingOptions);
   const totalPrice = isQuantityOnly ? 0 : normalizeMoneyAmount(Number(unitPrice) * quantity);
   const balance = normalizeMoneyAmount(user?.coins || 0);
   const userCurrencyMeta = getCurrencyMeta(userCurrencyCode, currencies);
 
   const exactDisplayTotalPrice = isQuantityOnly ? '0' : multiplyRawDecimalByInteger(unitPrice, quantity);
-  const formattedTotalPrice = `${exactDisplayTotalPrice} ${userCurrencyMeta.symbol || userCurrencyCode}`;
-  const primaryOrderField = orderFields.find((field) => String(field?.key || '').toLowerCase() === 'playerid')
-    || orderFields[0]
+  const formattedTotalPrice = `${formatTotalPriceString(exactDisplayTotalPrice, 2)} ${userCurrencyMeta.symbol || userCurrencyCode}`;
+  const primaryOrderField = purchaseOrderFields.find((field) => isPrimaryPurchaseFieldKey(field?.key))
+    || purchaseOrderFields[0]
     || { key: 'playerId', label: copy.userId, placeholder: copy.userIdPlaceholder };
-  const primaryOrderFieldKey = String(primaryOrderField?.key || 'playerId').trim() || 'playerId';
-  const primaryOrderFieldLabel = primaryOrderField?.label || copy.userId;
-  const primaryOrderFieldPlaceholder = primaryOrderField?.placeholder || copy.userIdPlaceholder;
+  const primaryOrderFieldKey = getPurchaseOrderFieldKey(primaryOrderField, 0);
+  const primaryOrderFieldLabel = normalizePurchaseFieldLabel(primaryOrderField?.label || copy.userId, language);
+  const areOrderFieldsComplete = purchaseOrderFields.every((field, index) => {
+    if (field?.required === false) return true;
+    const key = getPurchaseOrderFieldKey(field, index);
+    return Boolean(sanitizeOrderFieldValue(orderFieldValues[key]).trim());
+  });
+  const purchaseProductName = String(
+    (language === 'ar'
+      ? (product?.nameAr || product?.displayNameAr || product?.displayName || product?.name)
+      : (product?.displayName || product?.name || product?.nameAr))
+    || copy.product
+  ).trim();
+  const purchaseProductDescription = String(
+    (language === 'ar'
+      ? (
+        product?.descriptionAr
+        || product?.shortDescriptionAr
+        || product?.displayDescriptionAr
+        || product?.displayDescription
+        || product?.description
+        || product?.shortDescription
+      )
+      : (
+        product?.displayDescription
+        || product?.description
+        || product?.shortDescription
+        || product?.descriptionAr
+        || product?.shortDescriptionAr
+      ))
+    || ''
+  ).trim();
+  const purchaseProductImage = resolveImageUrl(product?.image || product?.imageUrl || product?.thumbnail || product?.icon || '');
 
   const handleQuantityChange = (event) => {
     const rawValue = sanitizeQuantityInput(event.target.value);
@@ -329,13 +554,26 @@ const ProductPurchasePage = () => {
   };
 
   const handlePurchase = async () => {
-    const identifier = sanitizeOrderFieldValue(userId).trim();
+    const normalizedFields = purchaseOrderFields.reduce((fields, field, index) => {
+      const key = getPurchaseOrderFieldKey(field, index);
+      const value = sanitizeOrderFieldValue(orderFieldValues[key]).trim();
+      if (value) {
+        fields[key] = value;
+      }
+      return fields;
+    }, {});
+    const identifier = normalizedFields[primaryOrderFieldKey]
+      || Object.values(normalizedFields).find((value) => String(value || '').trim())
+      || '';
     const submittedQuantity = clampProductQuantity(quantityInput, product);
     const submittedTotalPrice = isQuantityOnly
       ? 0
       : normalizeMoneyAmount(Number(unitPrice) * submittedQuantity);
+    const submittedDisplayTotalPrice = isQuantityOnly
+      ? '0'
+      : `${formatTotalPriceString(multiplyRawDecimalByInteger(unitPrice, submittedQuantity), 2)} ${userCurrencyMeta.symbol || userCurrencyCode}`;
 
-    if (!quantityInput || !identifier) {
+    if (!quantityInput || !areOrderFieldsComplete) {
       return;
     }
 
@@ -343,24 +581,30 @@ const ProductPurchasePage = () => {
     setIsSubmitting(true);
     try {
       const orderId = `#${product?.name?.replace(/\s+/g, '').toUpperCase() || 'ORD'}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
-      const normalizedFields = {
-        [primaryOrderFieldKey]: identifier,
-      };
-
-      if (!normalizedFields.playerId) {
-        normalizedFields.playerId = identifier;
-      }
-      if (!normalizedFields.userId) {
-        normalizedFields.userId = identifier;
-      }
-
-      const fieldsSnapshot = Array.isArray(product?.orderFields) && product.orderFields.length > 0
-        ? product.orderFields.map((field) => ({ ...field }))
-        : orderFields.map((field) => ({
+      const fieldsSnapshot = purchaseOrderFields.map((field, index) => {
+        const key = getPurchaseOrderFieldKey(field, index);
+        return {
+          key,
+          name: key,
+          id: key,
+          label: normalizePurchaseFieldLabel(field?.label || key, language),
+          placeholder: field?.placeholder || '',
+          type: field?.type || 'text',
+          required: field?.required !== false,
+        };
+      });
+      const fieldEntries = fieldsSnapshot
+        .map((field) => ({
           key: field.key,
           label: field.label,
-          placeholder: field.placeholder,
-        }));
+          value: normalizedFields[field.key] || '',
+        }))
+        .filter((field) => field.value);
+      const hasPrimaryIdentifierAlias = Object.keys(normalizedFields).some(isPrimaryPurchaseFieldKey);
+      const payloadPlayerId = hasPrimaryIdentifierAlias ? identifier : undefined;
+      const fieldsSignature = Object.entries(normalizedFields)
+        .map(([key, value]) => `${key}:${value}`)
+        .join('|') || 'fields';
 
       const payload = {
         id: orderId,
@@ -369,7 +613,7 @@ const ProductPurchasePage = () => {
         productName: product.name,
         quantity: submittedQuantity,
         total: submittedTotalPrice,
-        playerId: identifier,
+        playerId: payloadPlayerId,
         customInputs: normalizedFields,
         orderFields: normalizedFields,
         orderFieldsValues: normalizedFields,
@@ -385,8 +629,9 @@ const ProductPurchasePage = () => {
         priceCoins: submittedTotalPrice,
         currencyCode: userCurrencyCode,
         exchangeRateAtExecution: userCurrencyMeta.rate,
-        idempotencyKey: `${user?.id || 'user'}-${product.id}-${identifier}-${Date.now()}`,
-        preferLegacyOrderEndpoint: true,
+        idempotencyKey: `${user?.id || 'user'}-${product.id}-${fieldsSignature}-${Date.now()}`,
+        preferCustomerOrderEndpoint: shouldUseCustomerOrderFlow,
+        preferLegacyOrderEndpoint: !shouldUseCustomerOrderFlow,
       };
 
       const result = await addOrder(payload);
@@ -400,6 +645,17 @@ const ProductPurchasePage = () => {
         || returnedId
       ).trim();
       const nextBalance = Number(result?.updatedBalance);
+
+      setSuccessOrder({
+        orderId: returnedId,
+        orderNumber: returnedOrderNumber,
+        quantity: submittedQuantity,
+        total: submittedTotalPrice,
+        totalDisplay: submittedDisplayTotalPrice,
+        identifier,
+        identifierLabel: primaryOrderFieldLabel,
+        fields: fieldEntries,
+      });
 
       if (!isQuantityOnly && Number.isFinite(nextBalance)) {
         const normalizedBalance = normalizeMoneyAmount(nextBalance);
@@ -416,13 +672,6 @@ const ProductPurchasePage = () => {
           balance: normalizedBalance,
         });
       }
-
-      setSuccessOrder({
-        orderId: returnedId,
-        orderNumber: returnedOrderNumber,
-        quantity: submittedQuantity,
-        total: submittedTotalPrice,
-      });
 
       addToast(
         language === 'en' ? 'Order placed successfully!' : 'تم تنفيذ الطلب بنجاح!',
@@ -456,15 +705,31 @@ const ProductPurchasePage = () => {
       },
       ...(!isQuantityOnly ? [{
         label: copy.price,
-        value: formattedTotalPrice,
+        value: successOrder.totalDisplay || formattedTotalPrice,
         icon: <WalletCards size={20} />,
         dir: 'ltr',
       }] : []),
+      ...((Array.isArray(successOrder.fields) && successOrder.fields.length > 0)
+        ? successOrder.fields.map((field) => ({
+          label: field.label || successOrder.identifierLabel || primaryOrderFieldLabel,
+          value: field.value,
+          icon: <UserRound size={20} />,
+          dir: 'auto',
+          copyable: true,
+        }))
+        : (successOrder.identifier ? [{
+          label: successOrder.identifierLabel || primaryOrderFieldLabel,
+          value: successOrder.identifier,
+          icon: <UserRound size={20} />,
+          dir: 'auto',
+          copyable: true,
+        }] : [])),
       {
         label: copy.orderNumber,
         value: successOrder.orderNumber || successOrder.orderId,
         icon: <Hash size={20} />,
         dir: 'ltr',
+        copyable: true,
       },
     ];
 
@@ -472,10 +737,10 @@ const ProductPurchasePage = () => {
       <motion.div
         initial={false}
         animate={{ opacity: 1 }}
-        className="product-purchase-page fixed inset-0 z-50 !min-h-screen !items-center !justify-center !p-4"
+        className={`product-purchase-page ${embedded ? '!min-h-0 !p-0' : 'fixed inset-0 z-50 !min-h-screen !items-center !justify-center !p-4'}`}
         dir={dir}
       >
-        <section className="purchase-phone purchase-phone--success" aria-label={copy.successTitle}>
+        <section className="purchase-phone purchase-phone--success purchase-success-modal" aria-label={copy.successTitle}>
           <div className="purchase-bg-lines" />
           <div className="purchase-confetti" aria-hidden="true">
             {Array.from({ length: 16 }).map((_, index) => (
@@ -485,11 +750,13 @@ const ProductPurchasePage = () => {
 
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onPointerDown={handleSuccessClose}
+            onClick={handleSuccessClose}
             className="purchase-glass-button purchase-success-back"
-            aria-label={dir === 'rtl' ? 'رجوع' : 'Back'}
+            aria-label={copy.close}
+            title={copy.close}
           >
-            <ChevronLeft size={25} strokeWidth={3} />
+            <X size={17} strokeWidth={3} />
           </button>
 
           <motion.div
@@ -500,7 +767,7 @@ const ProductPurchasePage = () => {
           >
             <span className="purchase-success-bloom" />
             <span className="purchase-check-ring">
-              <Check size={82} strokeWidth={3.3} />
+              <Check size={42} strokeWidth={3.3} />
             </span>
           </motion.div>
 
@@ -522,29 +789,46 @@ const ProductPurchasePage = () => {
                   <span className="purchase-summary-icon">{row.icon}</span>
                   <div className="purchase-summary-text">
                     <span>{row.label}</span>
-                    <SummaryValue value={row.value} dir={row.dir} />
+                    {row.copyable ? (
+                      <button
+                        type="button"
+                        className="purchase-summary-copy"
+                        onClick={() => handleCopyText(row.value, row.label)}
+                        aria-label={language === 'en' ? `Copy ${row.label}` : `نسخ ${row.label}`}
+                        title={language === 'en' ? `Copy ${row.label}` : `نسخ ${row.label}`}
+                      >
+                        <SummaryValue value={row.value} dir={row.dir} />
+                        <Copy size={14} aria-hidden="true" />
+                      </button>
+                    ) : (
+                      <SummaryValue value={row.value} dir={row.dir} />
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </article>
 
-          <div className="purchase-actions">
+          <div className="purchase-actions purchase-success-actions">
             <button
               type="button"
-              onClick={() => navigate(`/orders/${encodeURIComponent(successOrder.orderId)}`)}
-              className="purchase-primary-button"
+              onClick={() => {
+                if (typeof onSubmittingChange === 'function') onSubmittingChange(false);
+                if (typeof onClose === 'function') onClose({ force: true });
+                navigate(`/orders?orderId=${encodeURIComponent(successOrder.orderId)}`);
+              }}
+              className="purchase-primary-button purchase-success-primary"
             >
               <span>{copy.orderDetails}</span>
-              <FileText size={27} />
+              <FileText size={17} />
             </button>
             <button
               type="button"
-              onClick={() => navigate('/')}
-              className="purchase-secondary-button"
+              onClick={handleSuccessClose}
+              className="purchase-secondary-button purchase-success-secondary"
             >
-              <span>{copy.backHome}</span>
-              <Home size={27} />
+              <span>{embedded ? copy.close : copy.backHome}</span>
+              <Home size={17} />
             </button>
           </div>
         </section>
@@ -556,136 +840,206 @@ const ProductPurchasePage = () => {
     <motion.div
       initial={false}
       animate={{ opacity: 1 }}
-      className="product-purchase-page"
+      className={`product-purchase-page ${embedded ? '!min-h-0 !p-0' : ''}`}
       dir={dir}
     >
-      <section className="purchase-phone purchase-phone--buy !max-w-[26rem] !p-3 sm:!p-4" aria-label={product?.name || copy.buyNow}>
-        <div className="purchase-bg-lines" />
+      <section className="purchase-phone purchase-phone--buy purchase-clean-card purchase-premium-modal" aria-label={purchaseProductName}>
+        <div className="purchase-modal-ambient" aria-hidden="true" />
 
-        <header className="purchase-header !min-h-9 !gap-2" dir="ltr">
+        <header className="purchase-modal-header">
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="purchase-glass-button !h-9 !w-9 !rounded-lg"
-            aria-label={dir === 'rtl' ? 'رجوع' : 'Back'}
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="purchase-glass-button purchase-close-button purchase-modal-close"
+            aria-label={copy.close}
+            title={copy.close}
           >
-            <ChevronLeft size={20} strokeWidth={2.7} />
+            <X size={24} strokeWidth={3} />
           </button>
 
-          <div className="purchase-balance !min-h-9 !gap-1.5 !rounded-lg !px-2" aria-label={copy.balance}>
-            <span className="purchase-balance-icon !h-5 !w-5 !rounded-md">
-              <Gem size={13} strokeWidth={2.6} />
-            </span>
-            <span 
-              className="purchase-balance-desc !max-w-[9rem] !text-xs text-slate-800 dark:text-[rgb(236_244_255/0.95)]" 
-              title={productDescription}
-            >
-              {productDescription}
-            </span>
-            <Plus size={17} strokeWidth={2.8} />
+          <div className="purchase-header-icon purchase-bag-icon" aria-hidden="true">
+            <ShoppingBag size={28} strokeWidth={2.4} />
+          </div>
+
+          <div className="purchase-title-block">
+            <h1 className="purchase-modal-title">
+              {purchaseProductName}
+            </h1>
+            <span className="purchase-title-ornament" aria-hidden="true" />
           </div>
         </header>
 
-        <div className="flex flex-col items-center gap-3 py-3 text-center">
-          <motion.div
-            initial={false}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.1 }}
-            className="purchase-product-hero !mt-0 !h-32"
-          >
-            <span className="purchase-orbit purchase-orbit--cyan !h-7 !w-36" />
-            <span className="purchase-orbit purchase-orbit--pink !h-8 !w-40" />
-            <div className="purchase-product-orb !h-28 !w-28 !rounded-full">
-              <ProductImage product={product} className="purchase-product-image !h-24 !w-24 !object-contain" />
+        {purchaseProductDescription ? (
+          <p className="purchase-product-top-description">
+            {purchaseProductDescription}
+          </p>
+        ) : null}
+
+        <article className="purchase-card purchase-info-card">
+          <div className="purchase-info-cell purchase-info-cell--total">
+            <div className="purchase-field-heading">
+              <span className="purchase-mini-icon purchase-mini-icon--blue">
+                <Zap size={20} fill="currentColor" />
+              </span>
+              <h2>{copy.total}</h2>
             </div>
-          </motion.div>
+            <strong className="purchase-total-amount" dir="ltr">{formattedTotalPrice}</strong>
+          </div>
 
-          {product?.name ? (
-            <h1 className="purchase-product-title !mb-1 !text-2xl !font-bold !leading-8 sm:!text-3xl sm:!leading-9">{product.name}</h1>
-          ) : (
-            <div className="purchase-skeleton purchase-skeleton--title" />
-          )}
-        </div>
-
-        <div className="purchase-badges !mb-2 !gap-1.5" aria-label={dir === 'rtl' ? 'حالة المنتج' : 'Product status'}>
-          <span className="purchase-badge !min-h-0 !px-2 !py-0.5 !text-xs !shadow-none">
-            <Zap size={12} fill="currentColor" />
-            {copy.fastShipping}
-          </span>
-          <span className="purchase-badge !min-h-0 !border-cyan-400 !bg-cyan-100 !px-2 !py-0.5 !text-xs !text-cyan-950 !shadow-none dark:!border-cyan-400/20 dark:!bg-cyan-400/10 dark:!text-cyan-200">
-            <Clock3 size={12} className="!text-cyan-700 dark:!text-cyan-300" />
-            {copy.available24h}
-          </span>
-        </div>
-
-
-        {!isQuantityOnly && (
-          <article className="purchase-card purchase-price-card !mb-2 !min-h-14 !p-3 !pe-10">
-            <span className="purchase-price-icon !right-2 !h-7 !w-7 !rounded-lg">
-              <WalletCards size={17} className="!h-4 !w-4" />
-            </span>
-            <div>
-              <p className="!text-xs">{copy.total}</p>
-              <strong className="!whitespace-normal !break-all !text-sm !leading-5" dir="ltr">{formattedTotalPrice}</strong>
+          <div className="purchase-info-cell purchase-info-cell--quantity">
+            <div className="purchase-field-heading">
+              <span className="purchase-mini-icon purchase-mini-icon--purple">
+                <Box size={21} strokeWidth={2.3} />
+              </span>
+              <h2>{copy.quantity}</h2>
             </div>
-          </article>
-        )}
-        <article className="purchase-card purchase-field-card !mb-2 !p-3">
-          <h2 className="!text-xs">{copy.quantity}</h2>
-          <label className="purchase-input-shell !mt-2 !min-h-9 !rounded-lg">
-            <span className="purchase-sr-only">{copy.quantity}</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9,]*"
-              min={quantityMeta.minQty}
-              max={quantityMeta.maxQty}
-              step={quantityMeta.stepQty}
-              value={formatQuantityInput(quantityInput)}
-              onChange={handleQuantityChange}
-              onBlur={handleQuantityBlur}
-              placeholder={copy.quantityPlaceholder}
-              className="purchase-order-input !min-h-9 !py-2.5 !pl-3 !pr-8 !text-sm !font-medium !leading-normal placeholder:!text-sm placeholder:!font-normal placeholder:!text-gray-400"
-            />
-            <FileText size={16} className="!h-4 !w-4" aria-hidden="true" />
-          </label>
-
-          <div className="purchase-limits !mt-2 !gap-2">
-            <span>
-              <small className="!text-[10px]">{copy.minQuantity}</small>
-              <strong className="!text-xs" dir="ltr">{formatCount(quantityMeta.minQty)}</strong>
-            </span>
-            <span>
-              <small className="!text-[10px]">{copy.maxQuantity}</small>
-              <strong className="!text-xs" dir="ltr">{formatCount(quantityMeta.maxQty)}</strong>
-            </span>
+            <label className="purchase-input-shell">
+              <span className="purchase-sr-only">{copy.quantity}</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9,]*"
+                min={quantityMeta.minQty}
+                max={quantityMeta.maxQty}
+                step={quantityMeta.stepQty}
+                value={formatQuantityInput(quantityInput)}
+                onChange={handleQuantityChange}
+                onBlur={handleQuantityBlur}
+                placeholder={copy.quantityPlaceholder}
+                className="purchase-order-input"
+              />
+            </label>
           </div>
         </article>
 
-        <article className="purchase-card purchase-field-card !mb-2 !p-3">
-          <h2 className="!text-xs">{primaryOrderFieldLabel}</h2>
-          <label className="purchase-input-shell purchase-input-shell--user !mt-2 !min-h-9 !rounded-lg">
-            <span className="purchase-sr-only">{primaryOrderFieldLabel}</span>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder={primaryOrderFieldPlaceholder}
-              className="purchase-order-input !min-h-9 !py-2.5 !pl-3 !pr-8 !text-sm !font-medium !leading-normal placeholder:!text-sm placeholder:!font-normal placeholder:!text-gray-400"
-            />
-            <UserRound size={16} className="!h-4 !w-4" aria-hidden="true" />
-          </label>
-        </article>
+        {purchaseOrderFields.map((field, index) => {
+          const fieldKey = getPurchaseOrderFieldKey(field, index);
+          const fieldLabel = normalizePurchaseFieldLabel(field?.label || fieldKey, language);
+          const fieldType = String(field?.type || 'text').toLowerCase();
+          const fieldPlaceholder = getPurchaseFieldPlaceholder(field, fieldLabel, language);
+          const fieldOptions = normalizePurchaseFieldOptions(field);
+          const shouldRenderSelect = fieldType === 'select' && fieldOptions.length > 0;
+          const inputType = fieldType === 'email' ? 'email' : 'text';
+          const inputMode = fieldType === 'number' ? 'numeric' : undefined;
 
-        <button
-          type="button"
-          onClick={handlePurchase}
-          disabled={isSubmitting || !quantityInput || !userId}
-          className="purchase-primary-button purchase-buy-button !mt-3 !min-h-10 !gap-2 !rounded-xl !text-sm"
-        >
-          <span>{isSubmitting ? copy.buying : copy.buyNow}</span>
-          <LockKeyhole size={19} strokeWidth={2.5} />
-        </button>
+          return (
+            <article
+              key={fieldKey}
+              className="purchase-card purchase-field-card purchase-user-card purchase-dynamic-field-card"
+            >
+              <div className="purchase-field-heading purchase-user-heading">
+                <span className="purchase-mini-icon purchase-mini-icon--purple">
+                  {fieldType === 'number' ? (
+                    <Hash size={21} strokeWidth={2.3} />
+                  ) : (
+                    <UserRound size={21} strokeWidth={2.3} />
+                  )}
+                </span>
+                <h2>{fieldLabel}</h2>
+              </div>
+              <label className={`purchase-input-shell purchase-input-shell--user${shouldRenderSelect ? ' purchase-input-shell--select' : ''}`}>
+                <span className="purchase-sr-only">{fieldLabel}</span>
+                {shouldRenderSelect ? (
+                  <select
+                    value={orderFieldValues[fieldKey] || ''}
+                    onChange={(event) => setOrderFieldValues((currentValues) => ({
+                      ...currentValues,
+                      [fieldKey]: event.target.value,
+                    }))}
+                    required={field?.required !== false}
+                    className="purchase-order-input purchase-order-select"
+                  >
+                    <option value="">{fieldPlaceholder}</option>
+                    {fieldOptions.map((option) => (
+                      <option key={`${fieldKey}-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={inputType}
+                    inputMode={inputMode}
+                    value={orderFieldValues[fieldKey] || ''}
+                    onChange={(event) => setOrderFieldValues((currentValues) => ({
+                      ...currentValues,
+                      [fieldKey]: event.target.value,
+                    }))}
+                    required={field?.required !== false}
+                    placeholder={fieldPlaceholder}
+                    autoComplete="off"
+                    className="purchase-order-input"
+                  />
+                )}
+              </label>
+            </article>
+          );
+        })}
+
+        <div className="purchase-actions purchase-modal-actions">
+          <button
+            type="button"
+            onClick={handlePurchase}
+            disabled={isSubmitting || !quantityInput || !areOrderFieldsComplete}
+            className="purchase-primary-button purchase-buy-button purchase-action-buy"
+          >
+            {isSubmitting ? (
+              <LoaderCircle size={20} strokeWidth={2.5} className="animate-spin" />
+            ) : (
+              <LockKeyhole size={20} strokeWidth={2.5} />
+            )}
+            <span>{isSubmitting ? copy.buying : copy.buyNow}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            className="purchase-secondary-button purchase-cancel-button purchase-action-cancel"
+          >
+            <span>{language === 'ar' ? 'إلغاء' : 'Cancel'}</span>
+          </button>
+        </div>
+
+        <figure className="purchase-showcase purchase-product-showcase">
+          <div className="purchase-product-display">
+            <div className="purchase-product-image-stage">
+              <div className="purchase-product-orbit-scene" aria-hidden="true">
+                <span className="purchase-product-ring-glow" />
+                <span className="purchase-product-energy-ring" />
+                <span className="purchase-product-ring-core" />
+                <span className="purchase-product-display-base" />
+                <span className="purchase-product-spark purchase-product-spark--one" />
+                <span className="purchase-product-spark purchase-product-spark--two" />
+                <span className="purchase-product-spark purchase-product-spark--three" />
+              </div>
+              {purchaseProductImage ? (
+                <img
+                  src={purchaseProductImage}
+                  alt={purchaseProductName}
+                  className="purchase-showcase-product-image"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="purchase-showcase-product-fallback" aria-hidden="true">
+                  <Package size={48} strokeWidth={1.8} />
+                </span>
+              )}
+            </div>
+          </div>
+        </figure>
+
+        {isSubmitting ? (
+          <div className="purchase-submit-shield" role="status" aria-live="polite">
+            <div className="purchase-submit-box">
+              <LoaderCircle size={24} className="animate-spin" />
+              <span>{copy.buying}</span>
+            </div>
+          </div>
+        ) : null}
       </section>
     </motion.div>
   );

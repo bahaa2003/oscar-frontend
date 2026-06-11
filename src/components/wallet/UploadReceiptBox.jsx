@@ -14,7 +14,7 @@ const UploadReceiptBox = ({ onFileUpload }) => {
   const fileInputRef = useRef(null);
 
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp'];
-  const maxSize = 20 * 1024 * 1024;
+  const maxSize = 5 * 1024 * 1024;
 
   const validateFile = (file) => {
     if (!allowedTypes.includes(file.type)) return t('payments.upload.invalidType');
@@ -81,11 +81,11 @@ const UploadReceiptBox = ({ onFileUpload }) => {
               setIsDragOver(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative cursor-pointer overflow-hidden rounded-[1.1rem] border border-dashed p-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all sm:p-7 ${
+            className={`relative cursor-pointer overflow-hidden rounded-[1.1rem] border border-dashed p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all sm:p-7 ${
               isDragOver
                 ? 'border-emerald-400 bg-emerald-50/80 shadow-[0_18px_34px_-28px_rgba(16,185,129,0.55)] dark:border-emerald-500/60 dark:bg-emerald-950/24'
                 : 'border-slate-300 bg-slate-50/75 hover:-translate-y-0.5 hover:border-sky-400 hover:bg-white dark:border-slate-700 dark:bg-slate-900/55 dark:hover:border-sky-500/60 dark:hover:bg-slate-900'
-            }`}
+            } ${isRTL ? 'text-right' : 'text-center'}`}
           >
             <input
               ref={fileInputRef}
@@ -95,14 +95,14 @@ const UploadReceiptBox = ({ onFileUpload }) => {
               className="hidden"
             />
 
-            <div className="flex flex-col items-center gap-4">
+            <div className={`flex flex-col gap-4 ${isRTL ? 'items-end' : 'items-center'}`}>
               <div className={`flex h-14 w-14 items-center justify-center rounded-[1rem] border border-white/70 bg-gradient-to-br from-[var(--color-primary)] via-sky-500 to-emerald-500 shadow-[0_16px_28px_-20px_rgba(14,165,233,0.75)] transition-transform ${
                   isDragOver ? 'scale-110' : ''
                 }`}>
                 <Upload className="h-7 w-7 text-white" />
               </div>
 
-              <div>
+              <div className={isRTL ? 'text-right' : 'text-center'}>
                 <h3 className="mb-2 text-base font-black text-slate-950 dark:text-white">
                   {isDragOver ? t('payments.upload.dropHere') : t('payments.upload.uploadTitle')}
                 </h3>
@@ -129,7 +129,7 @@ const UploadReceiptBox = ({ onFileUpload }) => {
               <FileImage className="h-6 w-6" />
             </div>
 
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${isRTL ? 'text-right' : 'text-left'}`}>
               <h4 className="truncate font-black text-slate-950 dark:text-white">{uploadedFile.name}</h4>
               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">{formatFileSize(uploadedFile.size)}</p>
             </div>

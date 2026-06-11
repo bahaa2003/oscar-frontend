@@ -559,6 +559,265 @@ const getProviderCatalogMaxQtyValue = (product = {}) => (
   ?? null
 );
 
+const PROVIDER_PRODUCTS_PAGE_LIMIT = 1000;
+const PROVIDER_PRODUCTS_PAGE_PROBE_SIZE = 600;
+const PROVIDER_PRODUCTS_MAX_PAGES = 100;
+const WALLET_TRANSACTIONS_PAGE_LIMIT = 100;
+const WALLET_TRANSACTIONS_MAX_PAGES = 100;
+
+const extractProviderCatalogItems = (data) => {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+
+  const candidates = [
+    data.providerProducts,
+    data.products,
+    data.items,
+    data.results,
+    data.data,
+    data.synced,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return [];
+};
+
+const extractPaginationMeta = (data) => {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  return data.pagination || data.meta?.pagination || data.pageInfo || data.meta || null;
+};
+
+const extractWalletTransactionItems = (data) => {
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return [];
+
+  const candidates = [
+    data.transactions,
+    data.items,
+    data.results,
+    data.data,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return [];
+};
+
+const getWalletTransactionDedupeKey = (entry = {}) => String(
+  entry?.id
+  || entry?._id
+  || entry?.transactionId
+  || `${entry?.userId || ''}:${entry?.type || ''}:${entry?.createdAt || entry?.date || ''}:${entry?.signedAmount ?? entry?.amount ?? ''}:${entry?.reference || ''}`
+).trim();
+
+const shouldFetchNextWalletTransactionPage = ({
+  data,
+  rawBody,
+  page,
+  limit,
+  rawItemsLength,
+  addedCount,
+}) => {
+  const pagination = extractPaginationMeta(data) || extractPaginationMeta(rawBody);
+
+  if (pagination) {
+    const currentPage = Number(pagination.page ?? pagination.currentPage ?? pagination.current_page ?? page);
+    const totalPages = Number(pagination.pages ?? pagination.totalPages ?? pagination.total_pages ?? pagination.pageCount);
+    if (Number.isFinite(totalPages) && totalPages > 0) {
+      return currentPage < totalPages;
+    }
+
+    const hasNext = pagination.hasNextPage ?? pagination.hasNext ?? pagination.nextPage;
+    if (hasNext !== undefined && hasNext !== null) {
+      return Boolean(hasNext);
+    }
+
+    const total = Number(pagination.total ?? pagination.totalItems ?? pagination.totalCount ?? pagination.count);
+    const pageLimit = Number(pagination.limit ?? pagination.perPage ?? pagination.pageSize ?? limit);
+    if (Number.isFinite(total) && Number.isFinite(pageLimit) && pageLimit > 0) {
+      return currentPage * pageLimit < total;
+    }
+  }
+
+  return rawItemsLength > 0 && addedCount > 0;
+};
+
+const getProviderCatalogItemKey = (product = {}, fallbackIndex = 0) => String(
+  product?._id
+  || product?.id
+  || product?.externalProductId
+  || product?.providerProductId
+  || product?.productId
+  || product?.product_id
+  || product?.sku
+  || product?.rawPayload?.product_id
+  || product?.rawPayload?.service
+  || product?.rawPayload?.id
+  || `provider-product-${fallbackIndex}`
+).trim();
+
+const normalizeProviderStatusValue = (value) => String(value ?? '')
+  .trim()
+  .toLowerCase()
+  .replace(/[\s-]+/g, '_');
+
+const isProviderCatalogProductAvailable = (product = {}) => {
+  if (!product || typeof product !== 'object') return false;
+  if (product.deletedAt || product.removedAt || product.archivedAt) return false;
+
+  const rawPayload = product.rawPayload && typeof product.rawPayload === 'object'
+    ? product.rawPayload
+    : {};
+  const booleanFlags = [
+    product.isActive,
+    product.active,
+    product.enabled,
+    product.isEnabled,
+    product.available,
+    product.isAvailable,
+    product.inStock,
+    rawPayload.isActive,
+    rawPayload.active,
+    rawPayload.enabled,
+    rawPayload.available,
+    rawPayload.is_available,
+    rawPayload.in_stock,
+  ];
+
+  if (booleanFlags.some((value) => {
+    const normalized = normalizeProviderStatusValue(value);
+    return value === false || value === 0 || ['0', 'false', 'no'].includes(normalized);
+  })) {
+    return false;
+  }
+
+  const inactiveStatuses = new Set([
+    'inactive',
+    'unavailable',
+    'disabled',
+    'deleted',
+    'archived',
+    'paused',
+    'suspended',
+    'hidden',
+    'out_of_stock',
+    'outofstock',
+    'not_available',
+    'not_working',
+    'stopped',
+    'closed',
+    'false',
+    '0',
+    'no',
+  ]);
+
+  const statusValues = [
+    product.status,
+    product.productStatus,
+    product.availability,
+    product.state,
+    rawPayload.status,
+    rawPayload.product_status,
+    rawPayload.availability,
+    rawPayload.state,
+  ]
+    .map(normalizeProviderStatusValue)
+    .filter(Boolean);
+
+  return !statusValues.some((value) => inactiveStatuses.has(value));
+};
+
+const shouldFetchNextProviderProductPage = (data, page, pageLimit, pageItemsLength, addedCount) => {
+  if (addedCount <= 0) return false;
+
+  const pagination = extractPaginationMeta(data);
+  if (pagination) {
+    const currentPage = Number(pagination.page ?? pagination.currentPage ?? pagination.current_page ?? page);
+    const totalPages = Number(pagination.pages ?? pagination.totalPages ?? pagination.total_pages ?? pagination.pageCount);
+    if (Number.isFinite(totalPages) && totalPages > 0) {
+      return currentPage < totalPages;
+    }
+
+    const hasNext = pagination.hasNextPage ?? pagination.hasNext ?? pagination.nextPage;
+    if (hasNext !== undefined && hasNext !== null) {
+      return Boolean(hasNext);
+    }
+
+    const total = Number(pagination.total ?? pagination.totalItems ?? pagination.totalCount ?? pagination.count);
+    const limit = Number(pagination.limit ?? pagination.perPage ?? pagination.pageSize ?? pageLimit);
+    if (Number.isFinite(total) && Number.isFinite(limit) && limit > 0) {
+      return currentPage * limit < total;
+    }
+  }
+
+  return pageItemsLength >= pageLimit || pageItemsLength >= PROVIDER_PRODUCTS_PAGE_PROBE_SIZE;
+};
+
+const fetchProviderCatalogPages = async (url, options = {}) => {
+  const pageLimit = Number(options.limit || PROVIDER_PRODUCTS_PAGE_LIMIT);
+  const maxPages = Number(options.maxPages || PROVIDER_PRODUCTS_MAX_PAGES);
+  const timeout = options.timeout;
+  const allItems = [];
+  const seenKeys = new Set();
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const res = await http.get(url, {
+      ...(timeout ? { timeout } : {}),
+      params: {
+        page,
+        limit: pageLimit,
+      },
+    });
+    const data = unwrap(res);
+    const pageItems = extractProviderCatalogItems(data);
+    let addedCount = 0;
+
+    pageItems.forEach((item, index) => {
+      const key = getProviderCatalogItemKey(item, allItems.length + index);
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
+      allItems.push(item);
+      addedCount += 1;
+    });
+
+    if (!shouldFetchNextProviderProductPage(data, page, pageLimit, pageItems.length, addedCount)) {
+      break;
+    }
+  }
+
+  return allItems;
+};
+
+const normalizeProviderCatalogProduct = (pp = {}, index = 0) => {
+  const id = getProviderCatalogItemKey(pp, index);
+
+  return {
+    ...pp,
+    id,
+    _id: undefined,
+    // Human-readable name for dropdowns — fallback chain
+    name: pp.translatedName || pp.rawName || pp.rawPayload?.product_name || pp.rawPayload?.product_name_translated || pp.name || pp.externalProductName || pp.externalProductId,
+    // Preserve provider price exactly as returned whenever possible.
+    rawPrice: getProviderCatalogPriceValue(pp),
+    priceCoins: getProviderCatalogPriceValue(pp),
+    minQty: getProviderCatalogMinQtyValue(pp),
+    minimumOrderQty: getProviderCatalogMinQtyValue(pp),
+    maxQty: getProviderCatalogMaxQtyValue(pp),
+    maximumOrderQty: getProviderCatalogMaxQtyValue(pp),
+  };
+};
+
+const normalizeAvailableProviderCatalogProducts = (items = []) => (
+  Array.isArray(items) ? items : []
+)
+  .filter(isProviderCatalogProductAvailable)
+  .map(normalizeProviderCatalogProduct);
+
 /** Normalise a single user object from BE to FE shape */
 const normaliseUser = (u) => {
   if (!u) return null;
@@ -2006,23 +2265,8 @@ const realApi = {
      * GET /admin/provider-products/:providerId — raw provider products.
      */
     listProviderProducts: async (providerId) => {
-      const res = await http.get(`/admin/provider-products/${providerId}`);
-      const data = unwrap(res);
-      const items = Array.isArray(data) ? data : (data?.providerProducts || []);
-      return items.map((pp) => ({
-        ...pp,
-        id: pp._id || pp.id,
-        _id: undefined,
-        // Human-readable name for dropdowns — fallback chain
-        name: pp.translatedName || pp.rawName || pp.rawPayload?.product_name || pp.rawPayload?.product_name_translated || pp.externalProductId,
-        // Preserve provider price exactly as returned whenever possible.
-        rawPrice: getProviderCatalogPriceValue(pp),
-        priceCoins: getProviderCatalogPriceValue(pp),
-        minQty: getProviderCatalogMinQtyValue(pp),
-        minimumOrderQty: getProviderCatalogMinQtyValue(pp),
-        maxQty: getProviderCatalogMaxQtyValue(pp),
-        maximumOrderQty: getProviderCatalogMaxQtyValue(pp),
-      }));
+      const items = await fetchProviderCatalogPages(`/admin/provider-products/${providerId}`);
+      return normalizeAvailableProviderCatalogProducts(items);
     },
 
     /**
@@ -2257,9 +2501,8 @@ const realApi = {
      * Extended timeout (5 min) because fetching from external APIs can be slow.
      */
     getLiveProducts: async (id) => {
-      const res = await http.get(`/admin/providers/${id}/products`, { timeout: 300_000 });
-      const data = unwrap(res);
-      return Array.isArray(data) ? data : (data?.products || []);
+      const items = await fetchProviderCatalogPages(`/admin/providers/${id}/products`, { timeout: 300_000 });
+      return normalizeAvailableProviderCatalogProducts(items);
     },
 
     /**
@@ -2721,7 +2964,14 @@ const realApi = {
      * GET /admin/wallets/:userId/transactions
      * GET /wallet/users/:userId/transactions (fallback)
      */
-    getTransactionsByUserId: async (userId, { page = 1, limit = 50, from, to } = {}) => {
+    getTransactionsByUserId: async (userId, {
+      page = 1,
+      limit = WALLET_TRANSACTIONS_PAGE_LIMIT,
+      from,
+      to,
+      all = false,
+      maxPages = WALLET_TRANSACTIONS_MAX_PAGES,
+    } = {}) => {
       const normalizedUserId = String(userId || '').trim();
       if (!normalizedUserId) return [];
 
@@ -2729,23 +2979,56 @@ const realApi = {
         `/admin/wallets/${normalizedUserId}/transactions`,
         `/wallet/users/${normalizedUserId}/transactions`,
       ];
-      const params = {
-        page,
-        limit,
-        ...(from ? { from } : {}),
-        ...(to ? { to } : {}),
-      };
+      const safePage = Math.max(1, Math.floor(Number(page) || 1));
+      const safeLimit = Math.max(1, Math.min(WALLET_TRANSACTIONS_PAGE_LIMIT, Math.floor(Number(limit) || WALLET_TRANSACTIONS_PAGE_LIMIT)));
+      const safeMaxPages = Math.max(1, Math.floor(Number(maxPages) || WALLET_TRANSACTIONS_MAX_PAGES));
 
       let lastError = null;
 
       for (const endpoint of endpoints) {
         try {
-          const res = await http.get(endpoint, { params });
-          const data = unwrap(res);
-          const items = Array.isArray(data) ? data : (data?.transactions || data?.items || data?.data || []);
-          return items
-            .map((entry) => normaliseWalletTransaction(entry, normalizedUserId))
-            .filter(Boolean);
+          const allItems = [];
+          const seenKeys = new Set();
+          const startPage = all ? 1 : safePage;
+          const finalPage = all ? safeMaxPages : safePage;
+
+          for (let pageNumber = startPage; pageNumber <= finalPage; pageNumber += 1) {
+            const params = {
+              page: pageNumber,
+              limit: safeLimit,
+              ...(from ? { from } : {}),
+              ...(to ? { to } : {}),
+            };
+            const res = await http.get(endpoint, { params });
+            const rawBody = res.data;
+            const data = unwrap(res);
+            const rawItems = extractWalletTransactionItems(data);
+            const normalizedItems = rawItems
+              .map((entry) => normaliseWalletTransaction(entry, normalizedUserId))
+              .filter(Boolean);
+            let addedCount = 0;
+
+            normalizedItems.forEach((entry) => {
+              const key = getWalletTransactionDedupeKey(entry);
+              if (seenKeys.has(key)) return;
+              seenKeys.add(key);
+              allItems.push(entry);
+              addedCount += 1;
+            });
+
+            if (!all || !shouldFetchNextWalletTransactionPage({
+              data,
+              rawBody,
+              page: pageNumber,
+              limit: safeLimit,
+              rawItemsLength: rawItems.length,
+              addedCount,
+            })) {
+              break;
+            }
+          }
+
+          return allItems;
         } catch (error) {
           lastError = error;
         }
@@ -2988,8 +3271,14 @@ const realApi = {
         createdAt: orderData.createdAt,
       });
 
-      const preferLegacy = Boolean(orderData?.preferLegacyOrderEndpoint);
-      const requestPlan = preferLegacy
+      const preferCustomer = Boolean(orderData?.preferCustomerOrderEndpoint);
+      const preferLegacy = Boolean(orderData?.preferLegacyOrderEndpoint) && !preferCustomer;
+      const requestPlan = preferCustomer
+        ? [
+            { endpoint: '/me/orders', body },
+            { endpoint: '/orders', body: legacyBody },
+          ]
+        : preferLegacy
         ? [
             { endpoint: '/orders', body: legacyBody },
             { endpoint: '/me/orders', body },

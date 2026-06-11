@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Bell, CheckCircle2, Clock3, CreditCard, Menu, ShoppingBag, UserCheck, Wallet, XCircle } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Bell, CheckCircle2, Clock3, CreditCard, Menu, ShoppingBag, Trash2, UserCheck, Wallet, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
@@ -7,16 +7,62 @@ import useNotificationStore from '../../store/useNotificationStore';
 import { useLanguage } from '../../context/LanguageContext';
 import ThemeToggle from '../ui/ThemeToggle';
 import HeaderBrand from './HeaderBrand';
-import { formatWalletAmount } from '../../utils/storefront';
+import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 import { getDefaultRouteForRole, isAdminRole, isSupervisorRole } from '../../utils/authRoles';
 import { cn } from '../ui/Button';
+
+const parseHeaderWalletNumber = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.replace(/,/g, '').trim();
+  const numericMatch = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!numericMatch) return null;
+
+  const numericValue = Number(numericMatch[0]);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const getHeaderWalletCandidates = (user) => [
+    user?.coins,
+    user?.walletBalance,
+    user?.balance,
+    user?.currentBalance,
+    user?.availableBalance,
+    user?.wallet?.walletBalance,
+    user?.wallet?.balance,
+    user?.wallet?.coins,
+    user?.wallet?.currentBalance,
+    user?.wallet?.availableBalance,
+    user?.wallet?.amount,
+  ];
+
+const resolveHeaderWalletValue = (user) => {
+  const candidates = getHeaderWalletCandidates(user);
+  const numbers = candidates
+    .map(parseHeaderWalletNumber)
+    .filter((value) => value !== null);
+
+  return numbers.find((value) => value < 0) ?? numbers[0] ?? 0;
+};
+
+const hasNegativeHeaderWalletValue = (user, displayValue = '') => {
+  const candidates = getHeaderWalletCandidates(user);
+
+  return candidates.some((value) => {
+    const numericValue = parseHeaderWalletNumber(value);
+    return numericValue !== null && numericValue < 0;
+  })
+    || String(displayValue || '').trim().startsWith('-');
+};
 
 const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { user } = useAuthStore();
-  const { notifications, unreadCount, isLoading, loadNotifications, loadUnreadCount, markAsRead, markAllAsRead } = useNotificationStore();
+  const { notifications, unreadCount, isLoading, loadNotifications, loadUnreadCount, markAllAsRead, clearNotifications } = useNotificationStore();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const notificationsRef = useRef(null);
   const { dir } = useLanguage();
 
   const language = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar') ? 'ar' : 'en';
@@ -24,10 +70,23 @@ const Header = ({ toggleSidebar }) => {
   const isCustomer = String(user?.role || '').toLowerCase() === 'customer';
   const isAdmin = isAdminRole(user?.role);
   const isBackoffice = isAdmin || isSupervisorRole(user?.role);
-  const walletValue = Number(user?.coins || 0);
+  const walletValue = resolveHeaderWalletValue(user);
   const walletDisplayValue = formatWalletAmount(walletValue, user?.currency || 'USD');
+  const isNegativeBalance = isNegativeWalletAmount(walletValue) || hasNegativeHeaderWalletValue(user, walletDisplayValue);
+  const negativeWalletDataAttribute = isNegativeBalance ? 'true' : undefined;
+  const headerWalletBalanceToneClassName = isNegativeBalance
+    ? `header-wallet-negative is-negative ${negativeWalletBalanceClassName}`
+    : 'header-wallet-normal';
+  const headerWalletBalanceStyle = isNegativeBalance
+    ? {
+      color: '#dc2626',
+      WebkitTextFillColor: '#dc2626',
+      textShadow: '0 0 12px rgb(220 38 38 / 0.18)',
+    }
+    : undefined;
   const walletTargetPath = isCustomer ? '/wallet' : '/admin/wallet';
   const shouldShowWallet = isCustomer || isBackoffice;
+  const hasUnreadNotifications = unreadCount > 0 || notifications.some((notification) => !notification.read);
   useEffect(() => {
     if (!user?.id) return undefined;
     void loadUnreadCount().catch(() => {});
@@ -36,6 +95,23 @@ const Header = ({ toggleSidebar }) => {
     }, 30000);
     return () => clearInterval(timer);
   }, [loadUnreadCount, user?.id]);
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (notificationsRef.current?.contains(event.target)) return;
+      if (hasUnreadNotifications) {
+        markAllAsRead();
+      }
+      setIsNotificationsOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [hasUnreadNotifications, isNotificationsOpen, markAllAsRead]);
 
   const resolveNotificationTarget = (notification) => {
     if (notification?.targetUrl) return notification.targetUrl;
@@ -140,51 +216,58 @@ const Header = ({ toggleSidebar }) => {
   };
 
   const handleNotificationsToggle = () => {
-    setIsNotificationsOpen((previous) => !previous);
-    if (!isNotificationsOpen) {
-      void loadNotifications().catch(() => {});
+    if (isNotificationsOpen) {
+      if (hasUnreadNotifications) {
+        markAllAsRead();
+      }
+      setIsNotificationsOpen(false);
+      return;
     }
+
+    setIsNotificationsOpen(true);
+    void loadNotifications().catch(() => {});
   };
 
   const handleNotificationClick = (notification) => {
-    if (notification?.id && !notification?.read) {
-      void markAsRead(notification.id);
+    if (hasUnreadNotifications) {
+      markAllAsRead();
     }
     navigate(resolveNotificationTarget(notification));
     setIsNotificationsOpen(false);
   };
 
-  const handleMarkAllAsRead = () => {
-    markAllAsRead();
+  const handleClearNotifications = (event) => {
+    event?.stopPropagation();
+    clearNotifications();
   };
 
   return (
     <header dir={isRTL ? 'rtl' : 'ltr'} className="w-full max-w-full">
       <div className={cn(
-        'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[20px] border px-2.5 py-1 backdrop-blur-[22px] sm:rounded-[28px] sm:px-5 sm:py-1.5',
+        'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[22px] border px-2.5 py-1.5 backdrop-blur-[22px] sm:rounded-[28px] sm:px-5 sm:py-1.5',
         isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
       )}>
-        <div dir="ltr" className="grid min-h-[2.95rem] min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:min-h-[3.25rem] sm:gap-5">
+        <div dir="ltr" className="grid min-h-[3.05rem] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:min-h-[3.25rem] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
           <div className="col-start-2 row-start-1 min-w-0 justify-self-center">
             <button
               type="button"
               onClick={() => navigate(getDefaultRouteForRole(user?.role))}
               className="inline-flex items-center gap-2 rounded-[14px] px-0 py-0 transition-all hover:-translate-y-0.5 sm:gap-4"
             >
-              <HeaderBrand className="translate-x-16 min-[380px]:translate-x-24 sm:translate-x-40 lg:translate-x-64" />
+              <HeaderBrand className="justify-center" textClassName="min-[360px]:min-w-[4.1rem] sm:min-w-0" />
             </button>
           </div>
 
           <div className={cn(
             'header-mobile-actions col-start-1 row-start-1 flex min-w-0 shrink-0 items-center gap-1 justify-self-start px-0 sm:gap-2'
           )}>
-            <ThemeToggle compact className="h-9 w-9 shrink-0 rounded-full border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.16),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] min-[380px]:h-10 min-[380px]:w-10 sm:h-10 sm:w-10" />
+            <ThemeToggle compact className="h-10 w-10 shrink-0 rounded-full border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.16),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)]" />
 
-            <div className="relative">
+            <div ref={notificationsRef} className="relative">
               <button
                 type="button"
                 onClick={handleNotificationsToggle}
-                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.14),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(168_85_247/0.12),0_0_28px_-18px_rgb(168_85_247/0.95)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)] min-[380px]:h-10 min-[380px]:w-10 sm:h-10 sm:w-10"
+                className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.14),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(168_85_247/0.12),0_0_28px_-18px_rgb(168_85_247/0.95)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
                 aria-label="الإشعارات"
               >
                 <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -196,11 +279,25 @@ const Header = ({ toggleSidebar }) => {
               </button>
 
               {isNotificationsOpen ? (
-                <div className={`absolute top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-card-rgb)/0.96)] shadow-[0_26px_70px_-42px_rgb(0_0_0/0.92)] backdrop-blur-xl ${isRTL ? 'left-0' : 'right-0'}`}>
-                  <div className="border-b border-[color:rgb(var(--color-border-rgb)/0.68)] px-4 py-3">
-                    <p className="text-sm font-bold text-[var(--color-text)]">الإشعارات</p>
+                <div className={cn(
+                  'fixed left-2 right-2 top-[4.55rem] z-50 max-h-[calc(100vh-5.25rem)] overflow-hidden rounded-[1rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-card-rgb)/0.97)] shadow-[0_30px_80px_-42px_rgb(0_0_0/0.94)] backdrop-blur-xl sm:absolute sm:left-auto sm:right-auto sm:top-12 sm:max-h-none sm:w-[min(29rem,calc(100vw-2rem))] sm:rounded-2xl',
+                  isRTL ? 'sm:left-0' : 'sm:right-0'
+                )}>
+                  <div className="flex items-center justify-between gap-1.5 border-b border-[color:rgb(var(--color-border-rgb)/0.68)] px-2.5 py-2 sm:gap-2 sm:px-4 sm:py-3">
+                    <p className="shrink-0 text-sm font-black text-[var(--color-text)] sm:text-base">الإشعارات</p>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={handleClearNotifications}
+                        disabled={isLoading || notifications.length === 0}
+                        className="inline-flex h-7 items-center gap-1 rounded-full border border-red-400/24 bg-red-500/10 px-2 text-[10px] font-black text-red-400 transition hover:bg-red-500/16 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:gap-1.5 sm:px-3 sm:text-[11px]"
+                      >
+                        <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        مسح الكل
+                      </button>
+                    </div>
                   </div>
-                  <div className="max-h-[calc(50vh-3.25rem)] overflow-y-auto p-2">
+                  <div className="max-h-[min(58vh,28rem)] overflow-y-auto p-1.5 sm:max-h-[min(66vh,34rem)] sm:p-2.5">
                     {notifications.length ? notifications.map((notification) => {
                       const meta = getNotificationMeta(notification);
                       const NotificationIcon = meta.icon;
@@ -211,25 +308,25 @@ const Header = ({ toggleSidebar }) => {
                           type="button"
                           onClick={() => handleNotificationClick(notification)}
                           className={cn(
-                            'block w-full rounded-xl border px-3 py-2.5 text-start transition hover:-translate-y-0.5 hover:bg-[color:rgb(var(--color-primary-rgb)/0.08)]',
+                            'block w-full rounded-lg border px-2.5 py-2 text-start transition hover:-translate-y-0.5 hover:bg-[color:rgb(var(--color-primary-rgb)/0.08)] sm:rounded-xl sm:px-3.5 sm:py-3',
                             notification.read ? 'border-transparent opacity-75' : getNotificationTone(notification.type)
                           )}
                         >
-                          <span className="flex items-start gap-3">
-                            <span className={cn('mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1', meta.className)}>
-                              <NotificationIcon className="h-4.5 w-4.5" />
+                          <span className="flex items-start gap-2 sm:gap-3">
+                            <span className={cn('mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 sm:h-11 sm:w-11', meta.className)}>
+                              <NotificationIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2">
-                                <span className="block truncate text-sm font-semibold text-[var(--color-text)]">{notification.title}</span>
+                                <span className="block truncate text-sm font-black text-[var(--color-text)] sm:text-base">{notification.title}</span>
                                 {!notification.read ? (
                                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-primary)]" />
                                 ) : null}
                               </span>
                               {notification.message ? (
-                                <span className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--color-text-secondary)]">{notification.message}</span>
+                                <span className="mt-0.5 line-clamp-4 whitespace-pre-line text-xs leading-5 text-[var(--color-text-secondary)] sm:mt-1 sm:line-clamp-5 sm:text-sm sm:leading-6">{notification.message}</span>
                               ) : null}
-                              <span className="mt-2 inline-flex rounded-full bg-[color:rgb(var(--color-surface-rgb)/0.72)] px-2 py-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)]">
+                              <span className="mt-1.5 inline-flex rounded-full bg-[color:rgb(var(--color-surface-rgb)/0.72)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-text-secondary)] sm:mt-2 sm:px-2.5 sm:py-1 sm:text-[11px]">
                                 {meta.label}
                               </span>
                             </span>
@@ -251,13 +348,19 @@ const Header = ({ toggleSidebar }) => {
                 <button
                   type="button"
                   onClick={() => navigate(walletTargetPath)}
-                  className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-2 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 min-[380px]:h-10 sm:hidden"
+                  className="header-wallet-button inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-2 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 sm:hidden"
                   aria-label={language === 'ar' ? 'الرصيد' : 'Balance'}
                 >
-                  <span className="header-wallet-balance max-w-[58px] truncate text-[0.72rem] font-semibold text-white dark:text-[var(--color-text)] min-[380px]:max-w-[76px]">
+                  <span className={cn(
+                    'header-wallet-balance max-w-[46px] truncate text-[0.66rem] font-black text-[#0b172a] dark:text-[var(--color-text)] min-[380px]:max-w-[68px] min-[380px]:text-[0.72rem]',
+                    headerWalletBalanceToneClassName
+                  )}
+                    data-negative-wallet={negativeWalletDataAttribute}
+                    style={headerWalletBalanceStyle}
+                  >
                     {walletDisplayValue}
                   </span>
-                  <span className="inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
+                  <span className="header-wallet-icon inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
                     <Wallet className="h-3.5 w-3.5" />
                   </span>
                 </button>
@@ -265,15 +368,21 @@ const Header = ({ toggleSidebar }) => {
                 <button
                   type="button"
                   onClick={() => navigate(walletTargetPath)}
-                  className="hidden h-11 items-center gap-2.5 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-3.5 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 sm:inline-flex"
+                  className="header-wallet-button hidden h-11 items-center gap-2.5 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-3.5 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 sm:inline-flex"
                   aria-label={language === 'ar' ? 'المحفظة' : 'Wallet'}
                 >
                   <span className="min-w-0">
-                    <span className="header-wallet-balance block truncate text-base font-semibold text-white dark:text-[var(--color-text)]">
+                    <span className={cn(
+                      'header-wallet-balance block truncate text-base font-black text-[#0b172a] dark:text-[var(--color-text)]',
+                      headerWalletBalanceToneClassName
+                    )}
+                      data-negative-wallet={negativeWalletDataAttribute}
+                      style={headerWalletBalanceStyle}
+                    >
                       {walletDisplayValue}
                     </span>
                   </span>
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
+                  <span className="header-wallet-icon inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
                     <Wallet className="h-4 w-4" />
                   </span>
                 </button>
@@ -284,7 +393,7 @@ const Header = ({ toggleSidebar }) => {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="col-start-3 row-start-1 inline-flex h-9 w-9 shrink-0 items-center justify-center justify-self-end rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(3_8_22/0.9),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(255_255_255/0.035),0_0_26px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)] min-[380px]:h-10 min-[380px]:w-10 sm:h-10 sm:w-10"
+            className="col-start-3 row-start-1 inline-flex h-10 w-10 shrink-0 items-center justify-center justify-self-end rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(3_8_22/0.9),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(255_255_255/0.035),0_0_26px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
             aria-label={language === 'ar' ? 'فتح القائمة' : 'Open menu'}
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />

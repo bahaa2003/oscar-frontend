@@ -23,6 +23,7 @@ import { useToast } from '../../components/ui/Toast';
 import useAuthStore from '../../store/useAuthStore';
 import { formatDateTime, formatNumber } from '../../utils/intl';
 import { useLanguage } from '../../context/LanguageContext';
+import { negativeWalletBalanceClassName } from '../../utils/storefront';
 
 const defaultForm = {
   supplierName: '',
@@ -928,7 +929,7 @@ const AdminSuppliers = () => {
                   const status = deepData?.status ?? innerData?.status ?? raw?.status ?? '';
 
                   const cards = [
-                    { label: 'الرصيد الحالي', value: formattedBalance, highlight: true },
+                    { label: 'الرصيد الحالي', value: formattedBalance, highlight: true, isNegative: Number.isFinite(parsedBalance) && parsedBalance < 0 },
                     { label: 'العملة', value: currency },
                     { label: 'البريد الإلكتروني', value: email },
                     { label: 'معرف الحساب', value: userId },
@@ -949,9 +950,11 @@ const AdminSuppliers = () => {
                         >
                           <p className="text-[11px] font-semibold tracking-wide text-gray-500 dark:text-gray-400">{card.label}</p>
                           <p className={`mt-1.5 truncate font-bold ${
-                            card.highlight
-                              ? 'text-2xl text-emerald-700 dark:text-emerald-400'
-                              : 'text-sm text-gray-950 dark:text-white'
+                            card.isNegative
+                              ? negativeWalletBalanceClassName
+                              : card.highlight
+                                ? 'text-2xl text-emerald-700 dark:text-emerald-400'
+                                : 'text-sm text-gray-950 dark:text-white'
                           }`}>
                             {String(card.value)}
                           </p>

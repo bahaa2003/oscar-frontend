@@ -88,6 +88,7 @@ const TargetOrderDetailsModal = ({
   const status = normalizeTargetOrderStatus(order.status);
   const appName = order.appNameSnapshot || order.productName || order.app?.name || 'طلب تارجت';
   const accountId = order.senderId || order.transferFromId;
+  const agentAccountId = order.agentAccountId || order.app?.agentAccountId || '';
   const transferNumber = order.transferNumber || order.paymentAccount;
   const rejectionReason = order.rejectionReason || order.adminNotes || '';
 
@@ -136,6 +137,7 @@ const TargetOrderDetailsModal = ({
           <DetailItem icon={Coins} label="عدد الكوينز" value={formatNumber(order.coinAmount || order.quantity, 'en-US')} />
           <DetailItem icon={Coins} label="سعر الكوين" value={`${formatNumber(order.unitPriceSnapshot || order.unitPrice, 'en-US', { maximumFractionDigits: 2 })} EGP`} />
           <DetailItem icon={Hash} label="معرّف الحساب" value={accountId} copyable />
+          <DetailItem icon={Hash} label="أيدي حساب الوكيل" value={agentAccountId} copyable />
           <DetailItem icon={CreditCard} label="طريقة الدفع" value={order.paymentMethod || order.paymentMethodName} />
           <DetailItem icon={Copy} label="رقم التحويل" value={transferNumber} copyable />
           <DetailItem icon={CalendarClock} label="آخر تحديث" value={formatDateTime(order.updatedAt || order.reviewedAt || order.createdAt, 'en-US')} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const HeroSlider = ({ slides }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -15,14 +16,17 @@ const HeroSlider = ({ slides }) => {
 
     const timer = window.setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5200);
+    }, 6200);
 
     return () => window.clearInterval(timer);
   }, [hasMultipleSlides, slides]);
 
   if (!slides?.length) return null;
 
-  const slide = slides[currentSlide];
+  const safeCurrentSlide = currentSlide >= slides.length ? 0 : currentSlide;
+  const slide = slides[safeCurrentSlide];
+  const goToPrevious = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  const goToNext = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
   const SlideFrame = slide.href ? 'a' : 'div';
   const slideFrameProps = slide.href
     ? {
@@ -34,13 +38,14 @@ const HeroSlider = ({ slides }) => {
     : {};
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-1.5 sm:space-y-2">
-      <section className="relative overflow-hidden rounded-[1.35rem] border border-[color:rgb(var(--color-border-rgb)/0.64)] bg-[color:rgb(var(--color-card-rgb)/0.68)] shadow-[var(--shadow-subtle)] sm:rounded-[1.65rem]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.14),transparent_32%)]" />
-        <div className="relative aspect-[16/6] sm:aspect-[18/7]">
+    <div className="mx-auto w-full max-w-7xl space-y-1.5 px-0 sm:space-y-2 sm:px-2">
+      <section className="group relative overflow-hidden rounded-[1.1rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-card-rgb)/0.72)] shadow-[0_22px_70px_-42px_rgb(var(--color-primary-rgb)/0.82)] sm:rounded-[1.55rem]">
+        <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.08),transparent_22%,transparent_78%,rgba(255,255,255,0.08))]" />
+        <div className="pointer-events-none absolute inset-x-8 bottom-0 z-10 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--color-primary-rgb)/0.65),transparent)]" />
+        <div className="relative aspect-[3/1] min-h-[9.5rem] sm:min-h-[14rem] lg:min-h-[18rem]">
           <div
             key={slide.id}
-            className="absolute inset-0 animate-[fade-in_0.32s_ease-out] motion-reduce:animate-none"
+            className="absolute inset-0 animate-[fade-in_0.42s_ease-out] motion-reduce:animate-none"
           >
             <SlideFrame {...slideFrameProps} className="block h-full w-full">
               <img
@@ -54,6 +59,27 @@ const HeroSlider = ({ slides }) => {
               />
             </SlideFrame>
           </div>
+
+          {hasMultipleSlides ? (
+            <>
+              <button
+                type="button"
+                onClick={goToPrevious}
+                className="absolute left-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/26 text-white opacity-0 shadow-[0_16px_34px_-20px_rgb(0_0_0/0.85)] backdrop-blur-md transition-all hover:bg-black/38 group-hover:opacity-100 sm:flex"
+                aria-label={isArabic ? 'السلايد السابق' : 'Previous slide'}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={goToNext}
+                className="absolute right-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/26 text-white opacity-0 shadow-[0_16px_34px_-20px_rgb(0_0_0/0.85)] backdrop-blur-md transition-all hover:bg-black/38 group-hover:opacity-100 sm:flex"
+                aria-label={isArabic ? 'السلايد التالي' : 'Next slide'}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </>
+          ) : null}
         </div>
       </section>
 

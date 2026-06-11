@@ -4,8 +4,11 @@ import apiClient from '../services/client';
 const dataProvider = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase();
 const isRealProvider = dataProvider === 'real';
 const AUTH_STORAGE_KEY = 'auth-storage';
+const BACKOFFICE_ROLES = ['admin', 'supervisor', 'manager', 'moderator', 'super_admin', 'superuser'];
 
 const hasArabicText = (value) => /[\u0600-\u06FF]/.test(String(value || ''));
+const compactSpaces = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+const hasLatinText = (value) => /[a-z]/i.test(String(value || ''));
 
 const readStoredRole = () => {
   if (typeof window === 'undefined' || !window.localStorage) return '';
@@ -20,7 +23,220 @@ const readStoredRole = () => {
 
 const shouldForceArabicForBackoffice = () => {
   const role = readStoredRole();
-  return ['admin', 'supervisor', 'manager', 'moderator', 'super_admin'].includes(role);
+  return BACKOFFICE_ROLES.includes(role);
+};
+
+const firstText = (...values) => {
+  for (const value of values) {
+    const text = compactSpaces(value);
+    if (text) return text;
+  }
+  return '';
+};
+
+const formatAmount = (amount, currency = '') => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return '';
+  const formatted = numericAmount.toLocaleString('ar-EG', {
+    maximumFractionDigits: Number.isInteger(numericAmount) ? 0 : 2,
+  });
+  const currencyCode = compactSpaces(currency).toUpperCase();
+  return currencyCode ? `${formatted} ${currencyCode}` : formatted;
+};
+
+const extractFirstMatch = (text, patterns = []) => {
+  for (const pattern of patterns) {
+    const match = String(text || '').match(pattern);
+    if (match?.[1]) return compactSpaces(match[1].replace(/[.,،]$/, ''));
+  }
+  return '';
+};
+
+const getStatusArabic = (status, text = '') => {
+  const token = compactSpaces(status || text).toLowerCase();
+  if (/(approved|accepted|complete|completed|success|paid|تمت الموافقة|مقبول|اكتمل|نجاح)/i.test(token)) return 'مقبول';
+  if (/(reject|rejected|denied|failed|cancel|canceled|cancelled|مرفوض|فشل|ملغي)/i.test(token)) return 'مرفوض';
+  if (/(pending|review|waiting|قيد|مراجعة|انتظار)/i.test(token)) return 'قيد المراجعة';
+  if (/(update|updated|changed|تحديث|تعديل)/i.test(token)) return 'تم التحديث';
+  if (/(new|created|submitted|placed|جديد|إنشاء|ارسال|إرسال)/i.test(token)) return 'جديد';
+  if (/(delete|deleted|removed|حذف)/i.test(token)) return 'محذوف';
+  if (/(restore|restored|استرجاع)/i.test(token)) return 'مسترجع';
+  return '';
+};
+
+const getNotificationDomain = (item = {}, text = '') => {
+  const token = compactSpaces([
+    item.targetType,
+    item.entityType,
+    item.resourceType,
+    item.source,
+    item.context,
+    item.category,
+    text,
+  ].join(' ')).toLowerCase();
+
+  if (/(target|تارجت)/i.test(token)) return 'target';
+  if (/(topup|top-up|deposit|payment|wallet|balance|شحن|رصيد|محفظة|دفع)/i.test(token)) return 'topup';
+  if (/(order|manual|طلب يدوي|طلب)/i.test(token)) return 'order';
+  if (/(account|user|customer|supervisor|permission|quantity|credit|حساب|مستخدم|عميل|مشرف|صلاحية|كوتا|كمية|ائتمان)/i.test(token)) return 'user';
+  if (/(product|supplier|currency|group|منتج|مورد|عملة|مجموعة)/i.test(token)) return 'admin';
+  return 'admin';
+};
+
+const buildBackofficeArabicNotification = (item = {}, fallbackTitle = 'إشعار إداري', fallbackMessage = '') => {
+  const rawText = compactSpaces(`${item.title || ''} ${item.message || ''} ${item.description || ''}`);
+  const lowerText = rawText.toLowerCase();
+  const domain = getNotificationDomain(item, rawText);
+  const status = getStatusArabic(item.status || item.action || item.type, rawText);
+  const targetId = firstText(item.targetId, item.entityId, item.resourceId, item.orderId, item.topupId, item.depositId, item.userId);
+  const orderNumber = firstText(
+    item.orderNumber,
+    item.displayOrderId,
+    item.orderId,
+    extractFirstMatch(rawText, [
+      /order\s*#?\s*([a-z0-9_-]{3,})/i,
+      /طلب\s*#?\s*([a-z0-9_-]{3,})/i,
+      /#\s*([a-z0-9_-]{3,})/i,
+    ]),
+    domain === 'order' ? targetId : ''
+  );
+  const topupNumber = firstText(
+    item.topupId,
+    item.depositId,
+    extractFirstMatch(rawText, [
+      /(?:top[-\s]?up|deposit|payment)\s*#?\s*([a-z0-9_-]{3,})/i,
+      /(?:شحن|إيداع|دفع)\s*#?\s*([a-z0-9_-]{3,})/i,
+    ]),
+    domain === 'topup' ? targetId : ''
+  );
+  const customerName = firstText(
+    item.customerName,
+    item.userName,
+    item.name,
+    item.customer?.name,
+    item.user?.name,
+    extractFirstMatch(rawText, [
+      /(?:from|by)\s+([^#.،]+?)(?:\s+(?:for|on|طلب|للمنتج)|[.,،]|$)/i,
+      /(?:من|بواسطة)\s+([^#.،]+?)(?:\s+(?:للمنتج|على)|[.,،]|$)/i,
+    ])
+  );
+  const productName = firstText(
+    item.productNameAr,
+    item.productName,
+    item.productTitle,
+    item.product?.nameAr,
+    item.product?.name,
+    extractFirstMatch(rawText, [
+      /for\s+(.+?)(?:[.,،]|$)/i,
+      /للمنتج[:\s]+(.+?)(?:[.,،]|$)/i,
+    ])
+  );
+  const sectionName = firstText(item.sectionName, item.categoryName, item.categoryTitle, item.section, item.category);
+  const amount = formatAmount(
+    item.amount
+      ?? item.requestedAmount
+      ?? item.actualPaidAmount
+      ?? item.creditedCoins
+      ?? item.totalAmount
+      ?? item.priceCoins
+      ?? item.financialSnapshot?.finalAmountAtExecution
+      ?? item.financialSnapshot?.originalAmount,
+    item.currency
+      || item.currencyCode
+      || item.financialSnapshot?.originalCurrency
+      || item.financialSnapshot?.currency
+  );
+  const actorName = firstText(item.actorName, item.adminName, item.reviewerName, item.actor?.name);
+  const reason = firstText(item.reason, item.rejectionReason, item.adminNotes, item.adminNote);
+
+  if (domain === 'order') {
+    const isManual = /manual|يدوي/i.test(rawText) || item.manual || item.isManual;
+    const title = isManual
+      ? `طلب يدوي ${status === 'جديد' || !status ? 'جديد' : status}`
+      : `طلب ${status || 'جديد'}`;
+    const parts = [
+      orderNumber ? `رقم الطلب: ${orderNumber}` : 'يوجد طلب يحتاج المتابعة',
+      customerName ? `العميل: ${customerName}` : '',
+      productName ? `المنتج: ${productName}` : '',
+      amount ? `القيمة: ${amount}` : '',
+      sectionName ? `القسم: ${sectionName}` : '',
+      actorName ? `تمت العملية بواسطة: ${actorName}` : '',
+      reason ? `ملاحظة: ${reason}` : '',
+    ].filter(Boolean);
+    return { title, message: `${parts.join(' - ')}. راجع الطلب من لوحة الطلبات.` };
+  }
+
+  if (domain === 'topup') {
+    const title = status === 'مقبول'
+      ? 'تم اعتماد طلب شحن'
+      : status === 'مرفوض'
+        ? 'تم رفض طلب شحن'
+        : status === 'تم التحديث'
+          ? 'تم تعديل طلب شحن'
+          : 'طلب شحن جديد';
+    const parts = [
+      topupNumber ? `رقم الطلب: ${topupNumber}` : 'يوجد طلب شحن يحتاج المراجعة',
+      customerName ? `العميل: ${customerName}` : '',
+      amount ? `المبلغ: ${amount}` : '',
+      item.paymentMethodName || item.paymentMethod ? `طريقة الدفع: ${item.paymentMethodName || item.paymentMethod}` : '',
+      actorName ? `المراجع: ${actorName}` : '',
+      reason ? `ملاحظة: ${reason}` : '',
+    ].filter(Boolean);
+    return { title, message: `${parts.join(' - ')}. افتح صفحة المدفوعات لمراجعة التفاصيل.` };
+  }
+
+  if (domain === 'target') {
+    const title = status === 'مقبول'
+      ? 'تم اعتماد طلب تارجت'
+      : status === 'مرفوض'
+        ? 'تم رفض طلب تارجت'
+        : 'طلب تارجت جديد';
+    const parts = [
+      targetId ? `رقم الطلب: ${targetId}` : 'يوجد طلب تارجت يحتاج المتابعة',
+      customerName ? `العميل: ${customerName}` : '',
+      productName || item.appName ? `التطبيق: ${productName || item.appName}` : '',
+      amount ? `القيمة: ${amount}` : '',
+      reason ? `ملاحظة: ${reason}` : '',
+    ].filter(Boolean);
+    return { title, message: `${parts.join(' - ')}. راجعه من صفحة طلبات التارجت.` };
+  }
+
+  if (domain === 'user') {
+    let title = fallbackTitle;
+    if (/quantity/i.test(lowerText) || /كمية|كوتا/.test(rawText)) {
+      title = /reset/i.test(lowerText) ? 'تم تصفير استخدام الكوتا' : 'تم تعديل حد الكوتا';
+    } else if (/permission|صلاح/.test(lowerText)) {
+      title = 'تم تحديث صلاحيات مستخدم';
+    } else if (status === 'مقبول') {
+      title = 'تمت الموافقة على الحساب';
+    } else if (status === 'مرفوض') {
+      title = 'تم رفض الحساب';
+    } else if (status === 'محذوف') {
+      title = 'تم حذف مستخدم';
+    } else if (status === 'مسترجع') {
+      title = 'تم استرجاع مستخدم';
+    } else {
+      title = hasLatinText(title) ? 'تحديث بيانات مستخدم' : title;
+    }
+
+    const limitValue = firstText(item.quantityLimit, item.creditLimit, extractFirstMatch(rawText, [/to\s+([0-9,.]+)/i, /إلى\s+([0-9,.]+)/i]));
+    const parts = [
+      customerName || targetId ? `المستخدم: ${customerName || targetId}` : 'يوجد تحديث على حساب مستخدم',
+      limitValue ? `القيمة الجديدة: ${limitValue}` : '',
+      actorName ? `بواسطة: ${actorName}` : '',
+      reason ? `ملاحظة: ${reason}` : '',
+    ].filter(Boolean);
+    return { title, message: `${parts.join(' - ')}. راجع بيانات المستخدم من لوحة المستخدمين.` };
+  }
+
+  const cleanFallbackTitle = hasLatinText(fallbackTitle) ? 'إشعار إداري' : fallbackTitle;
+  const cleanFallbackMessage = hasLatinText(fallbackMessage)
+    ? 'يوجد تحديث إداري جديد يحتاج المتابعة. افتح الإشعار لمعرفة التفاصيل.'
+    : fallbackMessage;
+  return {
+    title: cleanFallbackTitle || 'إشعار إداري',
+    message: cleanFallbackMessage || 'يوجد إشعار إداري جديد يحتاج المتابعة.',
+  };
 };
 
 const normalizeEnglishNotificationText = (value, options = {}) => {
@@ -172,7 +388,7 @@ const normalizeEnglishNotificationText = (value, options = {}) => {
 
 const normalizeNotification = (item = {}) => {
   const sectionName = String(item.sectionName || item.categoryName || item.categoryTitle || item.section || '').trim();
-  const rawMessage = String(item.message || '').trim();
+  const rawMessage = String(item.message || item.description || '').trim();
   const normalizedMessage = normalizeEnglishNotificationText(rawMessage, {
     isTitle: false,
     forceArabic: shouldForceArabicForBackoffice(),
@@ -189,6 +405,29 @@ const normalizeNotification = (item = {}) => {
     normalizedTitle = sectionName
       ? `طلب يدوي جديد - قسم ${sectionName}`
       : 'طلب يدوي جديد';
+  }
+
+  const forceArabic = shouldForceArabicForBackoffice();
+  if (forceArabic) {
+    const detailed = buildBackofficeArabicNotification(item, normalizedTitle, normalizedMessage);
+    normalizedTitle = detailed.title || normalizedTitle;
+    return {
+      id: item.id || item._id || `notif-${Date.now()}`,
+      title: normalizedTitle,
+      message: detailed.message || normalizedMessage,
+      type: String(item.type || 'info').toLowerCase(),
+      createdAt: item.createdAt || new Date().toISOString(),
+      read: Boolean(item.read ?? item.isRead),
+      targetUrl: item.targetUrl || item.url || item.link || '',
+      targetType: item.targetType || item.entityType || item.resourceType || '',
+      targetId: item.targetId || item.entityId || item.resourceId || item.orderId || item.topupId || item.userId || '',
+      orderId: item.orderId || '',
+      topupId: item.topupId || item.depositId || '',
+      userId: item.userId || '',
+      source: item.source || '',
+      sectionName,
+      categoryName: String(item.categoryName || sectionName || '').trim(),
+    };
   }
 
   return {
@@ -219,6 +458,7 @@ const useNotificationStore = create((set, get) => ({
 
   addNotification: (payload) => {
     const next = normalizeNotification({
+      ...(payload || {}),
       id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       title: payload?.title || 'إشعار',
       message: payload?.message || '',
@@ -238,6 +478,7 @@ const useNotificationStore = create((set, get) => ({
 
     set((state) => ({
       notifications: [next, ...state.notifications].slice(0, 30),
+      unreadCount: Number(state.unreadCount || 0) + 1,
     }));
   },
 
@@ -297,7 +538,10 @@ const useNotificationStore = create((set, get) => ({
     }
   },
 
-  clearNotifications: () => set({ notifications: [] }),
+  clearNotifications: () => {
+    set({ notifications: [], unreadCount: 0 });
+    void apiClient.notifications?.clearAll?.().catch(() => {});
+  },
 }));
 
 export default useNotificationStore;

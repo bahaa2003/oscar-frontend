@@ -1,13 +1,15 @@
 import { create } from 'zustand';
 import apiClient from '../services/client';
 import { normalizeTargetOrderStatus } from '../utils/targetOrders';
+import { DEFAULT_TARGET_PAYMENT_METHOD_IDS } from '../utils/paymentSettings';
 
 const normalizeApp = (app = {}) => {
-  const allowedPaymentMethods = Array.isArray(app.allowedPaymentMethods)
+  const rawAllowedPaymentMethods = Array.isArray(app.allowedPaymentMethods)
     ? app.allowedPaymentMethods.map((item) => String(item || '').trim()).filter(Boolean)
     : Array.isArray(app.paymentMethodIds)
       ? app.paymentMethodIds.map((item) => String(item || '').trim()).filter(Boolean)
-      : [];
+      : DEFAULT_TARGET_PAYMENT_METHOD_IDS;
+  const allowedPaymentMethods = rawAllowedPaymentMethods.length ? rawAllowedPaymentMethods : DEFAULT_TARGET_PAYMENT_METHOD_IDS;
 
   return {
     ...app,
@@ -16,6 +18,7 @@ const normalizeApp = (app = {}) => {
     unitPrice: Number(app.unitPrice || 0),
     allowedPaymentMethods,
     paymentMethodIds: allowedPaymentMethods,
+    agentAccountId: String(app.agentAccountId || app.agentId || app.agentAccount || '').trim(),
     isActive: app.isActive !== false,
   };
 };
@@ -50,6 +53,7 @@ const normalizeOrder = (order = {}) => {
     paymentAccount: order.transferNumber || order.paymentAccount || '',
     senderId: order.senderId || order.transferFromId || '',
     transferFromId: order.senderId || order.transferFromId || '',
+    agentAccountId: String(order.agentAccountId || order.agentId || order.agentAccount || order.app?.agentAccountId || '').trim(),
     screenshotProof: order.screenshotProof || order.proofImage || '',
     proofImage: order.screenshotProof || order.proofImage || '',
     status: normalizeTargetOrderStatus(order.status),

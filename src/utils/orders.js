@@ -390,15 +390,26 @@ const parseOrderDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-export const formatOrderDuration = (createdAt, completedAt) => {
+const formatArabicDurationUnit = (value, forms) => {
+  if (value === 1) return forms.one;
+  if (value === 2) return forms.two;
+  return `${value} ${forms.many}`;
+};
+
+const formatEnglishDurationUnit = (value, singular) => `${value} ${singular}${value === 1 ? '' : 's'}`;
+
+export const formatOrderDuration = (createdAt, completedAt, language = 'ar') => {
   const started = parseOrderDate(createdAt);
   const completed = parseOrderDate(completedAt);
+  const isArabic = language !== 'en';
 
   if (!started || !completed) return '';
 
   const diffInSeconds = Math.floor((completed.getTime() - started.getTime()) / 1000);
   if (!Number.isFinite(diffInSeconds)) return '';
-  if (diffInSeconds <= 0) return 'مدة الطلب : لحظات';
+  if (diffInSeconds <= 0) {
+    return isArabic ? 'مدة تنفيذ الطلب: أقل من ثانية' : 'Fulfillment time: under 1 second';
+  }
 
   const hours = Math.floor(diffInSeconds / 3600);
   const minutes = Math.floor((diffInSeconds % 3600) / 60);
@@ -406,18 +417,24 @@ export const formatOrderDuration = (createdAt, completedAt) => {
   const parts = [];
 
   if (hours > 0) {
-    parts.push(`${hours} ساعة`);
+    parts.push(isArabic
+      ? formatArabicDurationUnit(hours, { one: 'ساعة واحدة', two: 'ساعتين', many: 'ساعات' })
+      : formatEnglishDurationUnit(hours, 'hour'));
   }
 
   if (minutes > 0) {
-    parts.push(`${minutes} دقيقة`);
+    parts.push(isArabic
+      ? formatArabicDurationUnit(minutes, { one: 'دقيقة واحدة', two: 'دقيقتين', many: 'دقائق' })
+      : formatEnglishDurationUnit(minutes, 'minute'));
   }
 
   if (seconds > 0) {
-    parts.push(`${seconds} ثانية`);
+    parts.push(isArabic
+      ? formatArabicDurationUnit(seconds, { one: 'ثانية واحدة', two: 'ثانيتين', many: 'ثواني' })
+      : formatEnglishDurationUnit(seconds, 'second'));
   }
 
-  return `مدة الطلب : ${parts.join(' و ')}`;
+  return isArabic ? `مدة تنفيذ الطلب: ${parts.join(' و ')}` : `Fulfillment time: ${parts.join(', ')}`;
 };
 
 export const isCompletedOrderStatus = (status) => {
@@ -785,8 +802,15 @@ export const enrichOrders = (orders, { users = [], products = [], language = 'ar
       manualStatusEditable: isManualStatusEditableOrder(hydratedOrder),
       rawStatusLabel: humanizeOrderToken(order?.status || ''),
       searchIndex: toLower([
+        order?.id,
+        order?._id,
+        order?.orderId,
+        order?.displayOrderId,
         siteOrderNumber,
         supplierOrderNumber,
+        order?.playerId,
+        order?.customerId,
+        order?.userId,
         productName,
         order?.productName,
         order?.productNameAr,
@@ -859,11 +883,22 @@ export const filterOrders = (orders, {
     });
 };
 
-export const summarizeOrders = (orders = []) => ({
-  total: orders.length,
-  completed: orders.filter((order) => order?.statusKey === 'completed').length,
-  processing: orders.filter((order) => order?.statusKey === 'processing').length,
-  incomplete: orders.filter((order) => order?.statusKey === 'incomplete').length,
-  manualPending: orders.filter((order) => order?.manualActionable).length,
-  manualReview: orders.filter((order) => toLower(order?.status) === 'manual_review').length,
-});
+export const summarizeOrders = (orders = []) => {
+  const completed = orders.filter((order) => order?.statusKey === 'completed').length;
+  const processing = orders.filter((order) => order?.statusKey === 'processing').length;
+  const incomplete = orders.filter((order) => order?.statusKey === 'incomplete').length;
+  const manualPending = orders.filter((order) => order?.manualActionable).length;
+  const manualReview = orders.filter((order) => toLower(order?.status) === 'manual_review').length;
+  
+  // احسب جميع الطلبات بناءً على البيانات الفعلية، بغض النظر عن الحالة
+  const total = orders.length;
+  
+  return {
+    total,
+    completed,
+    processing,
+    incomplete,
+    manualPending,
+    manualReview,
+  };
+};

@@ -20,6 +20,7 @@ const getOrderProduct = (order, isArabic) => (
 );
 
 const getOrderCustomer = (order) => order?.userName || order?.userId || '-';
+const getOrderStatus = (order) => order?.statusKey || order?.status || '';
 const getOrderQuantity = (order) => {
   const quantity = Number(order?.quantity ?? order?.qty ?? 1);
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
@@ -30,27 +31,43 @@ const isIncompleteOrder = (status) => {
   return normalizedStatus !== 'completed' && normalizedStatus !== 'success';
 };
 
+const isRejectedOrder = (status) => {
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  return ['rejected', 'failed', 'denied', 'cancelled', 'canceled', 'incomplete', 'refunded'].includes(normalizedStatus);
+};
+
+const isWaitingOrder = (status) => isIncompleteOrder(status) && !isRejectedOrder(status);
+
 const getOrderIndicatorClassName = (status) => {
   const normalizedStatus = String(status || '').trim().toLowerCase();
   if (normalizedStatus === 'completed' || normalizedStatus === 'success') {
     return 'bg-[var(--color-success)]';
   }
+  if (isRejectedOrder(status)) {
+    return 'bg-[var(--color-error)]';
+  }
 
   return 'bg-[var(--color-primary)]';
 };
 
-const getOrderQuantityBadgeClassName = (status) => (
-  isIncompleteOrder(status)
+const getOrderQuantityBadgeClassName = (status) => {
+  if (isRejectedOrder(status)) {
+    return 'bg-[color:rgb(var(--color-error-rgb)/0.14)] text-[var(--color-error)]';
+  }
+
+  return isIncompleteOrder(status)
     ? 'bg-[color:rgb(var(--color-warning-rgb)/0.14)] text-[var(--color-warning)]'
-    : 'bg-[color:rgb(var(--color-success-rgb)/0.14)] text-[var(--color-success)]'
-);
+    : 'bg-[color:rgb(var(--color-success-rgb)/0.14)] text-[var(--color-success)]';
+};
 
 const RecentOrdersSection = ({
   orders,
   isArabic,
   onViewOrder = null,
 }) => {
-  const incompleteOrdersCount = orders.filter((order) => isIncompleteOrder(order.status)).length;
+  const incompleteOrdersCount = orders.filter((order) => isIncompleteOrder(getOrderStatus(order))).length;
+  const rejectedOrdersCount = orders.filter((order) => isRejectedOrder(getOrderStatus(order))).length;
+  const waitingOrdersCount = orders.filter((order) => isWaitingOrder(getOrderStatus(order))).length;
   const completedOrdersCount = orders.length - incompleteOrdersCount;
 
   return (
@@ -80,11 +97,14 @@ const RecentOrdersSection = ({
           </p>
         </div>
         <div className={cn('flex items-center gap-1.5', isArabic ? 'flex-row-reverse' : 'flex-row')}>
+          <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-[color:rgb(var(--color-warning-rgb)/0.14)] px-2 py-1 text-[10px] font-semibold text-[var(--color-warning)] sm:text-[11px]">
+            {isArabic ? `قيد الانتظار ${waitingOrdersCount}` : `Pending ${waitingOrdersCount}`}
+          </span>
           <Badge
             variant="premium"
-            className="shrink-0 bg-[color:rgb(var(--color-warning-rgb)/0.14)] text-[10px] text-[var(--color-warning)] sm:text-[11px]"
+            className="shrink-0 bg-[color:rgb(var(--color-error-rgb)/0.14)] text-[10px] text-[var(--color-error)] sm:text-[11px]"
           >
-            {incompleteOrdersCount}
+            {rejectedOrdersCount}
           </Badge>
           <span className="inline-flex min-w-[1.8rem] items-center justify-center rounded-full bg-[color:rgb(var(--color-success-rgb)/0.14)] px-2 py-1 text-[10px] font-semibold text-[var(--color-success)] sm:text-[11px]">
             {completedOrdersCount}
@@ -106,10 +126,15 @@ const RecentOrdersSection = ({
             {orders.map((order) => (
               <article
                 key={order.id}
-                className="rounded-[var(--radius-lg)] border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[color:rgb(var(--color-card-rgb)/0.76)] px-2.5 py-2"
+                className={cn(
+                  'rounded-[var(--radius-lg)] border px-2.5 py-2',
+                  isRejectedOrder(getOrderStatus(order))
+                    ? 'border-[color:rgb(var(--color-error-rgb)/0.42)] bg-[color:rgb(var(--color-error-rgb)/0.08)]'
+                    : 'border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[color:rgb(var(--color-card-rgb)/0.76)]'
+                )}
               >
                 <div className={cn('flex items-start gap-2', isArabic && 'flex-row-reverse text-right')}>
-                  <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', getOrderIndicatorClassName(order.status))} />
+                  <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full', getOrderIndicatorClassName(getOrderStatus(order)))} />
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-semibold text-[var(--color-text)]">
@@ -122,13 +147,13 @@ const RecentOrdersSection = ({
                       {getOrderEmail(order, isArabic)}
                     </p>
                     <div className={cn('mt-1 flex', isArabic ? 'justify-end' : 'justify-start')}>
-                      <StatusBadge status={order.status} isArabic={isArabic} className="px-2 py-0.5 text-[10px]" />
+                      <StatusBadge status={getOrderStatus(order)} isArabic={isArabic} className="px-2 py-0.5 text-[10px]" />
                     </div>
                   </div>
 
                   <span className={cn(
                     'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                    getOrderQuantityBadgeClassName(order.status)
+                    getOrderQuantityBadgeClassName(getOrderStatus(order))
                   )}>
                     {isArabic ? `العدد ${getOrderQuantity(order)}` : `Qty ${getOrderQuantity(order)}`}
                   </span>

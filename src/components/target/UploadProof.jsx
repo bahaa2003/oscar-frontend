@@ -34,7 +34,7 @@ const UploadProof = ({ value, onChange, label = 'إثبات التحويل' }) =
           handleFile(event.dataTransfer.files?.[0]);
         }}
         className={cn(
-          'relative overflow-hidden rounded-2xl border border-dashed border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[#101010]/85 p-3 text-center shadow-[0_18px_52px_-42px_rgb(var(--color-primary-rgb)/0.42)] transition-all duration-300',
+          'relative overflow-hidden rounded-2xl border border-dashed border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[color:rgb(var(--color-surface-rgb)/0.72)] p-3 text-center shadow-[0_18px_52px_-42px_rgb(var(--color-primary-rgb)/0.42)] transition-all duration-300',
           isDragging && 'scale-[1.01] border-[color:rgb(var(--color-primary-rgb)/0.72)] bg-[color:rgb(var(--color-primary-rgb)/0.1)]'
         )}
       >

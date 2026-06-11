@@ -120,7 +120,7 @@ const useOrderStore = create((set, get) => ({
         }
       },
 
-      loadOrders: async (userId, { force = true } = {}) => {
+      loadOrders: async (userId, { force = true, bypassCache = false } = {}) => {
         const scope = userId ? `user:${userId}` : 'all';
 
         const { orders, ordersLastLoadedAt, ordersLastLoadedScope } = get();
@@ -131,7 +131,7 @@ const useOrderStore = create((set, get) => ({
         const hasFreshOrders = !shouldBypassHydratedCache && hasOrders && ordersLastLoadedScope === scope && cacheIsFresh;
 
         // Serve cached orders when still fresh (even if force=true).
-        if (hasFreshOrders) return orders;
+        if (!bypassCache && hasFreshOrders) return orders;
         if (!force && hasOrders) return orders;
 
         if (ordersRequest && ordersRequestScope === scope) {
@@ -140,9 +140,25 @@ const useOrderStore = create((set, get) => ({
 
         const requestId = ++ordersRequestId;
         ordersRequestScope = scope;
-        ordersRequest = apiClient.orders.list(userId)
+        ordersRequest = (async () => {
+          const maybeAll = await apiClient.orders.listAll(userId);
+          if (Array.isArray(maybeAll)) return maybeAll;
+          const fallback = await apiClient.orders.list(userId);
+          return Array.isArray(fallback) ? fallback : [];
+        })()
           .then((items) => {
-            const nextOrders = Array.isArray(items) ? items : (isRealProvider ? [] : mockOrders);
+            const rawOrders = Array.isArray(items) ? items : (isRealProvider ? [] : mockOrders);
+            const normalizedUserId = String(userId || '').trim();
+            const scopedOrders = normalizedUserId
+              ? rawOrders.filter((order) => {
+                const orderUserId = String(order?.userId || order?.customerId || order?.user?._id || order?.user?.id || '').trim();
+                return orderUserId ? orderUserId === normalizedUserId : true;
+              })
+              : rawOrders;
+
+            const nextOrders = [...scopedOrders].sort((left, right) => (
+              new Date(right?.createdAt || right?.date || right?.updatedAt || 0) - new Date(left?.createdAt || left?.date || left?.updatedAt || 0)
+            ));
 
             // Guard against stale responses when switching scopes quickly.
             if (requestId === ordersRequestId) {
@@ -288,6 +304,7 @@ const useOrderStore = create((set, get) => ({
             orders: [nextOrder, ...state.orders],
             ordersLastLoadedAt: Date.now(),
             ordersLastLoadedScope: state.ordersLastLoadedScope || `user:${nextOrder.userId}`,
+            adminOrders: [nextOrder, ...state.adminOrders],
           }));
 
           // Fire-and-forget: don't let a notification failure mask a successful order.
@@ -329,7 +346,9 @@ const useOrderStore = create((set, get) => ({
       },
 
       updateOrderStatus: async (id, status, orderContext = null) => {
-        const target = (get().orders || []).find((o) => o.id === id);
+        const normalizedId = String(id || '').trim();
+        const target = (get().orders || []).find((o) => String(o.id || o._id) === normalizedId)
+          || (get().adminOrders || []).find((o) => String(o.id || o._id) === normalizedId);
         const currentOrder = orderContext || target;
         if (!currentOrder) return;
 
@@ -345,7 +364,12 @@ const useOrderStore = create((set, get) => ({
         };
 
         const updated = await apiClient.orders.updateStatus(id, normalizedStatus, contextWithReason);
-        const nextOrder = updated || { ...currentOrder, status: normalizedStatus };
+        const nextOrder = {
+          ...currentOrder,
+          ...(updated || {}),
+          status: normalizeManualOrderStatus(updated?.status || normalizedStatus),
+          updatedAt: updated?.updatedAt || new Date().toISOString(),
+        };
         if (isAdminActor) {
           nextOrder.updatedBy = currentActor?.id || currentActor?._id || nextOrder.updatedBy || null;
           nextOrder.updatedByName = currentActor?.name || nextOrder.updatedByName || '';
@@ -355,17 +379,20 @@ const useOrderStore = create((set, get) => ({
           nextOrder.rejectedBy = normalizedStatus === 'rejected' ? (currentActor?.id || currentActor?._id || nextOrder.rejectedBy || null) : nextOrder.rejectedBy || null;
           nextOrder.reviewedAt = new Date().toISOString();
         }
+        const mergeOrderStatus = (order) => (
+          String(order?.id || order?._id) === normalizedId
+            ? {
+                ...order,
+                ...nextOrder,
+                status: nextOrder.status || normalizedStatus,
+                rejectionReason: nextOrder.rejectionReason || orderContext?.rejectionReason || order.rejectionReason || null,
+              }
+            : order
+        );
+
         set(state => ({
-          orders: state.orders.map((o) => (
-            o.id === id
-              ? {
-                  ...o,
-                  ...nextOrder,
-                  status: nextOrder.status || normalizedStatus,
-                  rejectionReason: nextOrder.rejectionReason || orderContext?.rejectionReason || o.rejectionReason || null,
-                }
-              : o
-          )),
+          orders: (state.orders || []).map(mergeOrderStatus),
+          adminOrders: (state.adminOrders || []).map(mergeOrderStatus),
           ordersLastLoadedAt: Date.now(),
         }));
 
@@ -373,10 +400,10 @@ const useOrderStore = create((set, get) => ({
           useAdminStore.getState().appendAdminActivity?.({
             action: `order_${normalizedStatus}`,
             title: normalizedStatus === 'completed' || normalizedStatus === 'approved' ? 'قبول طلب' : normalizedStatus === 'rejected' ? 'رفض طلب' : 'تحديث طلب',
-            description: `${currentActor?.name || actorRole || 'مشرف'} ${normalizedStatus === 'rejected' ? 'رفض' : 'قبل/حدّث'} الطلب ${target?.id || id}`,
+            description: `${currentActor?.name || actorRole || 'مشرف'} ${normalizedStatus === 'rejected' ? 'رفض' : 'قبل/حدّث'} الطلب ${currentOrder?.id || id}`,
             actor: currentActor,
             entityType: 'order',
-            entityId: target?.id || id,
+            entityId: currentOrder?.id || id,
             status: normalizedStatus,
             source: 'order_review',
           });
@@ -393,32 +420,32 @@ const useOrderStore = create((set, get) => ({
         if (normalizedStatus === 'completed') {
           useNotificationStore.getState().addNotification({
             title: 'قبول طلب',
-            message: `تم قبول الطلب ${target?.id || id}`,
+            message: `تم قبول الطلب ${currentOrder?.id || id}`,
             type: 'success',
             targetType: 'order',
-            targetId: target?.id || id,
-            orderId: target?.id || id,
-            targetUrl: `/orders?orderId=${encodeURIComponent(target?.id || id)}`,
+            targetId: currentOrder?.id || id,
+            orderId: currentOrder?.id || id,
+            targetUrl: `/orders?orderId=${encodeURIComponent(currentOrder?.id || id)}`,
           });
         } else if (normalizedStatus === 'rejected') {
           useNotificationStore.getState().addNotification({
             title: 'رفض طلب',
-            message: `تم رفض الطلب ${target?.id || id}`,
+            message: `تم رفض الطلب ${currentOrder?.id || id}`,
             type: 'warning',
             targetType: 'order',
-            targetId: target?.id || id,
-            orderId: target?.id || id,
-            targetUrl: `/orders?orderId=${encodeURIComponent(target?.id || id)}`,
+            targetId: currentOrder?.id || id,
+            orderId: currentOrder?.id || id,
+            targetUrl: `/orders?orderId=${encodeURIComponent(currentOrder?.id || id)}`,
           });
         } else {
           useNotificationStore.getState().addNotification({
             title: 'تحديث حالة الطلب',
-            message: `تم تحديث الطلب ${target?.id || id} إلى ${getManualOrderStatusLabel(normalizedStatus)}`,
+            message: `تم تحديث الطلب ${currentOrder?.id || id} إلى ${getManualOrderStatusLabel(normalizedStatus)}`,
             type: 'info',
             targetType: 'order',
-            targetId: target?.id || id,
-            orderId: target?.id || id,
-            targetUrl: `/orders?orderId=${encodeURIComponent(target?.id || id)}`,
+            targetId: currentOrder?.id || id,
+            orderId: currentOrder?.id || id,
+            targetUrl: `/orders?orderId=${encodeURIComponent(currentOrder?.id || id)}`,
           });
         }
 
@@ -430,6 +457,7 @@ const useOrderStore = create((set, get) => ({
         if (!synced) return null;
         set((state) => ({
           orders: (state.orders || []).map((o) => (o.id === id ? { ...o, ...synced } : o)),
+          adminOrders: (state.adminOrders || []).map((o) => (o.id === id ? { ...o, ...synced } : o)),
           ordersLastLoadedAt: Date.now(),
         }));
         return synced;

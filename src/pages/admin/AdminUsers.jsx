@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Filter,
   KeyRound,
   MailCheck,
   RotateCcw,
@@ -39,7 +40,7 @@ import {
 } from '../../utils/accountStatus';
 import { resolveUserAvatar } from '../../utils/avatar';
 
-const FILTER_OPTIONS = ['all', 'approved', 'rejected', 'deleted'];
+const FILTER_OPTIONS = ['all', 'approved', 'deleted'];
 
 const compactButtonClassName = 'h-7 rounded-[var(--radius-sm)] px-2 text-[10px]';
 const compactFieldClassName =
@@ -107,6 +108,15 @@ const getDetailsMetricTone = (value) => (
     : ''
 );
 
+const normalizeFilterValue = (value) => String(value || '').trim();
+const normalizeFilterKey = (value) => normalizeFilterValue(value).toLowerCase();
+
+const resolveSortableRegistrationDate = (entry) => {
+  const rawDate = getUserRegistrationDate(entry) || entry?.createdAt || entry?.updatedAt || entry?.approvedAt || entry?.deletedAt;
+  const timestamp = rawDate ? new Date(rawDate).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
 const AdminUsers = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -144,6 +154,11 @@ const AdminUsers = () => {
 
   const [filter, setFilter] = useState(initialFilter);
   const [search, setSearch] = useState('');
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const [sortMode, setSortMode] = useState('newest');
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [currencyFilter, setCurrencyFilter] = useState('all');
+  const [balanceFilter, setBalanceFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [approveTarget, setApproveTarget] = useState(null);
@@ -204,10 +219,6 @@ const AdminUsers = () => {
     () => customerUsers.filter((entry) => isApprovedAccountStatus(entry?.status)).length,
     [customerUsers]
   );
-  const rejectedCount = useMemo(
-    () => customerUsers.filter((entry) => isRejectedAccountStatus(entry?.status)).length,
-    [customerUsers]
-  );
   const deletedCustomerUsers = useMemo(
     () => (deletedUsers || []).filter((entry) => String(entry?.role || '').trim().toLowerCase() === 'customer'),
     [deletedUsers]
@@ -217,9 +228,37 @@ const AdminUsers = () => {
     [deletedCustomerUsers]
   );
 
+  const groupFilterOptions = useMemo(() => {
+    const values = new Map();
+    customerUsers.forEach((entry) => {
+      const raw = normalizeFilterValue(entry?.groupId || entry?.group);
+      if (!raw) return;
+      const matchedGroup = groups.find((group) => (
+        normalizeFilterValue(group.id) === raw
+        || normalizeFilterValue(group.name) === raw
+        || normalizeFilterValue(group.nameAr) === raw
+      ));
+      values.set(raw, matchedGroup?.name || matchedGroup?.nameAr || entry?.group || raw);
+    });
+    return Array.from(values.entries()).map(([value, label]) => ({ value, label }));
+  }, [customerUsers, groups]);
+
+  const currencyFilterOptions = useMemo(() => {
+    const values = new Map();
+    customerUsers.forEach((entry) => {
+      const raw = normalizeFilterValue(entry?.currency).toUpperCase();
+      if (!raw) return;
+      const matchedCurrency = currencies.find((currency) => normalizeFilterValue(currency.code).toUpperCase() === raw);
+      values.set(raw, matchedCurrency?.name ? `${raw} - ${matchedCurrency.name}` : raw);
+    });
+    return Array.from(values.entries()).map(([value, label]) => ({ value, label }));
+  }, [currencies, customerUsers]);
+
   const filteredUsers = useMemo(() => {
     const normalizedSearch = String(search || '').trim().toLowerCase();
     const sourceUsers = filter === 'deleted' ? deletedCustomerUsers : customerUsers;
+    const normalizedGroupFilter = normalizeFilterValue(groupFilter);
+    const normalizedCurrencyFilter = normalizeFilterKey(currencyFilter);
 
     return [...sourceUsers]
       .filter((entry) => {
@@ -237,13 +276,61 @@ const AdminUsers = () => {
           entry?.id,
         ].join(' ').toLowerCase();
         const matchesSearch = !normalizedSearch || haystack.includes(normalizedSearch);
-        return matchesFilter && matchesSearch;
+        if (!matchesFilter || !matchesSearch) return false;
+
+        if (normalizedGroupFilter !== 'all') {
+          const entryGroupValues = [
+            entry?.groupId,
+            entry?.group,
+          ].map(normalizeFilterValue);
+          if (!entryGroupValues.includes(normalizedGroupFilter)) return false;
+        }
+
+        if (normalizedCurrencyFilter !== 'all') {
+          const entryCurrency = normalizeFilterKey(entry?.currency);
+          if (entryCurrency !== normalizedCurrencyFilter) return false;
+        }
+
+        const balanceValue = getWalletBalanceValue(entry);
+        if (balanceFilter === 'positive' && balanceValue <= 0) return false;
+        if (balanceFilter === 'zero' && balanceValue !== 0) return false;
+        if (balanceFilter === 'negative' && balanceValue >= 0) return false;
+
+        return true;
       })
       .sort((left, right) => {
-        return Number(right?.walletBalance ?? right?.coins ?? right?.balance ?? 0)
-          - Number(left?.walletBalance ?? left?.coins ?? left?.balance ?? 0);
+        if (sortMode === 'oldest') {
+          return resolveSortableRegistrationDate(left) - resolveSortableRegistrationDate(right);
+        }
+
+        if (sortMode === 'balance_desc') {
+          return getWalletBalanceValue(right) - getWalletBalanceValue(left);
+        }
+
+        if (sortMode === 'balance_asc') {
+          return getWalletBalanceValue(left) - getWalletBalanceValue(right);
+        }
+
+        if (sortMode === 'name') {
+          return String(left?.name || left?.email || '').localeCompare(
+            String(right?.name || right?.email || ''),
+            isArabic ? 'ar' : 'en'
+          );
+        }
+
+        return resolveSortableRegistrationDate(right) - resolveSortableRegistrationDate(left);
       });
-  }, [customerUsers, deletedCustomerUsers, filter, search]);
+  }, [
+    balanceFilter,
+    currencyFilter,
+    customerUsers,
+    deletedCustomerUsers,
+    filter,
+    groupFilter,
+    isArabic,
+    search,
+    sortMode,
+  ]);
 
   const walletByUserId = useMemo(
     () => new Map((wallets || []).map((entry) => [String(entry?.userId || entry?.id || '').trim(), entry])),
@@ -319,6 +406,27 @@ const AdminUsers = () => {
     }
     setSearchParams({ status: value });
   };
+
+  const resetUserFilters = () => {
+    setSearch('');
+    setFilter('all');
+    setSortMode('newest');
+    setGroupFilter('all');
+    setCurrencyFilter('all');
+    setBalanceFilter('all');
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('status');
+    setSearchParams(nextParams);
+  };
+
+  const hasActiveUserFilters = Boolean(
+    String(search || '').trim()
+    || filter !== 'all'
+    || sortMode !== 'newest'
+    || groupFilter !== 'all'
+    || currencyFilter !== 'all'
+    || balanceFilter !== 'all'
+  );
 
   const syncSelectedUser = (updatedUser) => {
     if (selectedUser?.id && updatedUser?.id === selectedUser.id) {
@@ -487,13 +595,13 @@ const AdminUsers = () => {
   const handleSettingsQuantityLimitSave = async () => {
     if (!selectedUser) return;
     if (!canManageUsers) {
-      addToast('You do not have permission to manage users.', 'error');
+      addToast('ليس لديك صلاحية إدارة المستخدمين.', 'error');
       return;
     }
 
     const parsedValue = Number(settingsQuantityLimit);
     if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-      addToast('Quantity limit must be a valid number greater than or equal to zero.', 'error');
+      addToast('حد الكوتا يجب أن يكون رقمًا صالحًا أكبر من أو يساوي صفر.', 'error');
       return;
     }
 
@@ -503,17 +611,17 @@ const AdminUsers = () => {
       const updated = await updateQuantityLimit(selectedUser.id, normalizedValue, actor);
       syncSelectedUser(updated || { ...selectedUser, quantityLimit: normalizedValue });
       setSettingsQuantityLimit(String(normalizedValue));
-      addToast('Quantity limit updated successfully.', 'success');
+      addToast('تم تحديث حد الكوتا بنجاح.', 'success');
       await loadUsers({ force: true });
     } catch (error) {
-      addToast(error?.message || 'Unable to update quantity limit.', 'error');
+      addToast(error?.message || 'تعذر تحديث حد الكوتا.', 'error');
     }
   };
 
   const handleSettingsQuantityReset = async () => {
     if (!selectedUser) return;
     if (!canManageUsers) {
-      addToast('You do not have permission to manage users.', 'error');
+      addToast('ليس لديك صلاحية إدارة المستخدمين.', 'error');
       return;
     }
 
@@ -523,10 +631,10 @@ const AdminUsers = () => {
     try {
       const updated = await resetQuantity(selectedUser.id, actor);
       syncSelectedUser(updated || { ...selectedUser, quantityUsed: 0 });
-      addToast('Quantity usage reset successfully.', 'success');
+      addToast('تم تصفير استخدام الكوتا بنجاح.', 'success');
       await loadUsers({ force: true });
     } catch (error) {
-      addToast(error?.message || 'Unable to reset quantity usage.', 'error');
+      addToast(error?.message || 'تعذر تصفير استخدام الكوتا.', 'error');
     }
   };
 
@@ -735,16 +843,13 @@ const AdminUsers = () => {
             <Badge variant="success" className="h-6 rounded-md px-2 text-[10px]">
               مفعّلة {formatNumber(approvedCount, locale)}
             </Badge>
-            <Badge variant="danger" className="h-6 rounded-md px-2 text-[10px]">
-              مرفوضة {formatNumber(rejectedCount, locale)}
-            </Badge>
             <Badge variant="outline" className="h-6 rounded-md px-2 text-[10px]">
               محذوفة {formatNumber(deletedCount, locale)}
             </Badge>
           </div>
         </div>
 
-        <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_96px] xl:min-w-[22rem]">
+        <div className="grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_104px_132px_112px] xl:min-w-[38rem]">
           <Input
             placeholder={t('searchUsers')}
             value={search}
@@ -761,11 +866,79 @@ const AdminUsers = () => {
           >
             <option value="all">كل الحالات</option>
             <option value="approved">مفعّل</option>
-            <option value="rejected">مرفوض</option>
             <option value="deleted">محذوفة</option>
           </select>
+
+          <select
+            className={`border border-[color:rgb(var(--color-border-rgb)/0.95)] bg-[color:rgb(var(--color-surface-rgb)/0.88)] text-[var(--color-text)] outline-none transition focus:border-[color:rgb(var(--color-primary-rgb)/0.45)] ${compactFieldClassName}`}
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value)}
+          >
+            <option value="newest">أحدث الحسابات</option>
+            <option value="oldest">أقدم الحسابات</option>
+            <option value="balance_desc">أعلى رصيد</option>
+            <option value="balance_asc">أقل رصيد</option>
+            <option value="name">الاسم</option>
+          </select>
+
+          <Button
+            type="button"
+            variant={isAdvancedFiltersOpen ? 'secondary' : 'outline'}
+            className="h-8 rounded-full px-2.5 text-[10px]"
+            onClick={() => setIsAdvancedFiltersOpen((value) => !value)}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            فلترة كاملة
+          </Button>
         </div>
       </div>
+
+      {isAdvancedFiltersOpen && (
+        <div className="mt-2 grid gap-1.5 rounded-[var(--radius-md)] border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-surface-rgb)/0.54)] p-2 sm:grid-cols-2 lg:grid-cols-4">
+          <select
+            className={`border border-[color:rgb(var(--color-border-rgb)/0.95)] bg-[color:rgb(var(--color-card-rgb)/0.92)] text-[var(--color-text)] outline-none transition focus:border-[color:rgb(var(--color-primary-rgb)/0.45)] ${compactFieldClassName}`}
+            value={groupFilter}
+            onChange={(event) => setGroupFilter(event.target.value)}
+          >
+            <option value="all">كل المجموعات</option>
+            {groupFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+
+          <select
+            className={`border border-[color:rgb(var(--color-border-rgb)/0.95)] bg-[color:rgb(var(--color-card-rgb)/0.92)] text-[var(--color-text)] outline-none transition focus:border-[color:rgb(var(--color-primary-rgb)/0.45)] ${compactFieldClassName}`}
+            value={currencyFilter}
+            onChange={(event) => setCurrencyFilter(event.target.value)}
+          >
+            <option value="all">كل العملات</option>
+            {currencyFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+
+          <select
+            className={`border border-[color:rgb(var(--color-border-rgb)/0.95)] bg-[color:rgb(var(--color-card-rgb)/0.92)] text-[var(--color-text)] outline-none transition focus:border-[color:rgb(var(--color-primary-rgb)/0.45)] ${compactFieldClassName}`}
+            value={balanceFilter}
+            onChange={(event) => setBalanceFilter(event.target.value)}
+          >
+            <option value="all">كل الأرصدة</option>
+            <option value="positive">رصيد موجب</option>
+            <option value="zero">رصيد صفر</option>
+            <option value="negative">رصيد سالب</option>
+          </select>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-8 rounded-full px-2.5 text-[10px]"
+            onClick={resetUserFilters}
+            disabled={!hasActiveUserFilters}
+          >
+            مسح الفلاتر
+          </Button>
+        </div>
+      )}
       </section>
 
       <div className="space-y-2 md:hidden">
@@ -846,12 +1019,7 @@ const AdminUsers = () => {
             <TableRow>
               <TableHead className={compactTableHeadClassName}>المستخدم</TableHead>
               <TableHead className={compactTableHeadClassName}>الحالة</TableHead>
-              <TableHead className={compactTableHeadClassName}>
-                <span className="inline-flex items-center gap-1">
-                  الرصيد
-                  <span aria-hidden="true">↓</span>
-                </span>
-              </TableHead>
+              <TableHead className={compactTableHeadClassName}>الرصيد</TableHead>
               <TableHead className={`text-end ${compactTableHeadClassName}`}>الإجراءات</TableHead>
             </TableRow>
           </TableHeader>

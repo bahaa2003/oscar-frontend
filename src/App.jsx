@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import FloatingWhatsApp from './components/ui/FloatingWhatsApp';
+import LazyOscarAIAssistant from './components/ai-assistant/LazyOscarAIAssistant';
 import SessionBootstrap from './components/app/SessionBootstrap';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -28,7 +29,6 @@ const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const Orders = lazy(() => import('./pages/Orders'));
 const Products = lazy(() => import('./pages/Products'));
 const ProductDetails = lazy(() => import('./pages/ProductDetails'));
-const ProductPurchasePage = lazy(() => import('./pages/ProductPurchasePage'));
 const OrderDetailsPage = lazy(() => import('./pages/OrderDetailsPage'));
 const Wallet = lazy(() => import('./pages/Wallet'));
 const Settings = lazy(() => import('./pages/Settings'));
@@ -146,14 +146,6 @@ const AnimatedAppRoutes = () => {
           element={(
             <ProtectedRoute roles={['customer', 'admin', ...SUPERVISOR_ROLES]}>
               {renderSuspended(<ProductDetails />)}
-            </ProtectedRoute>
-          )}
-        />
-        <Route
-          path="/purchase/:productId"
-          element={(
-            <ProtectedRoute roles={['customer', 'admin', ...SUPERVISOR_ROLES]}>
-              {renderSuspended(<ProductPurchasePage />)}
             </ProtectedRoute>
           )}
         />
@@ -438,6 +430,19 @@ const AnimatedAppRoutes = () => {
   );
 };
 
+const FloatingSupportWidgets = () => {
+  const userRole = useAuthStore((state) => state.user?.role);
+  const normalizedRole = String(userRole || '').trim().toLowerCase();
+  const shouldShowAssistant = normalizedRole === 'customer' || isSupervisorRole(userRole);
+
+  return (
+    <>
+      {shouldShowAssistant ? <LazyOscarAIAssistant /> : null}
+      <FloatingWhatsApp />
+    </>
+  );
+};
+
 function App() {
   return (
     <ThemeProvider>
@@ -446,7 +451,7 @@ function App() {
           <SessionBootstrap />
           <BrowserRouter>
             <AnimatedAppRoutes />
-            <FloatingWhatsApp />
+            <FloatingSupportWidgets />
           </BrowserRouter>
         </ToastProvider>
       </LanguageProvider>

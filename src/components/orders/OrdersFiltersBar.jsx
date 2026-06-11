@@ -39,6 +39,7 @@ const FilterField = ({ label, value, onChange, options, compact = false }) => (
 );
 
 const OrdersFiltersBar = ({
+  children = null,
   isArabic,
   searchTerm,
   onSearchChange,
@@ -63,11 +64,12 @@ const OrdersFiltersBar = ({
   onApplyFilters = null,
   collapsible = false,
   defaultCollapsed = false,
+  titleText: titleTextOverride = '',
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const panelId = useId();
   const language = isArabic ? 'ar' : 'en';
-  const titleText = isArabic ? 'بحث وتصفية' : 'Search and filter';
+  const titleText = titleTextOverride || (isArabic ? 'بحث وتصفية' : 'Search and filter');
   const toggleText = isCollapsed
     ? (isArabic ? 'فتح الفلاتر' : 'Open filters')
     : (isArabic ? 'إخفاء الفلاتر' : 'Hide filters');
@@ -211,6 +213,25 @@ const OrdersFiltersBar = ({
               : 'Search by product, customer, email, or order number.')}
             </span>
           ) : null}
+          {onApplyFilters && !customRange ? (
+            <button
+              type="button"
+              onClick={() => onApplyFilters()}
+              className={cn(
+                'ms-auto inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-black transition-transform duration-150',
+                compact ? 'h-9 text-xs' : 'h-11',
+                'w-full sm:w-auto sm:min-w-[9rem]',
+                'bg-[linear-gradient(135deg,rgb(var(--color-primary-rgb)/0.22),rgb(168_85_247/0.14))]',
+                'text-[var(--color-primary)]',
+                'shadow-[0_0_28px_-12px_rgb(var(--color-primary-rgb)/0.75)]',
+                'border-[color:rgb(var(--color-primary-rgb)/0.28)]',
+                'hover:-translate-y-0.5'
+              )}
+            >
+              <Search className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+              <span>{isArabic ? 'بحث' : 'Search'}</span>
+            </button>
+          ) : null}
         </div>
 
         {customRange ? (
@@ -283,6 +304,14 @@ const OrdersFiltersBar = ({
                 <span>{isArabic ? 'بحث' : 'Search'}</span>
               </button>
             </div>
+          </div>
+        ) : null}
+        {children ? (
+          <div className={cn(
+            'border-t border-[color:rgb(var(--color-border-rgb)/0.68)]',
+            compact ? 'pt-2.5' : 'pt-3'
+          )}>
+            {children}
           </div>
         ) : null}
         </div>

@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input, { inputBaseClassName } from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
+import Modal from '../components/ui/Modal';
 import SaveChangesBar from '../components/account/SaveChangesBar';
 import useAuthStore from '../store/useAuthStore';
 import useAdminStore from '../store/useAdminStore';
@@ -66,6 +67,8 @@ const Account = () => {
             newPassword: 'New password',
             confirmPassword: 'Confirm new password',
             passwordHint: 'Use at least 8 characters including uppercase, lowercase, and a number.',
+            openPasswordModal: 'Change password',
+            savePassword: 'Save',
             saveLabel: 'Save changes',
             cancelLabel: 'Cancel',
             dirtyHint: 'You have unsaved changes.',
@@ -110,6 +113,8 @@ const Account = () => {
             newPassword: 'كلمة المرور الجديدة',
             confirmPassword: 'تأكيد كلمة المرور الجديدة',
             passwordHint: 'استخدم 8 أحرف على الأقل تتضمن حرفًا كبيرًا وصغيرًا ورقمًا.',
+            openPasswordModal: 'تغيير كلمة المرور',
+            savePassword: 'حفظ',
             saveLabel: 'حفظ التعديلات',
             cancelLabel: 'إلغاء',
             dirtyHint: 'لديك تغييرات غير محفوظة.',
@@ -140,6 +145,7 @@ const Account = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState({ type: 'idle', message: '' });
   const [errors, setErrors] = useState({});
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [savedProfile, setSavedProfile] = useState(() => getProfileFromUser(user));
   const [form, setForm] = useState(() => ({
@@ -177,6 +183,9 @@ const Account = () => {
     const target = sectionMap[location.hash];
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (location.hash === '#password') {
+        setIsPasswordModalOpen(true);
+      }
     }
   }, [location.hash]);
 
@@ -196,8 +205,7 @@ const Account = () => {
     form.email.trim().toLowerCase() !== savedProfile.email ||
     form.phone.trim() !== savedProfile.phone ||
     hasAvatarChanges;
-  const hasPasswordChanges = Boolean(passwordForm.current || passwordForm.next || passwordForm.confirm);
-  const isDirty = hasProfileChanges || hasPasswordChanges;
+  const isDirty = hasProfileChanges;
 
   const handleAvatarChange = (event) => {
     const file = event.target.files?.[0];
@@ -255,20 +263,6 @@ const Account = () => {
 
     if (phone && !phoneRegex.test(phone)) validationErrors.phone = text.validationPhone;
 
-    const wantsPasswordChange = Boolean(passwordForm.current || passwordForm.next || passwordForm.confirm);
-    if (wantsPasswordChange) {
-      if (!passwordForm.current) validationErrors.currentPassword = text.validationCurrentPassword;
-      if (!passwordForm.next) validationErrors.nextPassword = text.validationRequired;
-      else if (passwordForm.next.length < 8) validationErrors.nextPassword = text.validationPasswordLength;
-      else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordForm.next)) {
-        validationErrors.nextPassword = text.validationPasswordPattern;
-      }
-
-      if (passwordForm.confirm !== passwordForm.next) {
-        validationErrors.confirmPassword = text.validationPasswordMatch;
-      }
-    }
-
     return validationErrors;
   };
 
@@ -286,6 +280,35 @@ const Account = () => {
     }
 
     return validationErrors;
+  };
+
+  const validatePasswordForm = () => {
+    const validationErrors = {};
+
+    if (!passwordForm.current) validationErrors.currentPassword = text.validationCurrentPassword;
+    if (!passwordForm.next) validationErrors.nextPassword = text.validationRequired;
+    else if (passwordForm.next.length < 8) validationErrors.nextPassword = text.validationPasswordLength;
+    else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordForm.next)) {
+      validationErrors.nextPassword = text.validationPasswordPattern;
+    }
+
+    if (passwordForm.confirm !== passwordForm.next) {
+      validationErrors.confirmPassword = text.validationPasswordMatch;
+    }
+
+    return validationErrors;
+  };
+
+  const closePasswordModal = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordForm({ current: '', next: '', confirm: '' });
+    setShowPassword({ current: false, next: false, confirm: false });
+    setErrors((prev) => ({
+      ...prev,
+      currentPassword: '',
+      nextPassword: '',
+      confirmPassword: '',
+    }));
   };
 
   const handleSavePersonalInfo = async () => {
@@ -347,6 +370,46 @@ const Account = () => {
     }
   };
 
+  const handleSavePassword = async () => {
+    if (!user?.id) return;
+
+    const validationErrors = validatePasswordForm();
+    setErrors((prev) => ({
+      ...prev,
+      currentPassword: validationErrors.currentPassword || '',
+      nextPassword: validationErrors.nextPassword || '',
+      confirmPassword: validationErrors.confirmPassword || '',
+    }));
+
+    if (Object.keys(validationErrors).length > 0) {
+      addToast(text.saveError, 'error');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveState({ type: 'saving', message: '' });
+
+    try {
+      await updateUserProfile(user.id, {
+        name: savedProfile.fullName || form.fullName.trim(),
+        email: savedProfile.email || form.email.trim().toLowerCase(),
+        username: savedProfile.username || form.username.trim(),
+        phone: savedProfile.phone || form.phone.trim(),
+        password: passwordForm.next,
+      }, user);
+
+      closePasswordModal();
+      setSaveState({ type: 'success', message: text.saveSuccess });
+      addToast(text.saveSuccess, 'success');
+    } catch (error) {
+      const message = getReadableErrorMessage(error, text.saveError, { language });
+      setSaveState({ type: 'error', message });
+      addToast(message, 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!user?.id) return;
 
@@ -376,10 +439,6 @@ const Account = () => {
         username: trimmedProfile.username,
         phone: trimmedProfile.phone
       };
-
-      if (passwordForm.next) {
-        profilePayload.password = passwordForm.next;
-      }
 
       if (hasAvatarChanges) {
         // Send File object for upload, or null for removal
@@ -599,50 +658,77 @@ const Account = () => {
 
       <motion.section ref={passwordSectionRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.68)] bg-[color:rgb(var(--color-card-rgb)/0.9)] p-3 sm:p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
-            <KeyRound className="h-4 w-4 text-[var(--color-primary)]" />
-            {text.passwordCard}
-          </h2>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {[
-              { key: 'current', label: text.currentPassword, error: errors.currentPassword },
-              { key: 'next', label: text.newPassword, error: errors.nextPassword },
-              { key: 'confirm', label: text.confirmPassword, error: errors.confirmPassword }
-            ].map((item) => (
-              <div key={item.key}>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">{item.label}</label>
-                <div className="relative">
-                  <input
-                    type={showPassword[item.key] ? 'text' : 'password'}
-                    value={passwordForm[item.key]}
-                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, [item.key]: event.target.value }))}
-                    className={`${inputBaseClassName} pl-10 ${
-                      item.error
-                        ? 'border-[color:rgb(var(--color-error-rgb)/0.85)] focus:border-[color:rgb(var(--color-error-rgb)/0.8)] focus:ring-[color:rgb(var(--color-error-rgb)/0.16)]'
-                        : ''
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPassword((prev) => ({
-                        ...prev,
-                        [item.key]: !prev[item.key]
-                      }))
-                    }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                  >
-                    {showPassword[item.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {item.error ? <p className="mt-1 text-xs text-rose-600 dark:text-rose-300">{item.error}</p> : null}
-              </div>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
+                <KeyRound className="h-4 w-4 text-[var(--color-primary)]" />
+                {text.passwordCard}
+              </h2>
+              <p className="mt-1 text-[11px] text-[var(--color-muted)]">{text.passwordHint}</p>
+            </div>
+            <Button type="button" size="sm" onClick={() => setIsPasswordModalOpen(true)} className="w-full sm:w-auto">
+              {text.openPasswordModal}
+            </Button>
           </div>
-          <p className="mt-2.5 text-[11px] text-[var(--color-muted)]">{text.passwordHint}</p>
         </Card>
       </motion.section>
+
+      <Modal
+        isOpen={isPasswordModalOpen}
+        onClose={closePasswordModal}
+        title={text.passwordCard}
+        size="md"
+        placement="center"
+        footer={(
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={closePasswordModal} disabled={isSaving}>
+              {text.cancelLabel}
+            </Button>
+            <Button type="button" onClick={handleSavePassword} disabled={isSaving}>
+              {isSaving ? (isEnglish ? 'Saving...' : 'جاري الحفظ...') : text.savePassword}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="space-y-3">
+          {[
+            { key: 'current', label: text.currentPassword, error: errors.currentPassword },
+            { key: 'next', label: text.newPassword, error: errors.nextPassword },
+            { key: 'confirm', label: text.confirmPassword, error: errors.confirmPassword }
+          ].map((item) => (
+            <div key={item.key}>
+              <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">{item.label}</label>
+              <div className="relative">
+                <input
+                  type={showPassword[item.key] ? 'text' : 'password'}
+                  value={passwordForm[item.key]}
+                  onChange={(event) => setPasswordForm((prev) => ({ ...prev, [item.key]: event.target.value }))}
+                  className={`${inputBaseClassName} pl-10 ${
+                    item.error
+                      ? 'border-[color:rgb(var(--color-error-rgb)/0.85)] focus:border-[color:rgb(var(--color-error-rgb)/0.8)] focus:ring-[color:rgb(var(--color-error-rgb)/0.16)]'
+                      : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword((prev) => ({
+                      ...prev,
+                      [item.key]: !prev[item.key]
+                    }))
+                  }
+                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                  aria-label={isEnglish ? 'Toggle password visibility' : 'إظهار أو إخفاء كلمة المرور'}
+                >
+                  {showPassword[item.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {item.error ? <p className="mt-1 text-xs text-rose-600 dark:text-rose-300">{item.error}</p> : null}
+            </div>
+          ))}
+          <p className="text-[11px] leading-5 text-[var(--color-muted)]">{text.passwordHint}</p>
+        </div>
+      </Modal>
 
       <SaveChangesBar
         isDirty={isDirty}

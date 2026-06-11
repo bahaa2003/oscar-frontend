@@ -116,6 +116,8 @@ const mergeSavedProductSnapshot = (baseProduct = {}, apiProduct = {}) => ({
   supplierId: pickDefinedProductValue(apiProduct.supplierId ?? apiProduct.providerId, baseProduct.supplierId || baseProduct.providerId || ''),
   providerProductId: pickDefinedProductValue(apiProduct.providerProductId ?? apiProduct.externalProductId, baseProduct.providerProductId || baseProduct.externalProductId || ''),
   externalProductId: pickDefinedProductValue(apiProduct.externalProductId ?? apiProduct.providerProductId, baseProduct.externalProductId || baseProduct.providerProductId || ''),
+  product_id: pickDefinedProductValue(apiProduct.product_id ?? apiProduct.productId, baseProduct.product_id || baseProduct.productId || ''),
+  productId: pickDefinedProductValue(apiProduct.productId ?? apiProduct.product_id, baseProduct.productId || baseProduct.product_id || ''),
   externalProductName: pickDefinedProductValue(apiProduct.externalProductName, baseProduct.externalProductName || ''),
   externalPricingMode: pickDefinedProductValue(apiProduct.externalPricingMode, baseProduct.externalPricingMode || 'use_local_price'),
   supplierMarginType: pickDefinedProductValue(apiProduct.supplierMarginType, baseProduct.supplierMarginType || 'fixed'),
@@ -177,10 +179,19 @@ const normalizeProductRecord = (product = {}, categories = mockCategories) => {
     || product.externalProductId
     || ''
   ).trim();
+  const providerCatalogProductId = String(
+    product.product_id
+    || product.productId
+    || product.providerProduct?.product_id
+    || product.providerProduct?.productId
+    || product.providerProduct?.rawPayload?.product_id
+    || ''
+  ).trim();
   const externalProductId = String(
     product.externalProductId
     || product.providerProductId
     || product.providerProduct
+    || providerCatalogProductId
     || ''
   ).trim();
   const manualPriceAdjustment = product.manualPriceAdjustment ?? '';
@@ -245,6 +256,8 @@ const normalizeProductRecord = (product = {}, categories = mockCategories) => {
     providerProductId,
     supplierId: providerId,
     externalProductId,
+    product_id: providerCatalogProductId,
+    productId: providerCatalogProductId,
     externalProductName: product.externalProductName || '',
     autoFulfillmentEnabled: product.autoFulfillmentEnabled !== false,
     fallbackSupplierId: product.fallbackSupplierId || '',

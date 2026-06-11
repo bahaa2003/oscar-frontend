@@ -30,10 +30,13 @@ const toFinitePrice = (value) => {
  * For products where the server already sends a marked-up finalPrice
  * (which it does for API users), we return that directly as a string.
  */
-export const calculateProductPrice = (product, userGroup = 'Normal', userGroupPercentage = null) => {
+export const calculateProductPrice = (product, userGroup = 'Normal', userGroupPercentage = null, options = {}) => {
+  const preferLocalGroupPrice = Boolean(options?.preferLocalGroupPrice);
+
   // Prefer server-computed finalPrice (already marked up with full precision)
   const serverFinalPrice = product?.finalPrice ?? product?.markedUpPriceUSD;
-  if (serverFinalPrice != null && String(serverFinalPrice) !== '0' && String(serverFinalPrice) !== '') {
+  const hasServerFinalPrice = serverFinalPrice != null && String(serverFinalPrice) !== '0' && String(serverFinalPrice) !== '';
+  if (!preferLocalGroupPrice && hasServerFinalPrice) {
     return toRawPriceString(serverFinalPrice);
   }
 
@@ -46,6 +49,9 @@ export const calculateProductPrice = (product, userGroup = 'Normal', userGroupPe
   }
 
   if (!Number.isFinite(basePrice) || basePrice <= 0) {
+    if (hasServerFinalPrice) {
+      return toRawPriceString(serverFinalPrice);
+    }
     return '0';
   }
 
@@ -83,13 +89,14 @@ export const resolveProductUnitPrice = (
   currencyCode = 'USD',
   currencies = [],
   userGroup = 'Normal',
-  userGroupPercentage = null
+  userGroupPercentage = null,
+  options = {}
 ) => {
   const directDisplayPrice = toFinitePrice(product?.displayPrice);
   const normalizedCurrencyCode = String(currencyCode || 'USD').toUpperCase();
 
   // If product has a server-computed finalPrice, return it as raw string
-  const unitPriceStr = calculateProductPrice(product, userGroup, userGroupPercentage);
+  const unitPriceStr = calculateProductPrice(product, userGroup, userGroupPercentage, options);
 
   // For currency conversion (only for non-USD users), we need Number
   if (normalizedCurrencyCode !== 'USD' && currencies.length > 0) {

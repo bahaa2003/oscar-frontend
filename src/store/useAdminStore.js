@@ -452,7 +452,7 @@ const useAdminStore = create((set, get) => ({
         }
       },
 
-      getUserWalletTransactions: async (userId, { force = false } = {}) => {
+      getUserWalletTransactions: async (userId, { force = false, all = true } = {}) => {
         const normalizedUserId = String(userId || '').trim();
         if (!normalizedUserId) return [];
 
@@ -470,7 +470,11 @@ const useAdminStore = create((set, get) => ({
           return walletTransactionsRequests.get(normalizedUserId);
         }
 
-        const request = Promise.resolve(apiClient.adminWallets?.getTransactionsByUserId?.(normalizedUserId) || [])
+        const request = Promise.resolve(apiClient.adminWallets?.getTransactionsByUserId?.(normalizedUserId, {
+          all,
+          limit: 100,
+          maxPages: 100,
+        }) || [])
           .then((items) => {
             const nextItems = Array.isArray(items) ? items : [];
 
@@ -898,8 +902,8 @@ const useAdminStore = create((set, get) => ({
 
         get().appendAdminActivity({
           action: 'user_quantity_limit_updated',
-          title: 'Quantity limit updated',
-          description: `Updated quantity limit for user ${userId} to ${normalizedQuantityLimit}`,
+          title: 'تم تعديل حد الكوتا',
+          description: `تم تعديل حد الكوتا للمستخدم ${userId} إلى ${normalizedQuantityLimit}`,
           actor,
           entityType: 'user',
           entityId: userId,
@@ -941,8 +945,8 @@ const useAdminStore = create((set, get) => ({
 
         get().appendAdminActivity({
           action: 'user_quantity_reset',
-          title: 'Quantity usage reset',
-          description: `Reset quantity usage for user ${userId}`,
+          title: 'تم تصفير استخدام الكوتا',
+          description: `تم تصفير الكمية المستخدمة للمستخدم ${userId}`,
           actor,
           entityType: 'user',
           entityId: userId,

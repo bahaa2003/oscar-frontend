@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Building2,
+  ChevronDown,
   ChevronLeft,
   Check,
   Coins,
@@ -16,15 +17,14 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
-  Sparkles,
   Target,
   User,
   UserCog,
   Users,
-  Wallet
+  Wallet,
+  X
 } from 'lucide-react';
 import ConfirmDialog from '../account/ConfirmDialog';
-import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import { cn } from '../ui/Button';
@@ -37,6 +37,14 @@ import { PERMISSIONS, hasPermission } from '../../utils/permissions';
 import { resolveUserAvatar } from '../../utils/avatar';
 
 const ADMIN_NAV_ROLES = ['admin', 'super_admin', ...SUPERVISOR_ROLES];
+
+const getSidebarSectionKey = (item = {}) => (
+  String(item?.path || '').startsWith('/admin') ? 'management' : 'account'
+);
+
+const isRouteActive = (pathname = '', path = '') => (
+  Boolean(path) && (pathname === path || pathname.startsWith(`${path}/`))
+);
 
 const copyToClipboard = async (value) => {
   const text = String(value || '').trim();
@@ -70,15 +78,33 @@ const copyToClipboard = async (value) => {
 
 const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
+  const [openNavSections, setOpenNavSections] = useState({
+    account: false,
+    management: false,
+  });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState(false);
   const { user, logout } = useAuthStore();
+  const location = useLocation();
   const navigate = useNavigate();
   const { dir } = useLanguage();
   const { t } = useTranslation();
 
-  const isExpanded = isOpen || isMobile || isPreviewExpanded;
+  const isPinnedExpanded = isOpen;
+  const isPreviewMode = !isMobile && !isOpen && isPreviewExpanded;
+  const isExpanded = isPinnedExpanded || isPreviewMode;
+  const showExpandedContent = isPinnedExpanded;
   const userId = String(user?.id || user?._id || user?.userId || '').trim();
+  const sidebarWidth = isMobile ? 'min(72vw, 270px)' : isExpanded ? '270px' : '74px';
+  const sidebarTransform = isMobile && !isOpen
+    ? `translate3d(${dir === 'rtl' ? 'calc(100% + 2rem)' : 'calc(-100% - 2rem)'}, 0, 0)`
+    : 'translate3d(0, 0, 0)';
+
+  useEffect(() => {
+    if (isOpen || isMobile) {
+      setIsPreviewExpanded(false);
+    }
+  }, [isMobile, isOpen]);
 
   useEffect(() => {
     if (!copiedUserId) return undefined;
@@ -86,31 +112,41 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
     return () => window.clearTimeout(timer);
   }, [copiedUserId]);
 
-  const closeSidebarOnMobile = () => {
+  useEffect(() => {
+    const activeSectionKey = getSidebarSectionKey({ path: location.pathname });
+
+    setOpenNavSections((current) => (
+      current[activeSectionKey]
+        ? current
+        : { ...current, [activeSectionKey]: true }
+    ));
+  }, [location.pathname]);
+
+  const closeSidebarOnMobile = useCallback(() => {
     if (isMobile) {
       setIsOpen(false);
     }
-  };
+  }, [isMobile, setIsOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     closeSidebarOnMobile();
     logout();
     navigate('/auth');
-  };
+  }, [closeSidebarOnMobile, logout, navigate]);
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true);
   };
 
-  const confirmLogout = async () => {
+  const confirmLogout = useCallback(async () => {
     setShowLogoutConfirm(false);
     await handleLogout();
-  };
+  }, [handleLogout]);
 
-  const handleOpenMyAccount = () => {
+  const handleOpenMyAccount = useCallback(() => {
     closeSidebarOnMobile();
     navigate('/account');
-  };
+  }, [closeSidebarOnMobile, navigate]);
 
   const handleCopyUserId = async () => {
     if (!userId) return;
@@ -123,17 +159,42 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
     setCopiedUserId(false);
   };
 
-  const handleContactClick = () => {
+  const handleContactClick = useCallback(() => {
     navigate('/contact-us');
     closeSidebarOnMobile();
-  };
+  }, [closeSidebarOnMobile, navigate]);
 
-  const navItems = [
+  const handlePreviewEnter = useCallback(() => {
+    if (!isMobile && !isOpen) {
+      setIsPreviewExpanded(true);
+    }
+  }, [isMobile, isOpen]);
+
+  const handlePreviewLeave = useCallback(() => {
+    if (!isMobile) {
+      setIsPreviewExpanded(false);
+    }
+  }, [isMobile]);
+
+  const toggleNavSection = useCallback((sectionKey) => {
+    setOpenNavSections((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey],
+    }));
+  }, []);
+
+  const navItems = useMemo(() => [
     {
       icon: Home,
       label: t('header.home', { defaultValue: dir === 'rtl' ? 'الرئيسية' : 'Home' }),
       path: '/dashboard',
       roles: ['customer', 'admin', ...SUPERVISOR_ROLES]
+    },
+    {
+      icon: LayoutDashboard,
+      label: t('sidebar.adminDashboard', { defaultValue: dir === 'rtl' ? 'لوحة تحكم الأدمن' : 'Admin Dashboard' }),
+      path: '/admin/dashboard',
+      roles: ['admin', 'super_admin'],
     },
     {
       icon: Wallet,
@@ -142,20 +203,14 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
       roles: ADMIN_NAV_ROLES,
       permission: PERMISSIONS.ADMIN_WALLET,
     },
-    {
-      icon: LayoutDashboard,
-      label: t('sidebar.adminDashboard', { defaultValue: dir === 'rtl' ? 'لوحة تحكم الأدمن' : 'Admin Dashboard' }),
-      path: '/admin/dashboard',
-      roles: ['admin', 'super_admin'],
-    },
     { icon: User, label: t('sidebar.myAccount', { defaultValue: dir === 'rtl' ? 'حسابي' : 'My Account' }), path: '/account', roles: ['admin', 'customer', ...SUPERVISOR_ROLES] },
     { icon: ShieldCheck, label: t('sidebar.accountProtection', { defaultValue: dir === 'rtl' ? 'حماية الحساب' : 'Account Security' }), path: '/account-security', roles: ['admin', 'customer', ...SUPERVISOR_ROLES] },
     { icon: Wallet, label: t('sidebar.wallet'), path: '/wallet', roles: ['customer'] },
     {
       icon: ShoppingBag,
-      label: t('header.orders', { defaultValue: dir === 'rtl' ? 'طلباتي' : 'My Orders' }),
+      label: t('sidebar.myOrders', { defaultValue: dir === 'rtl' ? 'طلباتي' : 'My Orders' }),
       path: '/orders',
-      roles: ['customer']
+      roles: ['customer', 'admin']
     },
     { icon: Target, label: 'بيع التارجت', path: '/buy-target', roles: ['customer'] },
     { icon: Users, label: t('sidebar.users'), path: '/admin/users', roles: ADMIN_NAV_ROLES, permission: PERMISSIONS.ADMIN_USERS },
@@ -184,18 +239,86 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
       onClick: handleContactClick,
     },
     { icon: Settings, label: t('sidebar.settings'), path: '/settings', roles: ['admin', 'customer', ...SUPERVISOR_ROLES] }
-  ];
+  ], [dir, handleContactClick, t]);
 
-  const filteredNavItems = navItems.filter((item) => (
+  const filteredNavItems = useMemo(() => navItems.filter((item) => (
     hasRequiredRole(user?.role || 'customer', item.roles) && hasPermission(user, item.permission)
-  ));
-  const showWalletCard = String(user?.role || '').toLowerCase() === 'customer' && isExpanded;
+  )), [navItems, user]);
+  const navSections = useMemo(() => {
+    const sections = [
+      {
+        key: 'account',
+        label: t('sidebar.accountSection', { defaultValue: dir === 'rtl' ? 'الحساب' : 'Account' }),
+        icon: User,
+        items: [],
+      },
+      {
+        key: 'management',
+        label: t('sidebar.managementSection', { defaultValue: dir === 'rtl' ? 'الإدارة' : 'Management' }),
+        icon: MonitorCog,
+        items: [],
+      },
+    ];
+    const sectionMap = new Map(sections.map((section) => [section.key, section]));
+
+    filteredNavItems.forEach((item) => {
+      const sectionKey = getSidebarSectionKey(item);
+      const targetSection = sectionMap.get(sectionKey) || sectionMap.get('account');
+      targetSection.items.push(item);
+    });
+
+    return sections.filter((section) => section.items.length > 0);
+  }, [dir, filteredNavItems, t]);
+  const showWalletCard = String(user?.role || '').toLowerCase() === 'customer' && showExpandedContent;
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
   const userDisplayName = user?.name || user?.email || (dir === 'rtl' ? 'حسابي' : 'My Account');
   const userAvatar = resolveUserAvatar(user, userDisplayName);
   const userRoleLabel = isAdmin
     ? (dir === 'rtl' ? 'مدير المنصة' : 'Platform Admin')
     : (dir === 'rtl' ? 'عضو المتجر' : 'Store Member');
+
+  const renderNavItem = (item) => (
+    item.isExternal ? (
+      <button
+        key={item.path}
+        type="button"
+        onClick={item.onClick}
+        className={cn(
+          'oscar-sidebar-nav-item group relative flex w-full items-center gap-2.5 overflow-hidden px-2.5 py-2 text-[var(--color-text-secondary)] transition-all',
+          !isExpanded && 'justify-center'
+        )}
+      >
+        <span className="oscar-sidebar-icon-bubble">
+          <item.icon className="h-4 w-4" />
+        </span>
+        {isExpanded && <span className="truncate text-sm font-black">{item.label}</span>}
+      </button>
+    ) : (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        onClick={closeSidebarOnMobile}
+        className={({ isActive }) =>
+          cn(
+            'oscar-sidebar-nav-item group relative flex items-center gap-2.5 overflow-hidden px-2.5 py-2 transition-all',
+            !isExpanded && 'justify-center',
+            isActive
+              ? 'is-active text-[var(--color-text)]'
+              : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
+          )
+        }
+      >
+        {({ isActive }) => (
+          <>
+            <span className={cn('oscar-sidebar-icon-bubble', isActive && 'is-active')}>
+              <item.icon className="h-4 w-4" />
+            </span>
+            {isExpanded && <span className="truncate text-sm font-black">{item.label}</span>}
+          </>
+        )}
+      </NavLink>
+    )
+  );
 
   return (
     <>
@@ -206,31 +329,25 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         />
       )}
 
-      <motion.aside
-        initial={false}
-        animate={{
-          width: isMobile ? 292 : isExpanded ? 282 : 84,
-          x: isMobile && !isOpen ? (dir === 'rtl' ? 320 : -320) : 0
+      <aside
+        aria-hidden={isMobile && !isOpen ? 'true' : undefined}
+        data-expanded={isExpanded ? 'true' : 'false'}
+        data-preview={isPreviewMode ? 'true' : 'false'}
+        style={{
+          width: sidebarWidth,
+          transform: sidebarTransform,
+          contain: 'layout paint style',
         }}
-        transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-        onMouseEnter={() => {
-          if (!isMobile && !isOpen) {
-            setIsPreviewExpanded(true);
-          }
-        }}
-        onMouseLeave={() => {
-          if (!isMobile) {
-            setIsPreviewExpanded(false);
-          }
-        }}
+        onMouseEnter={handlePreviewEnter}
+        onMouseLeave={handlePreviewLeave}
         className={cn(
-          'fixed top-4 z-[90] h-[calc(100vh-4rem)] overflow-hidden',
+          'oscar-sidebar-shell fixed top-4 z-[90] h-[calc(100vh-4rem)] overflow-hidden transition-[transform,width] duration-300 ease-out',
           dir === 'rtl' ? 'right-4' : 'left-4',
-          isMobile && !isOpen && 'hidden'
+          isMobile && !isOpen && 'pointer-events-none'
         )}
       >
         <div className={cn(
-          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col rounded-[32px] border backdrop-blur-[24px]',
+          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col rounded-[32px] border',
           isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
         )}>
           <div className="relative z-10 px-4 pb-4 pt-5">
@@ -245,12 +362,12 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
               >
                 <HeaderBrand
                   className={cn(
-                    'transition-transform',
+                    'transition-transform sidebar-main-brand',
                     isExpanded
-                      ? 'scale-[1.18]'
-                      : 'max-w-11 scale-[0.82] justify-center overflow-hidden [&>span:first-child]:hidden'
+                      ? 'scale-[1.1]'
+                      : 'max-w-10 scale-[0.7] justify-center overflow-hidden [&>span:first-child]:hidden'
                   )}
-                  iconClassName={isExpanded ? 'scale-[1.14]' : 'scale-[1.04]'}
+                  iconClassName={isExpanded ? 'scale-[1.12]' : 'scale-[0.86]'}
                   textClassName="shrink-0"
                 />
               </button>
@@ -258,7 +375,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
               {!isMobile && (
                 <button
                   type="button"
-                  onClick={() => setIsOpen(!isOpen)}
+                  onClick={() => setIsOpen((current) => !current)}
                   className={cn(
                     'oscar-sidebar-collapse absolute top-1 inline-flex h-9 w-9 items-center justify-center rounded-full transition-all',
                     dir === 'rtl' ? 'left-0' : 'right-0',
@@ -269,15 +386,29 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                   <ChevronLeft className={cn('h-4.5 w-4.5 transition-transform', (dir === 'rtl' ? isExpanded : !isExpanded) && 'rotate-180')} />
                 </button>
               )}
+
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    'oscar-sidebar-collapse absolute top-1 inline-flex h-9 w-9 items-center justify-center rounded-full transition-all',
+                    dir === 'rtl' ? 'left-0' : 'right-0'
+                  )}
+                  aria-label={dir === 'rtl' ? 'إغلاق القائمة' : 'Close sidebar'}
+                >
+                  <X className="h-4.5 w-4.5" />
+                </button>
+              )}
             </div>
 
-            {isExpanded && (
+            {showExpandedContent && (
               <>
                 <div className="mt-4">
                   <LanguageSwitcher showIcon variant="sidebar" className="oscar-sidebar-language w-full justify-center" />
                 </div>
 
-                <div className="oscar-sidebar-user-card mt-4">
+                <div className="oscar-sidebar-user-card mt-3">
                   {userId ? (
                     <button
                       type="button"
@@ -294,8 +425,8 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                     </button>
                   ) : null}
 
-                  <div className="flex items-center gap-3">
-                    <div className="flex shrink-0 flex-col items-center gap-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="oscar-sidebar-avatar-wrap flex shrink-0 flex-col items-center gap-1">
                       <button
                         type="button"
                         onClick={handleOpenMyAccount}
@@ -307,11 +438,12 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                           alt={userDisplayName}
                         />
                       </button>
+                      <span className="oscar-sidebar-online-dot" aria-hidden="true" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold leading-tight text-[var(--color-text)]">{userDisplayName}</div>
-                      <div className="mt-1 truncate text-[0.7rem] font-bold text-[var(--color-primary-hover)]">{userRoleLabel}</div>
+                      <div className="truncate text-sm font-black leading-tight text-[var(--color-text)]">{userDisplayName}</div>
+                      <div className="mt-1 truncate text-xs font-black text-[var(--color-primary-hover)]">{userRoleLabel}</div>
                     </div>
 
                     <button
@@ -328,7 +460,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
             )}
           </div>
 
-          <div className="relative z-10 flex-1 overflow-y-auto px-3 py-3 scrollbar-hide">
+          <div className="relative z-10 flex-1 overflow-y-auto px-2.5 py-2.5 scrollbar-hide">
             {showWalletCard && (
               <WalletSidebarCard
                 className="mb-4"
@@ -338,48 +470,46 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
             )}
 
             <div className="space-y-2">
-              {filteredNavItems.map((item) => (
-                item.isExternal ? (
-                  <button
-                    key={item.path}
-                    type="button"
-                    onClick={item.onClick}
-                    className={cn(
-                      'oscar-sidebar-nav-item group relative flex w-full items-center gap-2.5 overflow-hidden px-3 py-2.5 text-[var(--color-text-secondary)] transition-all',
-                      !isExpanded && 'justify-center'
-                    )}
-                  >
-                    <span className="oscar-sidebar-icon-bubble">
-                      <item.icon className="h-4.5 w-4.5" />
-                    </span>
-                    {isExpanded && <span className="truncate text-sm font-semibold">{item.label}</span>}
-                  </button>
-                ) : (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    onClick={closeSidebarOnMobile}
-                    className={({ isActive }) =>
-                      cn(
-                        'oscar-sidebar-nav-item group relative flex items-center gap-2.5 overflow-hidden px-3 py-2.5 transition-all',
-                        !isExpanded && 'justify-center',
-                        isActive
-                          ? 'is-active text-[var(--color-text)]'
-                          : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <span className={cn('oscar-sidebar-icon-bubble', isActive && 'is-active')}>
-                          <item.icon className="h-4.5 w-4.5" />
+              {isExpanded ? (
+                navSections.map((section) => {
+                  const SectionIcon = section.icon;
+                  const isSectionOpen = Boolean(openNavSections[section.key]);
+                  const isSectionActive = section.items.some((item) => isRouteActive(location.pathname, item.path));
+
+                  return (
+                    <section key={section.key} className="space-y-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleNavSection(section.key)}
+                        aria-expanded={isSectionOpen}
+                        className={cn(
+                          'flex h-10 w-full items-center gap-2 rounded-xl border px-2.5 text-start text-[11px] font-black transition-all',
+                          isSectionActive
+                            ? 'border-[color:rgb(var(--color-primary-rgb)/0.32)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] text-[var(--color-primary)]'
+                            : 'border-[color:rgb(var(--color-border-rgb)/0.5)] bg-[color:rgb(var(--color-surface-rgb)/0.34)] text-[var(--color-text-secondary)] hover:border-[color:rgb(var(--color-primary-rgb)/0.24)] hover:text-[var(--color-text)]'
+                        )}
+                      >
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] text-[var(--color-primary)]">
+                          <SectionIcon className="h-3.5 w-3.5" />
                         </span>
-                        {isExpanded && <span className="truncate text-sm font-semibold">{item.label}</span>}
-                      </>
-                    )}
-                  </NavLink>
-                )
-              ))}
+                        <span className="min-w-0 flex-1 truncate">{section.label}</span>
+                        <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full border border-[color:rgb(var(--color-border-rgb)/0.48)] bg-[color:rgb(var(--color-card-rgb)/0.48)] px-1 text-[10px]">
+                          {section.items.length}
+                        </span>
+                        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', isSectionOpen && 'rotate-180')} />
+                      </button>
+
+                      {isSectionOpen ? (
+                        <div className="space-y-1.5 ps-2">
+                          {section.items.map(renderNavItem)}
+                        </div>
+                      ) : null}
+                    </section>
+                  );
+                })
+              ) : (
+                filteredNavItems.map(renderNavItem)
+              )}
             </div>
           </div>
 
@@ -395,7 +525,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
             </button>
           </div>
         </div>
-      </motion.aside>
+      </aside>
       <ConfirmDialog
         open={showLogoutConfirm}
         title={dir === 'rtl' ? 'تسجيل الخروج' : 'Logout'}
@@ -409,4 +539,4 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

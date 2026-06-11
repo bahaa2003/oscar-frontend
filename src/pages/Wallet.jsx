@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus, ShieldCheck, TrendingDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
@@ -11,7 +11,7 @@ import EmptyTransactions from '../components/wallet/EmptyTransactions';
 import TransactionCard from '../components/wallet/TransactionCard';
 import Loader from '../components/ui/Loader';
 import { useLanguage } from '../context/LanguageContext';
-import { formatWalletNumber } from '../utils/storefront';
+import { formatWalletNumber, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../utils/storefront';
 import { normalizeMoneyAmount } from '../utils/money';
 import { getCurrencyMeta } from '../utils/pricing';
 import {
@@ -40,6 +40,10 @@ const toTimestamp = (value) => {
 
 const sortTransactionsByNewest = (left, right) => toTimestamp(right?.date) - toTimestamp(left?.date);
 const TRANSACTIONS_PAGE_SIZE = 15;
+
+const getStartOfLocalDay = (date = new Date()) => (
+  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+);
 
 const isQuantityOnlyUser = (user) => (
   String(user?.billingMode || user?.group?.billingMode || '').trim().toLowerCase() === 'quantity_only'
@@ -284,6 +288,7 @@ const Wallet = () => {
 
   const [transactions, setTransactions] = useState([]);
   const [txLoading, setTxLoading] = useState(true);
+  const [clockTick, setClockTick] = useState(Date.now());
 
   // Fetch real transactions from BE
   useEffect(() => {
@@ -505,6 +510,20 @@ const Wallet = () => {
 
   const [filteredTransactions, setFilteredTransactions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
+
+  useEffect(() => {
+    const scheduleMidnightRefresh = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return window.setTimeout(() => {
+        setClockTick(Date.now());
+      }, Math.max(1000, nextMidnight.getTime() - now.getTime() + 1000));
+    };
+
+    const timeoutId = scheduleMidnightRefresh();
+    return () => window.clearTimeout(timeoutId);
+  }, [clockTick]);
 
   // Sync filtered list when transactions change
   useEffect(() => {
@@ -523,6 +542,7 @@ const Wallet = () => {
   }, [totalPages]);
 
   const handleFilterChange = (filters) => {
+    setHasAppliedFilters(true);
     let filtered = [...transactions];
 
     if (filters.startDate || filters.endDate) {
@@ -559,12 +579,13 @@ const Wallet = () => {
 
   const walletCoinsValue = Number(user?.coins || 0);
   const isQuantityOnly = isQuantityOnlyUser(user);
+  const isNegativeBalance = !isQuantityOnly && isNegativeWalletAmount(walletCoinsValue);
   const quantityLimit = Math.max(0, toFiniteNumber(user?.quantityLimit));
   const quantityUsed = Math.max(0, toFiniteNumber(user?.quantityUsed));
   const remainingQuota = Math.max(0, quantityLimit - quantityUsed);
   const walletCoinsLabel = isQuantityOnly
     ? (isRTL ? 'الكوتا المتبقية' : 'Remaining quota')
-    : (isRTL ? 'عدد الكوين عندك' : 'Your coins');
+    : (isRTL ? 'رصيدي الحالي' : 'My current balance');
   const walletCoinsDisplay = useMemo(
     () => (
       isQuantityOnly
@@ -573,6 +594,39 @@ const Wallet = () => {
     ),
     [isQuantityOnly, quantityLimit, remainingQuota, userCurrency, walletCoinsValue]
   );
+  const todayStartTime = useMemo(() => getStartOfLocalDay(new Date(clockTick)), [clockTick]);
+  const spentSourceTransactions = useMemo(() => {
+    if (hasAppliedFilters) return filteredTransactions;
+
+    return transactions.filter((transaction) => {
+      const txTime = toTimestamp(transaction?.date);
+      return txTime >= todayStartTime;
+    });
+  }, [filteredTransactions, hasAppliedFilters, todayStartTime, transactions]);
+  const totalSpentInScope = useMemo(() => spentSourceTransactions.reduce((sum, transaction) => {
+    const amount = toFiniteNumber(transaction?.amount);
+    const type = String(transaction?.type || '').toLowerCase();
+    const status = String(transaction?.status || '').toLowerCase();
+    const isDebit = amount < 0 || ['purchase', 'withdrawal', 'debit', 'deduct', 'deduction'].includes(type);
+
+    if (!isDebit || ['failed', 'rejected', 'denied', 'cancelled', 'canceled', 'refunded'].includes(status)) {
+      return sum;
+    }
+
+    return normalizeMoneyAmount(sum + Math.abs(amount));
+  }, 0), [spentSourceTransactions]);
+  const totalSpentLabel = hasAppliedFilters
+    ? (isRTL ? 'إجمالي المصروف في الفلتر' : 'Filtered spending')
+    : (isRTL ? 'إجمالي مصروف اليوم' : 'Today spending');
+  const totalSpentHint = hasAppliedFilters
+    ? (isRTL ? 'يتغير تلقائيًا حسب الفلاتر الحالية' : 'Updates with the current filters')
+    : (isRTL ? 'يتصفر يوميًا بعد 12 بالليل' : 'Resets daily after midnight');
+  const totalSpentDisplay = `${formatWalletNumber(totalSpentInScope, false, { maximumFractionDigits: 3 })} ${userCurrency}`;
+  const creditLimitValue = Math.max(0, toFiniteNumber(user?.creditLimit));
+  const usedCreditValue = Math.max(0, -walletCoinsValue);
+  const remainingCreditValue = Math.max(0, creditLimitValue - usedCreditValue);
+  const creditLimitDisplay = `${formatWalletNumber(creditLimitValue, false, { maximumFractionDigits: 3 })} ${userCurrency}`;
+  const remainingCreditDisplay = `${formatWalletNumber(remainingCreditValue, false, { maximumFractionDigits: 3 })} ${userCurrency}`;
 
   return (
     <div
@@ -582,29 +636,76 @@ const Wallet = () => {
       <div className="mx-auto max-w-7xl px-3 pb-16 pt-3 sm:px-4 sm:pb-18 sm:pt-4">
         <section
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="sidebar-wallet-shimmer relative isolate mb-3 overflow-hidden rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[linear-gradient(145deg,rgb(var(--color-primary-rgb)/0.14),rgba(124,58,237,0.12)_40%,rgb(var(--color-card-rgb)/0.92)_100%)] p-2.5 shadow-[0_10px_24px_-20px_rgb(var(--color-primary-rgb)/0.36)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(244,63,221,0.24),transparent_45%)] before:opacity-80 sm:p-3"
+          className="sidebar-wallet-shimmer relative isolate mb-3 min-h-[180px] overflow-hidden rounded-[28px] border border-[color:rgb(var(--color-primary-rgb)/0.28)] bg-[linear-gradient(145deg,rgb(var(--color-primary-rgb)/0.14),rgba(124,58,237,0.12)_40%,rgb(var(--color-card-rgb)/0.92)_100%)] p-5 shadow-[0_10px_24px_-20px_rgb(var(--color-primary-rgb)/0.36)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(244,63,221,0.24),transparent_45%)] before:opacity-80 sm:min-h-[210px] sm:p-6"
         >
           <div className="relative z-10">
-            <p className="text-[10px] font-bold tracking-[0.08em] text-[var(--color-primary-soft)]">
+            <p className="text-center text-sm font-black tracking-[0.1em] text-[var(--color-primary-soft)] sm:text-base">
               {walletCoinsLabel}
             </p>
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-base font-black text-[var(--color-text)] sm:text-lg">
+            <div className="mt-4 flex flex-col items-center gap-4 sm:mt-5 sm:gap-5">
+              <p className={`w-full min-w-0 truncate text-center text-3xl font-black leading-none sm:text-4xl ${isNegativeBalance ? negativeWalletBalanceClassName : 'text-[var(--color-text)]'}`} dir="ltr">
                 {walletCoinsDisplay}
               </p>
               {!isQuantityOnly && (
-              <button
-                type="button"
-                onClick={handleAddBalance}
-                className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.32)] bg-[linear-gradient(135deg,#0284c7_0%,#5b21b6_52%,#d946ef_100%)] px-2.5 text-[11px] font-black text-white shadow-[0_0_22px_-16px_rgba(34,211,238,0.8),0_0_24px_-18px_rgba(244,63,221,0.82)] transition-all hover:-translate-y-0.5 hover:brightness-[1.05]"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>{isRTL ? 'أضف رصيد' : t('wallet.addBalance', { defaultValue: 'Add Balance' })}</span>
-              </button>
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddBalance}
+                    className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.38)] bg-[linear-gradient(135deg,#0284c7_0%,#5b21b6_52%,#d946ef_100%)] px-10 text-base font-black text-white shadow-[0_0_26px_-14px_rgba(34,211,238,0.86),0_0_28px_-16px_rgba(244,63,221,0.88)] transition-all hover:-translate-y-0.5 hover:brightness-[1.05]"
+                  >
+                    <Plus className="h-6 w-6" />
+                    <span>{isRTL ? 'أضف رصيد' : t('wallet.addBalance', { defaultValue: 'Add Balance' })}</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </section>
+
+        {!isQuantityOnly && (
+          <section
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className="mb-3 grid gap-2.5 sm:grid-cols-2"
+          >
+            <article className="relative isolate overflow-hidden rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.24)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.78),rgba(124,58,237,0.16)_48%,rgba(244,63,221,0.12)_100%)] p-2.5 shadow-[0_12px_28px_-24px_rgb(var(--color-primary-rgb)/0.45)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_42%)] sm:p-3">
+              <div className="relative z-10 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black tracking-[0.08em] text-[var(--color-primary-soft)]">
+                    {totalSpentLabel}
+                  </p>
+                  <p className="mt-1 truncate text-base font-black text-[var(--color-text)] sm:text-lg" dir="ltr">
+                    {totalSpentDisplay}
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)] sm:text-[11px]">
+                    {totalSpentHint}
+                  </p>
+                </div>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.26)] bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(124,58,237,0.22),rgba(244,63,221,0.18))] text-[var(--color-primary)] shadow-[0_0_22px_-14px_rgba(34,211,238,0.9)]">
+                  <TrendingDown className="h-5 w-5" />
+                </span>
+              </div>
+            </article>
+
+            <article className="relative isolate overflow-hidden rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.24)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.82),rgba(34,211,238,0.13)_42%,rgba(217,70,239,0.12)_100%)] p-2.5 shadow-[0_12px_28px_-24px_rgb(var(--color-primary-rgb)/0.45)] before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_44%)] sm:p-3">
+              <div className="relative z-10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black tracking-[0.08em] text-[var(--color-primary-soft)]">
+                  {isRTL ? 'حد الدين المسموح به' : 'Allowed credit limit'}
+                </p>
+                <p className="mt-1 truncate text-base font-black text-[var(--color-text)] sm:text-lg" dir="ltr">
+                  {creditLimitDisplay}
+                </p>
+                <p className="mt-0.5 text-[10px] font-semibold text-[var(--color-text-secondary)] sm:text-[11px]">
+                  {isRTL ? `المتبقي من الحد ${remainingCreditDisplay}` : `Remaining limit ${remainingCreditDisplay}`}
+                </p>
+              </div>
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[color:rgb(var(--color-primary-rgb)/0.26)] bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(124,58,237,0.22),rgba(244,63,221,0.18))] text-[var(--color-primary)] shadow-[0_0_22px_-14px_rgba(34,211,238,0.9)]">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              </div>
+            </article>
+          </section>
+        )}
 
         <motion.div
           initial={{ y: 20, opacity: 0 }}

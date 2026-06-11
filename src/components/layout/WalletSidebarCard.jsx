@@ -3,7 +3,7 @@ import { AlertCircle, ArrowUpLeft, LoaderCircle, ReceiptText, Wallet } from 'luc
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 import { useLanguage } from '../../context/LanguageContext';
-import { formatWalletAmount } from '../../utils/storefront';
+import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 import { cn } from '../ui/Button';
 
 const WalletSidebarCard = ({ className, isVisible = true, onNavigate }) => {
@@ -62,7 +62,7 @@ const WalletSidebarCard = ({ className, isVisible = true, onNavigate }) => {
     }),
     [walletCurrency, walletValue]
   );
-  const isNegativeBalance = walletValue < 0;
+  const isNegativeBalance = isNegativeWalletAmount(walletValue);
 
   const handleNavigate = (path) => {
     navigate(path);
@@ -93,7 +93,10 @@ const WalletSidebarCard = ({ className, isVisible = true, onNavigate }) => {
                   <div className="h-4 w-24 animate-pulse rounded-full bg-[color:rgba(244,63,221,0.18)]" />
                 </div>
               ) : (
-                <p className={`sidebar-wallet-balance-value truncate text-[0.98rem] font-black tracking-[-0.01em] sm:text-[1.08rem] ${isNegativeBalance ? 'is-negative text-[var(--color-error)]' : 'text-[var(--color-text)]'}`}>
+                <p className={cn(
+                  'sidebar-wallet-balance-value truncate text-[0.98rem] font-black tracking-[-0.01em] sm:text-[1.08rem]',
+                  isNegativeBalance ? `is-negative ${negativeWalletBalanceClassName}` : 'text-[var(--color-text)]'
+                )}>
                   {walletDisplayValue}
                 </p>
               )}

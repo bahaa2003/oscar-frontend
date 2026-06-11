@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, CircleDollarSign, Clock3, ShoppingBag } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import OrdersFiltersBar from '../components/orders/OrdersFiltersBar';
 import CustomerOrderCard from '../components/orders/CustomerOrderCard';
@@ -19,6 +19,23 @@ import {
 import { formatNumber } from '../utils/intl';
 
 const ORDERS_PER_PAGE = 8;
+const getTodayInputValue = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const createDefaultOrderFilters = () => ({
+  searchTerm: '',
+  statusFilter: 'all',
+  typeFilter: 'all',
+  dateFilter: 'today',
+  customStartDate: getTodayInputValue(),
+  customEndDate: getTodayInputValue(),
+  sortOrder: 'newest',
+});
 
 const Orders = () => {
   const { user } = useAuthStore();
@@ -31,10 +48,12 @@ const Orders = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('custom');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('today');
+  const [customStartDate, setCustomStartDate] = useState(() => getTodayInputValue());
+  const [customEndDate, setCustomEndDate] = useState(() => getTodayInputValue());
   const [sortOrder, setSortOrder] = useState('newest');
+  const [appliedFilters, setAppliedFilters] = useState(() => createDefaultOrderFilters());
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -53,7 +72,7 @@ const Orders = () => {
       setIsLoading(true);
 
       await Promise.allSettled([
-        Promise.resolve(loadOrders(user?.id, { force: true })),
+        Promise.resolve(loadOrders(user?.id, { force: true, bypassCache: true })),
         Promise.resolve(loadProducts({ force: true })),
         Promise.resolve(loadCurrencies()),
       ]);
@@ -70,6 +89,27 @@ const Orders = () => {
     };
   }, [loadCurrencies, loadOrders, loadProducts, user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const refreshOrders = () => {
+      void loadOrders(user.id, { force: true, bypassCache: true }).catch(() => {});
+    };
+
+    const refreshTimer = window.setInterval(() => {
+      refreshOrders();
+    }, 5 * 60 * 1000);
+
+    window.addEventListener('focus', refreshOrders);
+    document.addEventListener('visibilitychange', refreshOrders);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener('focus', refreshOrders);
+      document.removeEventListener('visibilitychange', refreshOrders);
+    };
+  }, [loadOrders, user?.id]);
+
   const enrichedOrders = useMemo(
     () => enrichOrders(orders, {
       users: user ? [user] : [],
@@ -79,22 +119,45 @@ const Orders = () => {
     [orders, products, user, isArabic]
   );
 
+  const applyOrderFilters = useCallback(() => {
+    setAppliedFilters({
+      searchTerm,
+      statusFilter,
+      typeFilter,
+      dateFilter,
+      customStartDate,
+      customEndDate,
+      sortOrder,
+    });
+    setCurrentPage(1);
+  }, [customEndDate, customStartDate, dateFilter, searchTerm, sortOrder, statusFilter, typeFilter]);
+
   const filteredOrders = useMemo(
     () => {
+      const {
+        searchTerm: appliedSearchTerm,
+        statusFilter: appliedStatusFilter,
+        typeFilter: appliedTypeFilter,
+        dateFilter: appliedDateFilter,
+        customStartDate: appliedCustomStartDate,
+        customEndDate: appliedCustomEndDate,
+        sortOrder: appliedSortOrder,
+      } = appliedFilters;
+
       const baseFiltered = filterOrders(enrichedOrders, {
-        searchTerm,
-        statusFilter,
-        typeFilter: 'all',
-        dateFilter,
-        sortOrder,
+        searchTerm: appliedSearchTerm,
+        statusFilter: appliedStatusFilter,
+        typeFilter: appliedTypeFilter,
+        dateFilter: appliedDateFilter,
+        sortOrder: appliedSortOrder,
       });
 
-      if (dateFilter !== 'custom') {
+      if (appliedDateFilter !== 'custom') {
         return baseFiltered;
       }
 
-      const startBoundary = customStartDate ? new Date(`${customStartDate}T00:00:00`) : null;
-      const endBoundary = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : null;
+      const startBoundary = appliedCustomStartDate ? new Date(`${appliedCustomStartDate}T00:00:00`) : null;
+      const endBoundary = appliedCustomEndDate ? new Date(`${appliedCustomEndDate}T23:59:59.999`) : null;
 
       return baseFiltered.filter((order) => {
         const orderDate = new Date(order?.createdAt || 0);
@@ -104,7 +167,7 @@ const Orders = () => {
         return true;
       });
     },
-    [customEndDate, customStartDate, dateFilter, enrichedOrders, searchTerm, sortOrder, statusFilter]
+    [appliedFilters, enrichedOrders]
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
@@ -155,10 +218,6 @@ const Orders = () => {
   }, [filteredOrders]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [customEndDate, customStartDate, dateFilter, searchTerm, sortOrder, statusFilter]);
-
-  useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
@@ -185,7 +244,7 @@ const Orders = () => {
         dir: 'ltr',
       }
     : {
-        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0643\u0644\u0641\u0629' : 'Total Spent',
+        label: isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u062a\u0643\u0644\u0641\u0629' : 'Total Cost',
         value: `${formatNumber(orderStats.totalSpent, locale, { maximumFractionDigits: 2 })} ${userCurrencyCode}`,
         dir: 'ltr',
       };
@@ -210,9 +269,10 @@ const Orders = () => {
   ];
   const localizedStatCards = statCards.map((stat, index) => ({
     ...stat,
+    icon: [ShoppingBag, Clock3, CheckCircle2, CircleDollarSign][index],
     label: [
       isArabic ? '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628\u0627\u062a' : 'Total Orders',
-      isArabic ? '\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630' : 'Pending',
+      isArabic ? '\u0642\u064a\u062f \u0627\u0644\u062a\u0646\u0641\u064a\u0630' : 'In Progress',
       isArabic ? '\u0645\u0643\u062a\u0645\u0644\u0629' : 'Completed',
       fourthStatCard.label,
     ][index] || stat.label,
@@ -236,7 +296,7 @@ const Orders = () => {
 
   return (
     <div className="compact-ui min-w-0 space-y-3 pb-3" dir={isArabic ? 'rtl' : 'ltr'}>
-      <section className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md">
+      <section className="orders-logo-hero rounded-xl p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-lg font-black text-[var(--color-text)] sm:text-xl">
@@ -273,17 +333,26 @@ const Orders = () => {
       </section>
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {localizedStatCards.map((stat) => (
+        {localizedStatCards.map((stat) => {
+          const StatIcon = stat.icon;
+
+          return (
           <div
             key={stat.label}
-            className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-md"
+            className="orders-logo-stat-card flex items-center justify-between gap-3 rounded-xl p-3"
           >
-            <span className="text-xs text-gray-400">{stat.label}</span>
-            <strong className="truncate text-sm font-semibold text-white" dir={stat.dir || 'auto'}>
-              {stat.value}
-            </strong>
+            <span className="orders-logo-stat-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+              <StatIcon className="h-4.5 w-4.5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs text-[var(--color-text-secondary)]">{stat.label}</span>
+              <strong className="mt-0.5 block truncate text-sm font-black text-[var(--color-text)]" dir={stat.dir || 'auto'}>
+                {stat.value}
+              </strong>
+            </span>
           </div>
-        ))}
+          );
+        })}
       </section>
 
       <OrdersFiltersBar
@@ -292,6 +361,8 @@ const Orders = () => {
         onSearchChange={setSearchTerm}
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
+        typeFilter={typeFilter}
+        onTypeChange={setTypeFilter}
         dateFilter={dateFilter}
         onDateChange={setDateFilter}
         sortOrder={sortOrder}
@@ -299,26 +370,24 @@ const Orders = () => {
         compact
         collapsible
         defaultCollapsed
-        showStatusFilter={false}
-        showTypeFilter={false}
-        showDateFilter={false}
+        titleText={isArabic ? 'فلاتر' : 'Filters'}
         resultCount={filteredOrders.length}
-        searchPlaceholder={isArabic ? 'ابحث باسم المنتج أو رقم الطلب' : 'Search by product name or order number'}
+        searchPlaceholder={isArabic
+          ? 'ابحث برقم الطلب، معرف الطلب، أو معرف اللاعب...'
+          : 'Search by order number, order ID, or player ID...'}
         helperText={isArabic
-          ? 'استخدم البحث أو نطاق التاريخ لتضييق قائمة الطلبات.'
-          : 'Use search or a date range to narrow the order list.'}
-        customRange={{
+          ? 'ابحث باسم المنتج، رقم الطلب، معرف الطلب، أو معرف اللاعب.'
+          : 'Search by product name, order number, order ID, or player ID.'}
+        customRange={dateFilter === 'custom' ? {
           startDate: customStartDate,
           endDate: customEndDate,
           onStartDateChange: setCustomStartDate,
           onEndDateChange: setCustomEndDate,
           helperText: isArabic
-            ? 'تصفية حسب تاريخ إنشاء الطلب.'
-            : 'Filters orders by creation date.',
-        }}
-        onApplyFilters={() => {
-          setCurrentPage(1);
-        }}
+            ? 'اختر نطاق تاريخ مخصص لطلباتك.'
+            : 'Choose a custom date range for your orders.',
+        } : null}
+        onApplyFilters={applyOrderFilters}
       />
 
       {filteredOrders.length ? (

@@ -18,9 +18,13 @@ const STATUS_META = {
     variant: 'success',
     label: { ar: 'مكتمل', en: 'Completed' },
   },
+  incomplete: {
+    variant: 'danger',
+    label: { ar: 'مرفوضة', en: 'Rejected' },
+  },
   rejected: {
     variant: 'danger',
-    label: { ar: 'مرفوض', en: 'Rejected' },
+    label: { ar: 'مرفوضة', en: 'Rejected' },
   },
   cancelled: {
     variant: 'danger',
@@ -36,8 +40,13 @@ const STATUS_ALIASES = {
   approved: 'approved',
   completed: 'completed',
   success: 'completed',
+  incomplete: 'incomplete',
+  failed: 'incomplete',
+  failure: 'incomplete',
+  refunded: 'incomplete',
   rejected: 'rejected',
   denied: 'rejected',
+  declined: 'rejected',
   cancelled: 'cancelled',
   canceled: 'cancelled',
 };

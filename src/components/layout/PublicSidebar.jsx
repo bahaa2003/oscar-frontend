@@ -68,7 +68,7 @@ const PublicSidebar = ({ isOpen, onClose, onLogin, onHome, onAbout, onCreateAcco
         className="fixed right-3 top-3 z-50 block h-[calc(100vh-1.5rem)] overflow-hidden transition-[transform,width] duration-200 ease-out sm:right-4 sm:top-4 sm:h-[calc(100vh-2rem)] motion-reduce:transition-none"
       >
         <div className={cn(
-          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden rounded-[32px] border backdrop-blur-[24px]'
+          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden rounded-[32px] border'
         )}>
           <div className="relative z-10 px-4 pb-4 pt-5">
             <div className="flex items-center justify-center gap-3">

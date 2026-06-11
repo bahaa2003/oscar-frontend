@@ -136,20 +136,35 @@ const SectionHeader = ({ children }) => (
   </div>
 );
 
-const DetailRow = ({ icon: Icon, label, value, dir = 'auto', valueClassName = '' }) => (
-  <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
-    <span className="inline-flex shrink-0 items-center gap-2 text-sm text-slate-500 dark:text-white/45">
-      <Icon className="h-4 w-4 text-slate-400 dark:text-white/35" />
-      <span>{label}</span>
-    </span>
-    <span
-      dir={dir}
-      className={`min-w-0 max-w-[58%] text-end text-sm font-medium text-slate-900 dark:text-white/85 ${valueClassName}`}
-    >
-      {React.isValidElement(value) ? value : displayValue(value)}
-    </span>
-  </div>
-);
+const DetailRow = ({ icon: Icon, label, value, dir = 'auto', valueClassName = '' }) => {
+  const handleCopy = async () => {
+    if (React.isValidElement(value)) return;
+    const textToCopy = displayValue(value);
+    if (textToCopy !== '-') {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+      } catch (err) {
+        devLogger.error('Failed to copy text', err);
+      }
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-white/5 py-3 last:border-0">
+      <span className="inline-flex shrink-0 items-center gap-2 text-sm text-slate-500 dark:text-white/45">
+        <Icon className="h-4 w-4 text-slate-400 dark:text-white/35" />
+        <span>{label}</span>
+      </span>
+      <span
+        dir={dir}
+        onClick={handleCopy}
+        className={`min-w-0 max-w-[58%] select-auto cursor-pointer rounded px-2 py-1 text-end text-sm font-medium text-slate-900 transition-colors hover:bg-white/10 dark:text-white/85 ${valueClassName}`}
+      >
+        {React.isValidElement(value) ? value : displayValue(value)}
+      </span>
+    </div>
+  );
+};
 
 const StatusValue = ({ status, label }) => {
   const Icon = getStatusIcon(status);
@@ -218,7 +233,7 @@ const OrderDetailsPage = () => {
   const customerIdentifier = order.playerId || order.customerId || order.userId;
   const notes = order.description || order.notes || order.remarks || order.rejectionReason;
   const orderDurationText = isCompletedOrderStatus(order.statusKey || order.status || statusLabel)
-    ? formatOrderDuration(order.createdAt || order.timestamp || order.date, order.updatedAt || order.lastUpdated)
+    ? formatOrderDuration(order.createdAt || order.timestamp || order.date, order.updatedAt || order.lastUpdated, language)
     : '';
 
   return (

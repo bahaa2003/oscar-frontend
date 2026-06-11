@@ -16,6 +16,7 @@ import ThemeToggle from '../components/ui/ThemeToggle';
 import HeaderBrand from '../components/layout/HeaderBrand';
 import PublicSidebar from '../components/layout/PublicSidebar';
 import HeroSlider from '../components/home/HeroSlider';
+import SoulChillBanner from '../components/home/SoulChillBanner';
 import CategoryCard from '../components/home/CategoryCard';
 import ProductSearchBar from '../components/products/ProductSearchBar';
 import ProductCardSimple from '../components/products/ProductCardSimple';
@@ -27,9 +28,7 @@ import {
   createStorefrontProducts,
   getStorefrontLanguage,
 } from '../utils/storefront';
-import slideOneImage from '../assets/سلايد 1.jpg';
-import slideTwoImage from '../assets/سلايد 2.jpg';
-import slideThreeImage from '../assets/سلايد 3.jpg';
+import { homeHeroSlides } from '../data/homeHeroSlides';
 
 const dataProvider = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase();
 const isRealProvider = dataProvider === 'real';
@@ -185,15 +184,6 @@ const PublicCatalog = () => {
   const handleCloseServiceNotice = useCallback(() => {
     setShowServiceNotice(false);
   }, []);
-
-  const heroSlides = useMemo(
-    () => ([
-      { id: 'landing-slide-1', image: slideOneImage, title: '' },
-      { id: 'landing-slide-2', image: slideTwoImage, title: '' },
-      { id: 'landing-slide-3', image: slideThreeImage, title: '' },
-    ]),
-    []
-  );
 
   const catalogProducts = publicCatalog.products?.length ? publicCatalog.products : products;
   const catalogCategories = publicCatalog.categories?.length ? publicCatalog.categories : categories;
@@ -365,6 +355,17 @@ const PublicCatalog = () => {
     [currentParentId, storefrontCategories]
   );
 
+  const appsCategoryId = useMemo(() => {
+    const rootAppsCategory = storefrontCategories.find((category) => (
+      (category.tone === 'apps' || category.id === 'apps')
+      && getParentId(category) === null
+    ));
+
+    return rootAppsCategory?.id
+      || storefrontCategories.find((category) => category.tone === 'apps' || category.id === 'apps')?.id
+      || 'apps';
+  }, [getParentId, storefrontCategories]);
+
   useEffect(() => {
     if (selectedCategoryExists) return;
     setCurrentParentId(null);
@@ -373,6 +374,13 @@ const PublicCatalog = () => {
   const handleCategorySelect = useCallback((categoryId) => {
     setCurrentParentId(categoryId || null);
   }, []);
+
+  const handleSoulChillClick = useCallback(() => {
+    setCurrentParentId(appsCategoryId);
+    window.requestAnimationFrame(() => {
+      document.getElementById('categories')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [appsCategoryId]);
 
   const handleProductSelect = useCallback(() => {
     navigate('/auth?mode=login');
@@ -530,7 +538,7 @@ const PublicCatalog = () => {
 
       <main className="px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mx-auto max-w-[var(--shell-max-width)] space-y-5 sm:space-y-6">
-          <HeroSlider slides={heroSlides} />
+          <HeroSlider slides={homeHeroSlides} />
 
           <section id="categories" className="scroll-mt-28 space-y-3 sm:space-y-3.5">
             <div className="relative z-10 mx-auto flex w-full max-w-5xl justify-center px-0.5 sm:px-2">
@@ -648,6 +656,8 @@ const PublicCatalog = () => {
               </>
             )}
           </section>
+
+          <SoulChillBanner onClick={handleSoulChillClick} />
         </div>
       </main>
     </div>

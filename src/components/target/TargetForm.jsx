@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Coins, Sparkles, Target } from 'lucide-react';
+import { CheckCircle2, Coins, CreditCard, Sparkles, Target } from 'lucide-react';
 import Button, { cn } from '../ui/Button';
 import Card from '../ui/Card';
-import Input, { selectClassName } from '../ui/Input';
+import Input from '../ui/Input';
 import UploadProof from './UploadProof';
 import { formatNumber } from '../../utils/intl';
 import { resolveImageUrl } from '../../utils/imageUrl';
@@ -102,6 +102,7 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
         transferNumber: transferNumber.trim(),
         paymentMethodId: selectedPaymentMethod.id,
         paymentMethod: selectedPaymentMethod.name,
+        agentAccountId: selectedApp.agentAccountId || '',
         screenshotProof: proof.file,
       });
       resetForm();
@@ -111,11 +112,11 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
   };
 
   return (
-    <Card className="rounded-2xl border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[#0f0f0f]/90 p-3 shadow-[0_24px_70px_-52px_rgb(var(--color-primary-rgb)/0.42)] sm:p-4">
-      <form onSubmit={handleSubmit} className="space-y-3.5">
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <Card className="overflow-hidden rounded-2xl border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.98),rgb(var(--color-surface-rgb)/0.84))] p-3 shadow-[0_24px_70px_-52px_rgb(var(--color-primary-rgb)/0.4)] sm:p-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col gap-2.5 rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.14)] bg-[color:rgb(var(--color-primary-rgb)/0.06)] p-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="inline-flex items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-card-rgb)/0.72)] px-2.5 py-1 text-[11px] font-bold text-[var(--color-primary)]">
               <Sparkles className="h-3.5 w-3.5" />
               OSCAR STORE Target
             </p>
@@ -134,10 +135,10 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                   type="button"
                   onClick={() => setSelectedAppId(app.id)}
                   className={cn(
-                    'group overflow-hidden rounded-2xl border bg-[#111]/90 text-start shadow-[0_16px_44px_-38px_rgb(var(--color-primary-rgb)/0.52)] transition duration-300 hover:-translate-y-0.5 hover:scale-[1.005]',
+                    'group overflow-hidden rounded-2xl border bg-[color:rgb(var(--color-card-rgb)/0.94)] text-start shadow-[0_16px_44px_-38px_rgb(var(--color-primary-rgb)/0.48)] transition duration-300 hover:-translate-y-0.5 hover:scale-[1.005]',
                     isSelected
                       ? 'border-[color:rgb(var(--color-primary-rgb)/0.72)] shadow-[0_22px_70px_-36px_rgb(var(--color-primary-rgb)/0.65)]'
-                      : 'border-white/10 hover:border-[color:rgb(var(--color-primary-rgb)/0.32)]'
+                      : 'border-[color:rgb(var(--color-border-rgb)/0.72)] hover:border-[color:rgb(var(--color-primary-rgb)/0.32)]'
                   )}
                 >
                   <div className="relative h-24 overflow-hidden">
@@ -148,7 +149,7 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                         <Target className="h-6 w-6" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
                     {isSelected && (
                       <span className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)] text-black">
                         <CheckCircle2 className="h-4 w-4" />
@@ -156,7 +157,7 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                     )}
                   </div>
                   <div className="p-2.5">
-                    <p className="text-sm font-bold text-[var(--color-text)]">{app.name}</p>
+                    <p className="line-clamp-1 text-sm font-black text-[var(--color-text)]">{app.name}</p>
                     <p className="mt-0.5 text-xs text-[var(--color-primary)]">
                       {formatNumber(app.unitPrice, 'en-US', { maximumFractionDigits: 2 })} EGP / كوين
                     </p>
@@ -167,55 +168,78 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
           </div>
         </section>
 
-        <div className="grid gap-3 lg:grid-cols-[1fr_16rem]">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="عدد الكوينز"
-                type="number"
-                min="1"
-                step="1"
-                value={coinAmount}
-                onChange={(event) => setCoinAmount(event.target.value)}
-                placeholder="1000"
-              />
-              <Input
-                label="معرّف الحساب"
-                value={senderId}
-                onChange={(event) => setSenderId(event.target.value)}
-                placeholder="ID الحساب أو اللاعب داخل التطبيق المحدد"
-              />
-            </div>
+            <section className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-surface-rgb)/0.62)] p-3">
+              <p className="mb-3 text-xs font-black text-[var(--color-text)]">بيانات الطلب</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="عدد الكوينز"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={coinAmount}
+                  onChange={(event) => setCoinAmount(event.target.value)}
+                  placeholder="1000"
+                />
+                <Input
+                  label="معرّف الحساب"
+                  value={senderId}
+                  onChange={(event) => setSenderId(event.target.value)}
+                  placeholder="ID الحساب أو اللاعب داخل التطبيق المحدد"
+                />
+              </div>
+            </section>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">طريقة الدفع</span>
-                <select
-                  value={paymentMethodId}
-                  onChange={(event) => setPaymentMethodId(event.target.value)}
-                  className={selectClassName}
-                  disabled={!availablePaymentMethods.length}
-                >
-                  {availablePaymentMethods.map((method) => (
-                    <option key={method.id} value={method.id}>{getPaymentMethodLabel(method.name)}</option>
-                  ))}
-                </select>
-                {!availablePaymentMethods.length ? (
-                  <p className="mt-1.5 text-xs text-[var(--color-error)]">لا توجد طرق دفع مفعّلة لهذا التطبيق حاليًا.</p>
-                ) : null}
-              </label>
-              <Input
-                label="رقم التحويل"
-                value={transferNumber}
-                onChange={(event) => setTransferNumber(event.target.value)}
-                placeholder="رقم المحفظة أو حساب InstaPay أو مرجع Binance"
-              />
-            </div>
+            <section className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-surface-rgb)/0.62)] p-3">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[color:rgb(var(--color-primary-rgb)/0.1)] text-[var(--color-primary)]">
+                  <CreditCard className="h-4 w-4" />
+                </span>
+                <p className="text-xs font-black text-[var(--color-text)]">طريقة الدفع</p>
+              </div>
+
+              {availablePaymentMethods.length ? (
+                <div className="grid gap-2 sm:grid-cols-4">
+                  {availablePaymentMethods.map((method) => {
+                    const isSelected = String(method.id) === String(paymentMethodId);
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setPaymentMethodId(method.id)}
+                        className={cn(
+                          'min-h-11 rounded-xl border px-2.5 py-2 text-xs font-black transition hover:-translate-y-0.5',
+                          isSelected
+                            ? 'border-[color:rgb(var(--color-primary-rgb)/0.62)] bg-[color:rgb(var(--color-primary-rgb)/0.13)] text-[var(--color-primary)] shadow-[0_14px_34px_-28px_rgb(var(--color-primary-rgb)/0.58)]'
+                            : 'border-[color:rgb(var(--color-border-rgb)/0.78)] bg-[color:rgb(var(--color-card-rgb)/0.72)] text-[var(--color-text-secondary)] hover:border-[color:rgb(var(--color-primary-rgb)/0.3)]'
+                        )}
+                      >
+                        {getPaymentMethodLabel(method.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rounded-xl border border-[color:rgb(var(--color-error-rgb)/0.22)] bg-[color:rgb(var(--color-error-rgb)/0.08)] px-3 py-2 text-xs font-bold text-[var(--color-error)]">
+                  لا توجد طرق دفع مفعّلة لهذا التطبيق حاليًا.
+                </p>
+              )}
+
+              <div className="mt-3">
+                <Input
+                  label="رقم التحويل"
+                  value={transferNumber}
+                  onChange={(event) => setTransferNumber(event.target.value)}
+                  placeholder="رقم المحفظة أو حساب InstaPay"
+                />
+              </div>
+            </section>
 
             <UploadProof label="صورة إثبات التحويل" value={proof} onChange={setProof} />
           </div>
 
-          <aside className="h-fit rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[linear-gradient(180deg,#171717,#0d0d0d)] p-3 shadow-[0_22px_60px_-48px_rgb(var(--color-primary-rgb)/0.55)]">
+          <aside className="h-fit rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[linear-gradient(180deg,rgb(var(--color-card-rgb)/0.98),rgb(var(--color-elevated-rgb)/0.82))] p-3 shadow-[0_22px_60px_-48px_rgb(var(--color-primary-rgb)/0.55)]">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[color:rgb(var(--color-primary-rgb)/0.13)] text-[var(--color-primary)]">
               <Coins className="h-5 w-5" />
             </div>
@@ -229,7 +253,7 @@ const TargetForm = ({ products = [], paymentMethods = [], onSubmit }) => {
                 <span className="text-[var(--color-text-secondary)]">الكوينز</span>
                 <strong className="text-[var(--color-text)]">{formatNumber(coinAmountValue, 'en-US')}</strong>
               </div>
-              <div className="border-t border-white/10 pt-2.5">
+              <div className="border-t border-[color:rgb(var(--color-border-rgb)/0.72)] pt-2.5">
                 <span className="text-xs text-[var(--color-text-secondary)]">الإجمالي</span>
                 <p className="mt-1 text-xl font-black text-[var(--color-primary)] sm:text-2xl">
                   {formatNumber(totalPrice, 'en-US', { maximumFractionDigits: 2 })} EGP
