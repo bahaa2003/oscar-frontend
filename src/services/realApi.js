@@ -1879,6 +1879,11 @@ const realApi = {
       const res = await http.post('/admin/whatsapp/reconnect');
       return unwrap(res);
     },
+
+    reset: async () => {
+      const res = await http.post('/admin/whatsapp/reset');
+      return unwrap(res);
+    },
   },
 
   // ── Auth ──────────────────────────────────────────────────────────────────

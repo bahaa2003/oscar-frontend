@@ -7,6 +7,7 @@ import {
   QrCode,
   RefreshCw,
   Smartphone,
+  Trash2,
   WifiOff,
 } from 'lucide-react';
 import apiClient from '../../services/client';
@@ -18,9 +19,15 @@ const POLL_INTERVAL_MS = 4000;
 
 const DEFAULT_STATUS = {
   state: 'INITIALIZING',
+  qrDataUrl: null,
   qrCode: null,
+  isReady: false,
   isConnected: false,
   isInitializing: true,
+  isResetting: false,
+  isReconnecting: false,
+  lastConnectedAt: null,
+  lastDisconnectedAt: null,
   lastError: '',
 };
 
@@ -51,11 +58,35 @@ const STATE_META = {
   },
 };
 
-const normalizeStatus = (status) => ({
-  ...DEFAULT_STATUS,
-  ...(status || {}),
-  state: String(status?.state || DEFAULT_STATUS.state).trim().toUpperCase(),
-});
+const normalizeStatus = (status) => {
+  const next = {
+    ...DEFAULT_STATUS,
+    ...(status || {}),
+    state: String(status?.state || DEFAULT_STATUS.state).trim().toUpperCase(),
+  };
+
+  const qrDataUrl = next.qrDataUrl || next.qrCode || null;
+
+  return {
+    ...next,
+    qrDataUrl,
+    qrCode: qrDataUrl,
+    isReady: Boolean(next.isReady || next.isConnected || next.state === 'CONNECTED'),
+    isConnected: Boolean(next.isReady || next.isConnected || next.state === 'CONNECTED'),
+  };
+};
+
+const formatDateTime = (value) => {
+  if (!value) return '-';
+  try {
+    return new Intl.DateTimeFormat('ar', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+};
 
 const StatusPill = ({ state }) => {
   const meta = STATE_META[state] || STATE_META.DISCONNECTED;
@@ -73,9 +104,21 @@ const AdminWhatsApp = () => {
   const [status, setStatus] = useState(DEFAULT_STATUS);
   const [isLoading, setIsLoading] = useState(true);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
-  const isConnected = Boolean(status?.isConnected || status?.state === 'CONNECTED');
-  const shouldPoll = !isConnected;
+  const isConnected = Boolean(status?.isConnected || status?.isReady || status?.state === 'CONNECTED');
+  const isBusy = Boolean(isReconnecting || isResetting || status.isInitializing || status.isResetting || status.isReconnecting);
+  const shouldPoll = Boolean(
+    !isConnected
+    && status.state !== 'ERROR'
+    && (status.state === 'DISCONNECTED'
+      || status.state === 'INITIALIZING'
+      || status.state === 'QR_READY'
+      || status.isInitializing
+      || status.isResetting
+      || status.isReconnecting
+      || Boolean(status.qrDataUrl))
+  );
   const stateMeta = useMemo(() => STATE_META[status.state] || STATE_META.DISCONNECTED, [status.state]);
 
   const fetchStatus = useCallback(async ({ silent = false } = {}) => {
@@ -116,6 +159,7 @@ const AdminWhatsApp = () => {
   }, [fetchStatus, shouldPoll]);
 
   const handleReconnect = async () => {
+    if (isBusy) return;
     setIsReconnecting(true);
 
     try {
@@ -127,6 +171,27 @@ const AdminWhatsApp = () => {
       addToast(error?.message || 'تعذر إعادة تشغيل خدمة الواتساب.', 'error');
     } finally {
       setIsReconnecting(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (isBusy) return;
+
+    const confirmed = window.confirm('سيتم حذف جلسة واتساب الحالية وطلب مسح QR جديد. هل تريد المتابعة؟');
+    if (!confirmed) return;
+
+    setIsResetting(true);
+
+    try {
+      const nextStatus = await apiClient.whatsapp.reset();
+      setStatus(normalizeStatus(nextStatus));
+      addToast('تم حذف جلسة الواتساب وبدء جلسة جديدة.', 'success');
+      await fetchStatus({ silent: true });
+    } catch (error) {
+      addToast(error?.message || 'تعذر حذف جلسة الواتساب.', 'error');
+    } finally {
+      setIsResetting(false);
       setIsLoading(false);
     }
   };
@@ -154,11 +219,21 @@ const AdminWhatsApp = () => {
               type="button"
               variant="secondary"
               onClick={handleReconnect}
-              disabled={isReconnecting}
+              disabled={isBusy}
               className="h-10 rounded-xl px-4 text-xs"
             >
               <RefreshCw className={`h-4 w-4 ${isReconnecting ? 'animate-spin' : ''}`} />
-              إعادة تشغيل
+              Reconnect / إعادة تشغيل
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleReset}
+              disabled={isBusy}
+              className="h-10 rounded-xl px-4 text-xs"
+            >
+              {isResetting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Reset Session / حذف الجلسة
             </Button>
           </div>
         </div>
@@ -191,11 +266,11 @@ const AdminWhatsApp = () => {
                   الجلسة محفوظة ويمكن للنظام إرسال إشعارات واتساب إلى رقم الأدمن المحدد في إعدادات الخادم.
                 </p>
               </div>
-            ) : status.state === 'QR_READY' && status.qrCode ? (
+            ) : status.state === 'QR_READY' && status.qrDataUrl ? (
               <div className="mx-auto grid w-full max-w-3xl gap-6 md:grid-cols-[auto_minmax(0,1fr)] md:items-center">
                 <div className="mx-auto rounded-[2rem] border border-[color:rgb(var(--color-border-rgb)/0.7)] bg-white p-3 shadow-[0_28px_80px_-48px_rgba(6,182,212,0.8)]">
                   <img
-                    src={status.qrCode}
+                    src={status.qrDataUrl}
                     alt="WhatsApp QR"
                     className="h-56 w-56 rounded-2xl object-contain sm:h-64 sm:w-64"
                   />
@@ -271,6 +346,23 @@ const AdminWhatsApp = () => {
                 </p>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.62)] p-3">
+                <p className="text-xs text-[var(--color-text-secondary)]">Last connected</p>
+                <p className="mt-2 text-sm font-bold text-[var(--color-text)]">{formatDateTime(status.lastConnectedAt)}</p>
+              </div>
+              <div className="rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.72)] bg-[color:rgb(var(--color-card-rgb)/0.62)] p-3">
+                <p className="text-xs text-[var(--color-text-secondary)]">Last disconnected</p>
+                <p className="mt-2 text-sm font-bold text-[var(--color-text)]">{formatDateTime(status.lastDisconnectedAt)}</p>
+              </div>
+            </div>
+
+            {(status.isResetting || status.isReconnecting) ? (
+              <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3 text-sm font-semibold text-amber-700 dark:text-amber-300">
+                {status.isResetting ? 'Reset is running...' : 'Reconnect is running...'}
+              </div>
+            ) : null}
 
             {status.lastError ? (
               <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-3 text-sm leading-6 text-rose-700 dark:text-rose-300">

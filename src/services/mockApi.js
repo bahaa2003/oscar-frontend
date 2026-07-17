@@ -2458,6 +2458,23 @@ const mockApi = {
         lastError: '',
       };
     },
+
+    reset: async () => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      return {
+        state: 'QR_READY',
+        qrDataUrl: null,
+        qrCode: null,
+        isReady: false,
+        isConnected: false,
+        isInitializing: false,
+        isResetting: false,
+        isReconnecting: false,
+        lastError: '',
+        lastConnectedAt: null,
+        lastDisconnectedAt: new Date().toISOString(),
+      };
+    },
   },
 
   audit: {
