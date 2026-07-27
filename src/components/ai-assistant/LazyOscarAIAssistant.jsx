@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 
 const OscarAIAssistant = lazy(() => import('./OscarAIAssistant'));
 
-const LazyOscarAIAssistant = () => {
+const LazyOscarAIAssistant = ({ showLauncher = true }) => {
   const [shouldMount, setShouldMount] = useState(false);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ const LazyOscarAIAssistant = () => {
 
   return (
     <Suspense fallback={null}>
-      <OscarAIAssistant />
+      <OscarAIAssistant showLauncher={showLauncher} />
     </Suspense>
   );
 };

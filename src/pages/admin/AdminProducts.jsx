@@ -315,6 +315,7 @@ const AdminProducts = () => {
     const [isSavingProduct, setIsSavingProduct] = useState(false);
     const [togglingProductId, setTogglingProductId] = useState(null);
     const [productToDelete, setProductToDelete] = useState(null);
+    const [productEditorTab, setProductEditorTab] = useState('basic');
 
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
@@ -759,6 +760,7 @@ const AdminProducts = () => {
     };
 
     const openProductModal = (product = null) => {
+        setProductEditorTab('basic');
         if (product) {
             const linkedProviderId = String(product.providerId || product.supplierId || '').trim();
             const linkedProviderProductId = String(product.providerProductId || product.externalProductId || '').trim();
@@ -1418,7 +1420,7 @@ const AdminProducts = () => {
                 </div>
             </div>
 
-            <div className="admin-premium-panel overflow-hidden">
+            <div className="admin-premium-panel hidden overflow-hidden lg:block">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -1444,10 +1446,10 @@ const AdminProducts = () => {
                         {filteredAdminProducts.map((product) => {
                             const isUnavailable = product.productStatus !== 'available';
                             return (
-                            <TableRow key={product.id}>
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`relative h-10 w-10 overflow-hidden rounded-lg bg-gray-100 ${isUnavailable ? 'opacity-60' : ''}`}>
+                            <TableRow key={product.id} className="hover:bg-gray-50/70 dark:hover:bg-white/[0.03]">
+                                        <TableCell className="py-2.5">
+                                            <div className="flex min-w-[180px] items-center gap-2.5">
+                                                <div className={`relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-gray-100 ${isUnavailable ? 'opacity-60' : ''}`}>
                                                     <img 
                                                         src={resolveImageUrl(product.image)} 
                                                         alt={product.name} 
@@ -1463,23 +1465,22 @@ const AdminProducts = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div>
-                                                    <div className={`font-medium ${isUnavailable ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{product.name}</div>
-                                                    {isUnavailable && <div className="text-xs text-red-500 font-semibold">غير متوفر</div>}
-                                                    <div className="text-xs text-gray-500">{categoryNameById.get(String(product.category || '').trim()) || product.category}</div>
+                                                <div className="min-w-0">
+                                                    <div className={`truncate text-sm font-semibold ${isUnavailable ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{product.name}</div>
+                                                    {isUnavailable && <div className="text-[10px] font-semibold text-red-500">غير متوفر</div>}
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline">{getProviderDisplayName(product)}</Badge>
+                                            <Badge variant="outline" className="max-w-[130px] truncate text-[11px]">{getProviderDisplayName(product)}</Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant="outline">{categoryNameById.get(String(product.category || '').trim()) || product.category}</Badge>
+                                            <Badge variant="outline" className="max-w-[150px] truncate text-[11px]">{categoryNameById.get(String(product.category || '').trim()) || product.category}</Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Badge variant="outline">{Number(product?.displayOrder || 0)}</Badge>
                                         </TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="max-w-[150px] truncate text-center font-mono text-xs" title={String(product.basePriceCoins || '')}>
                                             {formatExactDecimal(product.basePriceCoins, language) || product.basePriceCoins || '-'}
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -1527,6 +1528,98 @@ const AdminProducts = () => {
                         })}
                     </TableBody>
                 </Table>
+            </div>
+
+            <div className="grid gap-2.5 lg:hidden">
+                {filteredAdminProducts.length === 0 ? (
+                    <div className="admin-premium-panel px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                        {isEnglish
+                            ? 'No products match the selected category filters.'
+                            : 'لا توجد منتجات مطابقة لفلاتر الأقسام المحددة.'}
+                    </div>
+                ) : null}
+                {filteredAdminProducts.map((product) => {
+                    const isUnavailable = product.productStatus !== 'available';
+                    const categoryLabel = categoryNameById.get(String(product.category || '').trim()) || product.category || '-';
+                    const priceLabel = formatExactDecimal(product.basePriceCoins, language) || product.basePriceCoins || '-';
+
+                    return (
+                        <article key={product.id} className="admin-premium-panel overflow-hidden p-3">
+                            <div className="flex items-start gap-2.5">
+                                <div className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gray-100 ${isUnavailable ? 'opacity-60' : ''}`}>
+                                    <img
+                                        src={resolveImageUrl(product.image)}
+                                        alt={product.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        referrerPolicy="no-referrer"
+                                        className="h-full w-full object-cover"
+                                        style={isUnavailable ? { filter: 'grayscale(100%) blur(1px)' } : {}}
+                                    />
+                                    {isUnavailable && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                            <span className="px-0.5 text-center text-[7px] font-bold leading-none text-white">غ.متوفر</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <h3 className={`truncate text-sm font-bold ${isUnavailable ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{product.name}</h3>
+                                            <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">{getProviderDisplayName(product)}</p>
+                                        </div>
+                                        <Badge variant={product.status === 'active' ? 'success' : 'secondary'} className="shrink-0 text-[10px]">
+                                            {product.status === 'active' ? (isEnglish ? 'Active' : 'نشط') : (isEnglish ? 'Inactive' : 'متوقف')}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-[11px]">
+                                <div className="min-w-0 rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.04]">
+                                    <span className="block text-[9px] text-gray-400">{isEnglish ? 'Category' : 'القسم'}</span>
+                                    <span className="block truncate font-semibold text-gray-700 dark:text-gray-200">{categoryLabel}</span>
+                                </div>
+                                <div className="rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.04]">
+                                    <span className="block text-[9px] text-gray-400">{isEnglish ? 'Order' : 'الترتيب'}</span>
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200">{Number(product?.displayOrder || 0)}</span>
+                                </div>
+                                <div className="col-span-2 min-w-0 rounded-lg bg-gray-50 px-2 py-1.5 dark:bg-white/[0.04]">
+                                    <span className="block text-[9px] text-gray-400">{t('basePrice')}</span>
+                                    <span className="block break-all font-mono font-semibold leading-4 text-gray-700 dark:text-gray-200">{priceLabel}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-2.5 flex items-center justify-end gap-1 border-t border-gray-100 pt-2 dark:border-white/[0.06]">
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className={`h-8 rounded-lg px-2.5 text-[11px] font-semibold ${product.status === 'active'
+                                        ? 'text-amber-700 hover:bg-amber-50 hover:text-amber-800'
+                                        : 'text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800'}`}
+                                    onClick={() => handleToggleProductStatus(product)}
+                                    disabled={togglingProductId === product.id}
+                                >
+                                    {togglingProductId === product.id
+                                        ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                        : (product.status === 'active' ? (isEnglish ? 'Deactivate' : 'إيقاف') : (isEnglish ? 'Activate' : 'تفعيل'))}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-8 w-8 rounded-lg p-0" onClick={() => openProductModal(product)}>
+                                    <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 rounded-lg p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => handleDeleteProduct(product)}
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </article>
+                    );
+                })}
             </div>
 
             <Modal
@@ -1596,8 +1689,27 @@ const AdminProducts = () => {
 
             <Modal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} title={editingProduct ? t('editProduct') : t('addProduct')} size="xl">
                 <form onSubmit={handleProductSubmit} className="space-y-6">
+                    <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-gray-200 bg-gray-100/80 p-1.5 dark:border-gray-700 dark:bg-gray-900/70 sm:gap-2">
+                        {[
+                            { id: 'basic', label: isEnglish ? 'Basic information' : 'المعلومات الأساسية' },
+                            { id: 'pricing', label: isEnglish ? 'Quantity & pricing' : 'الكمية والتسعير' },
+                            { id: 'fields', label: isEnglish ? 'Dynamic fields' : 'الحقول الديناميكية' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setProductEditorTab(tab.id)}
+                                className={`min-h-10 rounded-xl px-1.5 py-2 text-[10px] font-bold leading-4 transition-all sm:px-2 sm:text-sm ${productEditorTab === tab.id
+                                    ? 'bg-gradient-to-l from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/20'
+                                    : 'text-gray-600 hover:bg-white/80 dark:text-gray-300 dark:hover:bg-white/[0.06]'}`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
                     {/* ========== 1. المعلومات الأساسية ========== */}
-                    <div>
+                    <div className={productEditorTab === 'basic' ? 'block' : 'hidden'}>
                         <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
                             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">1</span>
                             المعلومات الأساسية
@@ -1640,7 +1752,7 @@ const AdminProducts = () => {
                     </div>
 
                     {/* ========== 2. الكمية والتسعير ========== */}
-                    <div>
+                    <div className={productEditorTab === 'pricing' ? 'block' : 'hidden'}>
                         <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
                             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">2</span>
                             الكمية والتسعير
@@ -2061,88 +2173,10 @@ const AdminProducts = () => {
                         </div>
                     </div>
 
-                    {/* ========== 3. إعدادات المنتج ========== */}
-                    <div>
+                    {/* ========== 3. الحقول الديناميكية ========== */}
+                    <div className={productEditorTab === 'fields' ? 'block' : 'hidden'}>
                         <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
                             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">3</span>
-                            إعدادات المنتج
-                        </h3>
-                        <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">حالة التوفر</label>
-                                    <Info className="h-4 w-4 text-gray-400" title="تحديد ما إذا كان المنتج متاحاً للشراء أو متوقفاً" />
-                                </div>
-                                <div className="flex gap-2">
-                                    {getAvailableProductStatuses().map((status) => (
-                                        <label key={status.value} className="flex items-center gap-2 rounded-lg border-2 p-3 cursor-pointer transition-colors" style={{
-                                            borderColor: productForm.productStatus === status.value ? '#4f46e5' : '#e5e7eb',
-                                            backgroundColor: productForm.productStatus === status.value ? 'rgba(79, 70, 229, 0.05)' : '',
-                                        }}>
-                                            <input
-                                                type="radio"
-                                                name="productStatus"
-                                                value={status.value}
-                                                checked={productForm.productStatus === status.value}
-                                                onChange={(e) => setProductForm((prev) => ({ ...prev, productStatus: e.target.value }))}
-                                            />
-                                            <span className="text-sm font-medium">{status.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(productForm.isVisibleInStore)}
-                                    onChange={(e) => setProductForm((prev) => ({ ...prev, isVisibleInStore: e.target.checked }))}
-                                />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">إظهار المنتج في المتجر</span>
-                            </label>
-
-                            {productForm.productStatus !== 'available' && (
-                                <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(productForm.showWhenUnavailable)}
-                                        onChange={(e) => setProductForm((prev) => ({ ...prev, showWhenUnavailable: e.target.checked }))}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">إذا كان غير متوفر، أظهره كمعطل بدل إخفائه</span>
-                                </label>
-                            )}
-
-                            <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(productForm.pauseSales)}
-                                    onChange={(e) => setProductForm((prev) => ({ ...prev, pauseSales: e.target.checked }))}
-                                />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">إيقاف البيع مؤقتاً</span>
-                            </label>
-
-                            {productForm.pauseSales && (
-                                <Input
-                                    label="سبب الإيقاف (اختياري)"
-                                    placeholder="مثال: جاري التحديث..."
-                                    value={productForm.pauseReason}
-                                    onChange={(e) => setProductForm((prev) => ({ ...prev, pauseReason: e.target.value }))}
-                                />
-                            )}
-
-                            <Input
-                                label="ملاحظات الإدارة (لا يراها العميل)"
-                                placeholder="ملاحظات داخلية..."
-                                value={productForm.internalNotes}
-                                onChange={(e) => setProductForm((prev) => ({ ...prev, internalNotes: e.target.value }))}
-                            />
-                        </div>
-                    </div>
-
-                    {/* ========== 4. اضافات اخري ========== */}
-                    <div>
-                        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">4</span>
                             الحقول الديناميكية
                         </h3>
                         <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/30">
@@ -2265,32 +2299,6 @@ const AdminProducts = () => {
                                 <p className="text-xs text-gray-500 dark:text-gray-400">لا توجد حقول ديناميكية بعد. اضغط "إضافة حقل".</p>
                             )}
                         </div>
-                    </div>
-
-                    {/* Preview حالة المنتج النهائية */}
-                    <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-900/20">
-                        <h4 className="font-semibold text-blue-900 dark:text-blue-100">معاينة: كيف سيبدو المنتج للعميل</h4>
-                        {(() => {
-                            const status = getProductStatus(productForm);
-                            return (
-                                <div className="space-y-2 text-sm">
-                                    <p className="text-blue-700 dark:text-blue-300">
-                                        {status.isVisible ? '✓ المنتج سيكون ظاهراً' : '✗ المنتج لن يكون ظاهراً'}
-                                    </p>
-                                    <p className="text-blue-700 dark:text-blue-300">
-                                        {status.isPurchasable ? '✓ يمكن شراء المنتج' : '✗ لا يمكن شراء المنتج'}
-                                    </p>
-                                    {status.badge && (
-                                        <p className="text-blue-700 dark:text-blue-300">
-                                            Badge: <Badge variant={status.badgeColor}>{status.badgeLabel}</Badge>
-                                        </p>
-                                    )}
-                                    {status.helperText && (
-                                        <p className="text-blue-700 dark:text-blue-300">النص: {status.helperText}</p>
-                                    )}
-                                </div>
-                            );
-                        })()}
                     </div>
 
                     <div className="flex justify-end gap-2 pt-4">

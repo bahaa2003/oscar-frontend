@@ -1,7 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { motion, useAnimationControls, useReducedMotion } from 'framer-motion';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import FloatingWhatsApp from './components/ui/FloatingWhatsApp';
+import BarbaPageTransition from './components/ui/BarbaPageTransition';
 import LazyOscarAIAssistant from './components/ai-assistant/LazyOscarAIAssistant';
 import SessionBootstrap from './components/app/SessionBootstrap';
 import { LanguageProvider } from './context/LanguageContext';
@@ -35,10 +37,12 @@ const Settings = lazy(() => import('./pages/Settings'));
 const ContactUs = lazy(() => import('./pages/ContactUs'));
 const Account = lazy(() => import('./pages/Account'));
 const AccountSecurity = lazy(() => import('./pages/AccountSecurity'));
+const Referral = lazy(() => import('./pages/Referral'));
 const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminGroups = lazy(() => import('./pages/admin/AdminGroups'));
 const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminWallet = lazy(() => import('./pages/admin/AdminWallet'));
+const AdminReferrals = lazy(() => import('./pages/admin/AdminReferrals'));
 const AdminCurrencies = lazy(() => import('./pages/admin/AdminCurrencies'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminPaymentMethods = lazy(() => import('./pages/admin/AdminPaymentMethods'));
@@ -84,7 +88,28 @@ const AdminDashboardRoute = () => {
 
 const AnimatedAppRoutes = () => {
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const shouldReduceMotion = useReducedMotion();
+  const transitionControls = useAnimationControls();
+  const routeKey = location.pathname;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+    if (shouldReduceMotion) {
+      transitionControls.set({ opacity: 1, y: 0 });
+      return;
+    }
+
+    transitionControls.set({ opacity: 0, y: 8 });
+    transitionControls.start({
+      opacity: 1,
+      y: 0,
+      transition: {
+        opacity: { duration: 0.18, ease: 'easeOut' },
+        y: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+      },
+    });
+  }, [routeKey, shouldReduceMotion, transitionControls]);
 
   const routes = (
     <Routes location={location}>
@@ -186,6 +211,14 @@ const AnimatedAppRoutes = () => {
           element={(
             <ProtectedRoute roles={['customer', 'admin', ...SUPERVISOR_ROLES]}>
               {renderSuspended(<AccountSecurity />)}
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/referral"
+          element={(
+            <ProtectedRoute roles={['customer']}>
+              {renderSuspended(<Referral />)}
             </ProtectedRoute>
           )}
         />
@@ -318,6 +351,14 @@ const AnimatedAppRoutes = () => {
           )}
         />
         <Route
+          path="/admin/referrals"
+          element={(
+            <ProtectedRoute roles={ADMIN_PANEL_ROLES}>
+              {renderSuspended(<AdminReferrals />)}
+            </ProtectedRoute>
+          )}
+        />
+        <Route
           path="/admin/payments"
           element={(
             <ProtectedRoute roles={ADMIN_PANEL_ROLES} permission={PERMISSIONS.ADMIN_PAYMENTS}>
@@ -419,25 +460,36 @@ const AnimatedAppRoutes = () => {
     </Routes>
   );
 
-  if (isAdminRoute) {
-    return <div className="min-h-screen">{routes}</div>;
-  }
-
   return (
-    <div key={location.pathname} className="min-h-screen animate-[fade-in_0.16s_ease-out] motion-reduce:animate-none">
-      {routes}
-    </div>
+    <>
+      <BarbaPageTransition transitionKey={routeKey} />
+      <motion.div
+        className="min-h-screen"
+        initial={false}
+        animate={transitionControls}
+      >
+        {routes}
+      </motion.div>
+    </>
   );
 };
 
 const FloatingSupportWidgets = () => {
+  const location = useLocation();
   const userRole = useAuthStore((state) => state.user?.role);
   const normalizedRole = String(userRole || '').trim().toLowerCase();
-  const shouldShowAssistant = normalizedRole === 'customer' || isSupervisorRole(userRole);
+  const shouldShowAssistant = (
+    normalizedRole === 'customer'
+    || ADMIN_ROLES.includes(normalizedRole)
+    || isSupervisorRole(userRole)
+  );
+  const shouldShowAssistantLauncher = location.pathname === '/dashboard';
 
   return (
     <>
-      {shouldShowAssistant ? <LazyOscarAIAssistant /> : null}
+      {shouldShowAssistant ? (
+        <LazyOscarAIAssistant showLauncher={shouldShowAssistantLauncher} />
+      ) : null}
       <FloatingWhatsApp />
     </>
   );

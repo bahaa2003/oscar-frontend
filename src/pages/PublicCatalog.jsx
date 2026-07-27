@@ -32,6 +32,27 @@ import { homeHeroSlides } from '../data/homeHeroSlides';
 
 const dataProvider = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase();
 const isRealProvider = dataProvider === 'real';
+const SERVICE_NOTICE_SEEN_KEY = 'oscar-store-service-notice-seen-v1';
+
+const hasSeenServiceNotice = () => {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    return window.localStorage.getItem(SERVICE_NOTICE_SEEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markServiceNoticeAsSeen = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(SERVICE_NOTICE_SEEN_KEY, '1');
+  } catch {
+    // Keep the notice usable when browser storage is unavailable.
+  }
+};
 
 const normalizeCategoryKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -92,7 +113,7 @@ const PublicCatalog = () => {
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const { categories, products, isLoading, loadProducts } = useMediaStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showServiceNotice, setShowServiceNotice] = useState(true);
+  const [showServiceNotice, setShowServiceNotice] = useState(() => !hasSeenServiceNotice());
   const [currentParentId, setCurrentParentId] = useState(null);
   const [publicCatalog, setPublicCatalog] = useState({ categories: null, products: null });
   const [isPublicCatalogLoading, setIsPublicCatalogLoading] = useState(isRealProvider);
@@ -182,8 +203,15 @@ const PublicCatalog = () => {
   }, [loadProducts]);
 
   const handleCloseServiceNotice = useCallback(() => {
+    markServiceNoticeAsSeen();
     setShowServiceNotice(false);
   }, []);
+
+  useEffect(() => {
+    if (showServiceNotice) {
+      markServiceNoticeAsSeen();
+    }
+  }, [showServiceNotice]);
 
   const catalogProducts = publicCatalog.products?.length ? publicCatalog.products : products;
   const catalogCategories = publicCatalog.categories?.length ? publicCatalog.categories : categories;

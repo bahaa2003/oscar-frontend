@@ -72,10 +72,10 @@
       ),
       linear-gradient(
         180deg,
-        #020613 0%,
-        #08051c 36%,
-        #12072d 68%,
-        #22083a 100%
+        #030308 0%,
+        #090817 32%,
+        #120d2d 66%,
+        #21103a 100%
       ),
       linear-gradient(
         90deg,
@@ -247,7 +247,7 @@
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(180deg, rgb(2 6 19 / 0.12), rgb(15 8 45 / 0.58)),
+      linear-gradient(180deg, rgb(0 0 0 / 0.18), rgb(12 8 30 / 0.46)),
       radial-gradient(42rem circle at 92% 12%, rgb(244 63 221 / 0.2), transparent 48%),
       radial-gradient(46rem circle at 50% 58%, rgb(168 85 247 / 0.22), transparent 56%),
       radial-gradient(42rem circle at 56% 112%, rgb(124 58 237 / 0.24), transparent 52%),
@@ -2165,6 +2165,32 @@
   }
 }
 
+@keyframes referral-earnings-glow {
+  0%, 100% {
+    box-shadow: 0 22px 60px -30px rgb(8 145 178 / 0.95), 0 0 18px -13px rgb(34 211 238 / 0.65);
+  }
+  50% {
+    box-shadow: 0 28px 72px -28px rgb(67 56 202 / 0.95), 0 0 36px -8px rgb(34 211 238 / 0.9);
+  }
+}
+
+.admin-referrals-page button[title="اضغط لنسخ الرقم"],
+.admin-referrals-page button[title="Click to copy"] {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.admin-referrals-page div:has(> button[title="اضغط لنسخ الرقم"]) > span,
+.admin-referrals-page div:has(> button[title="Click to copy"]) > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1rem;
+}
+
+.referral-earnings-glow {
+  animation: referral-earnings-glow 2.8s ease-in-out infinite;
+}
+
 @keyframes security-card-glow {
   0% {
     left: -48%;
@@ -4015,5 +4041,413 @@
 
 .oscar-sidebar-shell[data-preview="true"] .app-shell-sidebar-panel .oscar-sidebar-nav-item,
 .oscar-sidebar-shell[data-expanded="false"] .app-shell-sidebar-panel .oscar-sidebar-nav-item {
+  box-shadow: none !important;
+}
+
+/* Floating customer-service contact menu. */
+.customer-service-launcher {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  width: 3.75rem;
+  height: 3.75rem;
+  background:
+    radial-gradient(circle at 30% 24%, rgb(255 255 255 / 0.32), transparent 31%),
+    linear-gradient(145deg, #0891b2 0%, #2563eb 38%, #7c3aed 70%, #d946ef 100%) !important;
+  border-color: rgb(125 249 255 / 0.52) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 0 0 1px rgb(192 132 252 / 0.24),
+    0 16px 36px -18px rgb(34 211 238 / 0.82),
+    0 0 32px -18px rgb(217 70 239 / 0.72) !important;
+  transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease !important;
+}
+
+.customer-service-launcher .floating-whatsapp-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.customer-service-launcher::before {
+  content: "";
+  position: absolute;
+  inset: -65% auto -65% -45%;
+  width: 30%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.72), transparent);
+  animation: customer-service-shine 4s ease-in-out infinite;
+}
+
+.customer-service-launcher:hover {
+  filter: brightness(1.1);
+}
+
+.customer-service-launcher.is-open {
+  transform: rotate(90deg) scale(0.92);
+}
+
+.floating-whatsapp .floating-whatsapp-ring {
+  border-color: rgb(34 211 238 / 0.46);
+  box-shadow: 0 0 18px -7px rgb(217 70 239 / 0.72);
+}
+
+.customer-service-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.85rem);
+  width: min(14.5rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  border: 0;
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(13rem circle at 5% 0%, rgb(34 211 238 / 0.18), transparent 56%),
+    radial-gradient(13rem circle at 100% 100%, rgb(217 70 239 / 0.16), transparent 58%),
+    linear-gradient(145deg, rgb(5 12 31 / 0.97), rgb(19 10 48 / 0.97));
+  padding: 0.65rem;
+  color: #f8fafc;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 24px 60px -28px rgb(0 0 0 / 0.88),
+    0 0 34px -20px rgb(34 211 238 / 0.72),
+    0 0 42px -26px rgb(217 70 239 / 0.68);
+  backdrop-filter: blur(22px);
+  transform-origin: bottom right;
+}
+
+.customer-service-menu::after {
+  content: "";
+  position: absolute;
+  right: 1.7rem;
+  bottom: -0.42rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  transform: rotate(45deg);
+  border: 0;
+  background: #130a30;
+}
+
+.customer-service-menu-glow {
+  position: absolute;
+  top: -3.5rem;
+  left: 50%;
+  width: 9rem;
+  height: 6rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgb(34 211 238 / 0.2);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.customer-service-menu-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.1rem 0.15rem 0.6rem;
+}
+
+.customer-service-menu-header strong,
+.customer-service-menu-header span {
+  display: block;
+}
+
+.customer-service-menu-header strong {
+  background: linear-gradient(90deg, #eaffff, #67e8f9 42%, #c4b5fd 76%, #f0abfc);
+  background-clip: text;
+  color: transparent;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.customer-service-menu-header span {
+  margin-top: 0.18rem;
+  color: rgb(203 213 225 / 0.68);
+  font-size: 0.58rem;
+  font-weight: 600;
+}
+
+.customer-service-menu-header button {
+  display: grid;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgb(148 163 184 / 0.2);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.05);
+  color: rgb(226 232 240 / 0.72);
+  transition: border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.customer-service-menu-header button:hover {
+  transform: rotate(90deg);
+  border-color: rgb(244 63 221 / 0.48);
+  color: #f0abfc;
+}
+
+.customer-service-actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.customer-service-action {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid rgb(148 163 184 / 0.16);
+  border-radius: 0.9rem;
+  background: rgb(255 255 255 / 0.045);
+  padding: 0.58rem 0.3rem 0.52rem;
+  color: #f8fafc;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.customer-service-action:hover {
+  transform: translateY(-3px);
+}
+
+.customer-service-action-icon {
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.customer-service-action > span:nth-child(2) {
+  margin-top: 0.38rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.customer-service-action small {
+  margin-top: 0.12rem;
+  color: rgb(203 213 225 / 0.62);
+  font-size: 0.5rem;
+  font-weight: 650;
+}
+
+.customer-service-action.is-whatsapp:hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-whatsapp,
+.customer-service-action.is-call {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-whatsapp .customer-service-action-icon {
+  background: linear-gradient(145deg, #4ade80, #16a34a);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 0 24px -10px rgb(34 197 94 / 0.9);
+}
+
+.customer-service-action.is-call:hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-call .customer-service-action-icon {
+  background: linear-gradient(145deg, #38bdf8, #2563eb 52%, #7c3aed);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 0 24px -10px rgb(59 130 246 / 0.9);
+}
+
+.customer-service-action.is-assistant {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-assistant:hover {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-assistant .customer-service-action-icon {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-service-action.is-assistant .customer-service-action-icon img {
+  width: 4.2rem;
+  height: 4.2rem;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 5px 8px rgb(0 0 0 / 0.28))
+    drop-shadow(0 0 8px rgb(34 211 238 / 0.42))
+    drop-shadow(0 0 10px rgb(217 70 239 / 0.32));
+  transform: translateY(-0.68rem) scale(1.12);
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.customer-service-action.is-assistant:hover .customer-service-action-icon img {
+  filter:
+    drop-shadow(0 7px 10px rgb(0 0 0 / 0.3))
+    drop-shadow(0 0 11px rgb(34 211 238 / 0.6))
+    drop-shadow(0 0 14px rgb(217 70 239 / 0.5));
+  transform: translateY(-0.76rem) scale(1.2);
+}
+
+:root:not(.dark) .customer-service-menu {
+  background:
+    radial-gradient(13rem circle at 5% 0%, rgb(14 165 233 / 0.13), transparent 56%),
+    radial-gradient(13rem circle at 100% 100%, rgb(217 70 239 / 0.1), transparent 58%),
+    linear-gradient(145deg, rgb(255 255 255 / 0.97), rgb(238 242 255 / 0.97));
+  color: #0f172a;
+}
+
+:root:not(.dark) .customer-service-menu::after {
+  background: #eef2ff;
+}
+
+:root:not(.dark) .customer-service-menu-header span,
+:root:not(.dark) .customer-service-action small {
+  color: rgb(51 65 85 / 0.68);
+}
+
+:root:not(.dark) .customer-service-action {
+  border-color: rgb(148 163 184 / 0.24);
+  background: rgb(255 255 255 / 0.66);
+  color: #0f172a;
+}
+
+:root:not(.dark) .customer-service-action.is-assistant,
+:root:not(.dark) .customer-service-action.is-assistant:hover,
+:root:not(.dark) .customer-service-action.is-whatsapp,
+:root:not(.dark) .customer-service-action.is-whatsapp:hover,
+:root:not(.dark) .customer-service-action.is-call,
+:root:not(.dark) .customer-service-action.is-call:hover {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root:not(.dark) .customer-service-action.is-assistant > span:nth-child(2) {
+  color: #4c1d95;
+  text-shadow: 0 0 10px rgb(124 58 237 / 0.16);
+}
+
+@keyframes customer-service-shine {
+  0%, 18% { left: -45%; opacity: 0; }
+  30% { opacity: 0.9; }
+  52%, 100% { left: 125%; opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .customer-service-launcher {
+    width: 3.35rem;
+    height: 3.35rem;
+  }
+
+  .customer-service-launcher .floating-whatsapp-icon {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+
+  .customer-service-menu {
+    width: min(13.75rem, calc(100vw - 1.5rem));
+    bottom: calc(100% + 0.7rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-service-launcher::before {
+    animation: none;
+  }
+}
+
+/* Keep the assistant image fixed above customer service and show its name. */
+.floating-whatsapp {
+  bottom: calc(1.2rem + env(safe-area-inset-bottom));
+}
+
+.oscar-ai-assistant-shell:not(.is-open) {
+  bottom: calc(5.6rem + env(safe-area-inset-bottom));
+}
+
+.oscar-ai-launcher {
+  animation: none !important;
+  transform: none !important;
+}
+
+.oscar-ai-launcher:hover {
+  transform: none !important;
+}
+
+.oscar-ai-launcher-tooltip {
+  display: block !important;
+  right: calc(100% + 0.35rem) !important;
+  padding: 0.42rem 0.68rem !important;
+  opacity: 1 !important;
+  transform: none !important;
+  color: var(--color-text) !important;
+  font-size: 0.66rem !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 16px -10px rgb(34 211 238 / 0.68) !important;
+}
+
+:root:not(.dark) .oscar-ai-launcher-tooltip {
+  border-color: rgb(109 40 217 / 0.2) !important;
+  background: rgb(255 255 255 / 0.94) !important;
+  color: #4c1d95 !important;
+  text-shadow: 0 0 10px rgb(124 58 237 / 0.14);
+}
+
+@media (max-width: 640px) {
+  .floating-whatsapp {
+    bottom: calc(0.95rem + env(safe-area-inset-bottom));
+  }
+
+  .oscar-ai-assistant-shell:not(.is-open) {
+    bottom: calc(4.85rem + env(safe-area-inset-bottom));
+  }
+
+  .oscar-ai-launcher-tooltip {
+    max-width: 7rem;
+    padding: 0.36rem 0.56rem !important;
+    font-size: 0.58rem !important;
+  }
+}
+
+/* Light storefront categories: show the artwork without surrounding cards. */
+:root:not(.dark) .storefront-category-card--plain,
+:root:not(.dark) .storefront-category-card--plain:hover,
+:root:not(.dark) .storefront-category-card--neon,
+:root:not(.dark) .storefront-category-card--neon:hover {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+:root:not(.dark) .storefront-category-card .storefront-category-media,
+:root:not(.dark) .storefront-category-card--neon .relative.inline-block {
+  border: 0 !important;
+  background: transparent !important;
   box-shadow: none !important;
 }

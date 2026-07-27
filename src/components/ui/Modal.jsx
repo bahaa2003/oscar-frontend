@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import Button, { cn } from './Button';
@@ -12,9 +13,10 @@ const sizeClassNames = {
 };
 
 const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className: modalClassName, placement = 'responsive' }) => {
-  const backdropZ = modalClassName || 'z-50';
+  const backdropZ = modalClassName || 'z-[240]';
   const isCentered = placement === 'center';
-  return (
+  const isBottom = placement === 'bottom';
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -27,7 +29,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', classNam
           />
           <div className={cn(
             'pointer-events-none fixed inset-0 flex justify-center p-3 sm:p-4',
-            isCentered ? 'items-center' : 'items-end sm:items-center',
+            isCentered ? 'items-center' : (isBottom ? 'items-end' : 'items-end sm:items-center'),
             backdropZ
           )}>
             <motion.div
@@ -63,6 +65,8 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', classNam
       )}
     </AnimatePresence>
   );
+
+  return typeof document === 'undefined' ? modalContent : createPortal(modalContent, document.body);
 };
 
 export default Modal;

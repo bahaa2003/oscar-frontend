@@ -32,7 +32,6 @@ import {
 
 const COMPLETED_STATUSES = ['completed', 'approved', 'success'];
 const REJECTED_STATUSES = ['rejected', 'denied', 'cancelled', 'canceled', 'failed'];
-const DASHBOARD_DEFAULT_RANGE_DAYS = 30;
 
 const asNumber = (value) => {
   const parsed = Number(value);
@@ -42,13 +41,6 @@ const asNumber = (value) => {
 const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
 const isCompletedStatus = (status) => COMPLETED_STATUSES.includes(normalizeStatus(status));
 const isRejectedStatus = (status) => REJECTED_STATUSES.includes(normalizeStatus(status));
-
-const shiftDateByDays = (inputDate, days) => {
-  const nextDate = new Date(inputDate);
-  nextDate.setHours(0, 0, 0, 0);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
-};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -369,7 +361,10 @@ const AdminWallet = () => {
 
   const todayInputValue = useMemo(() => toDateInputValue(new Date()), []);
   const defaultRangeStart = useMemo(
-    () => toDateInputValue(shiftDateByDays(new Date(), -(DASHBOARD_DEFAULT_RANGE_DAYS - 1))),
+    () => {
+      const today = new Date();
+      return toDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1));
+    },
     []
   );
 

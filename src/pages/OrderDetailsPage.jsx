@@ -276,9 +276,9 @@ const OrderDetailsPage = () => {
               <div className="flex flex-col items-center">
                 <StatusValue status={order.status} label={statusLabel} />
                 {orderDurationText ? (
-                  <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-                    <Clock className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-xs font-medium text-gray-300">
+                  <div className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-indigo-200/80 bg-indigo-50 px-3 py-1.5 shadow-sm dark:border-fuchsia-300/30 dark:bg-[linear-gradient(110deg,rgb(109_40_217/0.42),rgb(192_38_211/0.28)_55%,rgb(8_145_178/0.32))] dark:shadow-[0_10px_28px_-18px_rgb(192_38_211/0.9)]">
+                    <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-cyan-200" />
+                    <span className="text-xs font-bold text-indigo-800 dark:text-white">
                       {orderDurationText}
                     </span>
                   </div>

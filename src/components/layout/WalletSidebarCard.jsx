@@ -57,8 +57,8 @@ const WalletSidebarCard = ({ className, isVisible = true, onNavigate }) => {
   const walletCurrency = String(user?.currency || 'USD').toUpperCase();
   const walletDisplayValue = useMemo(
     () => formatWalletAmount(walletValue, walletCurrency, {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 3,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }),
     [walletCurrency, walletValue]
   );

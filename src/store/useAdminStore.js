@@ -13,12 +13,79 @@ let hasFetchedAdminWalletsFromBackendThisSession = false;
 
 const USERS_CACHE_TTL = isRealProvider ? 15 * 1000 : 90 * 1000;
 const WALLETS_CACHE_TTL = isRealProvider ? 15 * 1000 : 60 * 1000;
-const USERS_PAGE_LIMIT = 20;
+const USERS_PAGE_LIMIT = 100;
+const USERS_MAX_PAGES = 1000;
 const USERS_DEFAULT_SORT_BY = 'walletBalance';
 const USERS_DEFAULT_SORT_ORDER = 'desc';
 let usersRequest = null;
 let walletsRequest = null;
 const walletTransactionsRequests = new Map();
+
+const getUserKey = (entry) => String(entry?.id || entry?._id || entry?.email || '').trim().toLowerCase();
+
+const mergeUniqueUsers = (target, seenKeys, entries) => {
+  (Array.isArray(entries) ? entries : []).forEach((entry) => {
+    const key = getUserKey(entry);
+    if (!key || seenKeys.has(key)) return;
+    seenKeys.add(key);
+    target.push(entry);
+  });
+};
+
+const getPaginationValue = (pagination, keys) => {
+  for (const key of keys) {
+    const value = Number(pagination?.[key]);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+};
+
+const hasAnotherUsersPage = ({ pagination, page, receivedCount, addedCount }) => {
+  if (pagination) {
+    const currentPage = getPaginationValue(pagination, ['page', 'currentPage', 'current_page']) ?? page;
+    const totalPages = getPaginationValue(pagination, ['pages', 'totalPages', 'total_pages', 'pageCount']);
+    if (totalPages !== null) return currentPage < totalPages;
+
+    const hasNext = pagination.hasNextPage ?? pagination.hasNext ?? pagination.nextPage;
+    if (hasNext !== undefined && hasNext !== null) return Boolean(hasNext);
+
+    const total = getPaginationValue(pagination, ['total', 'totalItems', 'totalCount', 'count']);
+    const limit = getPaginationValue(pagination, ['limit', 'perPage', 'pageSize']) ?? USERS_PAGE_LIMIT;
+    if (total !== null && limit > 0) return currentPage * limit < total;
+  }
+
+  return receivedCount >= USERS_PAGE_LIMIT && addedCount > 0;
+};
+
+const fetchAllCustomerUsers = async () => {
+  const allUsers = [];
+  const seenKeys = new Set();
+
+  for (let page = 1; page <= USERS_MAX_PAGES; page += 1) {
+    const result = await apiClient.users.list({
+      page,
+      limit: USERS_PAGE_LIMIT,
+      role: 'customer',
+      sortBy: USERS_DEFAULT_SORT_BY,
+      sortOrder: USERS_DEFAULT_SORT_ORDER,
+    });
+    const items = Array.isArray(result) ? result : (result?.users || []);
+    const beforeCount = allUsers.length;
+    mergeUniqueUsers(allUsers, seenKeys, items);
+    const addedCount = allUsers.length - beforeCount;
+
+    if (!hasAnotherUsersPage({
+      pagination: result?.pagination || null,
+      page,
+      receivedCount: items.length,
+      addedCount,
+    })) {
+      break;
+    }
+  }
+
+  return allUsers;
+};
 
 const toFiniteNumber = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -241,28 +308,22 @@ const useAdminStore = create((set, get) => ({
 
         set({ isLoadingUsers: true });
 
-        usersRequest = apiClient.users.list({
-          page: requestedPage,
-          limit: USERS_PAGE_LIMIT,
-          sortBy: USERS_DEFAULT_SORT_BY,
-          sortOrder: USERS_DEFAULT_SORT_ORDER,
-        })
-          .then(async (result) => {
-            // Handle both old (array) and new ({ users, pagination }) response shapes
-            const items = Array.isArray(result) ? result : (result?.users || []);
+        usersRequest = fetchAllCustomerUsers()
+          .then(async (items) => {
             const nextUsers = sortUsersByBalanceDesc(items.length ? items : (isRealProvider ? [] : mockUsers));
-            const pagination = result?.pagination || null;
-            const currentPage = Number.isFinite(Number(pagination?.page))
-              ? Math.floor(Number(pagination.page))
-              : requestedPage;
             const nextDeletedUsers = apiClient.users.listDeleted
               ? await apiClient.users.listDeleted().catch(() => [])
               : [];
             set({
               users: nextUsers,
               deletedUsers: Array.isArray(nextDeletedUsers) ? nextDeletedUsers : [],
-              usersPagination: pagination,
-              usersCurrentPage: currentPage,
+              usersPagination: {
+                page: 1,
+                pages: 1,
+                limit: nextUsers.length || USERS_PAGE_LIMIT,
+                total: nextUsers.length,
+              },
+              usersCurrentPage: 1,
               usersLastLoadedAt: Date.now(),
               isLoadingUsers: false,
             });
@@ -287,11 +348,7 @@ const useAdminStore = create((set, get) => ({
       },
 
       loadUsersPage: async (page) => {
-        const requestedPageCandidate = Number(page);
-        const requestedPage = Number.isFinite(requestedPageCandidate) && requestedPageCandidate > 0
-          ? Math.floor(requestedPageCandidate)
-          : 1;
-        return get().loadUsers({ force: true, page: requestedPage });
+        return get().loadUsers({ force: true, page });
       },
 
       getUserById: async (userId, { force = false } = {}) => {

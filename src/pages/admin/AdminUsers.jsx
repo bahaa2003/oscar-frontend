@@ -41,6 +41,7 @@ import {
 import { resolveUserAvatar } from '../../utils/avatar';
 
 const FILTER_OPTIONS = ['all', 'approved', 'deleted'];
+const USERS_PER_PAGE = 20;
 
 const compactButtonClassName = 'h-7 rounded-[var(--radius-sm)] px-2 text-[10px]';
 const compactFieldClassName =
@@ -127,8 +128,6 @@ const AdminUsers = () => {
     users,
     deletedUsers,
     loadUsers,
-    loadUsersPage,
-    usersPagination,
     getUserById,
     wallets,
     loadWallets,
@@ -179,6 +178,7 @@ const AdminUsers = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const locale = getNumericLocale(isArabic ? 'ar-EG' : 'en-US');
@@ -331,6 +331,21 @@ const AdminUsers = () => {
     search,
     sortMode,
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [filteredUsers, safeCurrentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [balanceFilter, currencyFilter, filter, groupFilter, search, sortMode]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const walletByUserId = useMemo(
     () => new Map((wallets || []).map((entry) => [String(entry?.userId || entry?.id || '').trim(), entry])),
@@ -942,7 +957,7 @@ const AdminUsers = () => {
       </section>
 
       <div className="space-y-2 md:hidden">
-        {filteredUsers.map((entry) => {
+        {paginatedUsers.map((entry) => {
           const walletPreview = resolveWalletForEntry(entry);
           const balanceValue = getWalletBalanceValue(entry, walletPreview);
 
@@ -1024,7 +1039,7 @@ const AdminUsers = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((entry) => {
+            {paginatedUsers.map((entry) => {
               const walletPreview = resolveWalletForEntry(entry);
               const balanceValue = getWalletBalanceValue(entry, walletPreview);
 
@@ -1091,18 +1106,18 @@ const AdminUsers = () => {
       </div>
 
       {/* ── Pagination Controls (bottom of users list/table) ───────────────── */}
-      {usersPagination && usersPagination.pages > 1 && (
+      {filteredUsers.length > 0 && (
         <div className="admin-premium-panel mt-2.5 flex flex-col gap-2 rounded-[var(--radius-md)] border border-[color:rgb(var(--color-border-rgb)/0.78)] bg-[color:rgb(var(--color-card-rgb)/0.84)] px-3 py-2 md:flex-row md:items-center md:justify-between">
           <p className="text-[11px] text-[var(--color-text-secondary)]">
-            صفحة {usersPagination.page} من {usersPagination.pages} — إجمالي {usersPagination.total} مستخدم
+            صفحة {safeCurrentPage} من {totalPages} — إجمالي {filteredUsers.length} مستخدم
           </p>
           <div className="flex items-center gap-1.5">
             <Button
               size="sm"
               variant="outline"
               className={compactButtonClassName}
-              disabled={usersPagination.page <= 1}
-              onClick={() => loadUsersPage(usersPagination.page - 1)}
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             >
               <ChevronRight className="h-3.5 w-3.5" />
               السابق
@@ -1111,8 +1126,8 @@ const AdminUsers = () => {
               size="sm"
               variant="outline"
               className={compactButtonClassName}
-              disabled={usersPagination.page >= usersPagination.pages}
-              onClick={() => loadUsersPage(usersPagination.page + 1)}
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             >
               التالي
               <ChevronLeft className="h-3.5 w-3.5" />

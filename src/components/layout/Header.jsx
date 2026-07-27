@@ -318,13 +318,13 @@ const Header = ({ toggleSidebar }) => {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center gap-2">
-                                <span className="block truncate text-sm font-black text-[var(--color-text)] sm:text-base">{notification.title}</span>
+                                <span className="block truncate text-sm font-black text-[var(--color-text)] sm:text-base">{String(notification.title || '').replace(/OSCAR\s*:?\s*/gi, '')}</span>
                                 {!notification.read ? (
                                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-primary)]" />
                                 ) : null}
                               </span>
                               {notification.message ? (
-                                <span className="mt-0.5 line-clamp-4 whitespace-pre-line text-xs leading-5 text-[var(--color-text-secondary)] sm:mt-1 sm:line-clamp-5 sm:text-sm sm:leading-6">{notification.message}</span>
+                                <span className="mt-0.5 line-clamp-4 whitespace-pre-line text-xs leading-5 text-[var(--color-text-secondary)] sm:mt-1 sm:line-clamp-5 sm:text-sm sm:leading-6">{String(notification.message || '').replace(/OSCAR\s*:?\s*/gi, '')}</span>
                               ) : null}
                               <span className="mt-1.5 inline-flex rounded-full bg-[color:rgb(var(--color-surface-rgb)/0.72)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-text-secondary)] sm:mt-2 sm:px-2.5 sm:py-1 sm:text-[11px]">
                                 {meta.label}

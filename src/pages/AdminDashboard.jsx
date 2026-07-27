@@ -47,7 +47,6 @@ import { PERMISSIONS, hasPermission } from '../utils/permissions';
 const PENDING_STATUSES = ['pending', 'requested', 'under_review', 'processing'];
 const COMPLETED_STATUSES = ['completed', 'approved', 'success'];
 const REJECTED_STATUSES = ['rejected', 'denied', 'cancelled', 'canceled'];
-const DASHBOARD_DEFAULT_RANGE_DAYS = 30;
 
 const asNumber = (value) => {
   const parsed = Number(value);
@@ -64,13 +63,6 @@ const isPendingStatus = (status) => PENDING_STATUSES.includes(normalizeStatus(st
 const isCompletedStatus = (status) => COMPLETED_STATUSES.includes(normalizeStatus(status));
 const isRejectedStatus = (status) => REJECTED_STATUSES.includes(normalizeStatus(status));
 const isManualTopup = (topup) => String(topup?.type || '').trim().toLowerCase() !== 'game_topup';
-
-const shiftDateByDays = (inputDate, days) => {
-  const nextDate = new Date(inputDate);
-  nextDate.setHours(0, 0, 0, 0);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
-};
 
 const toDateInputValue = (value) => {
   const date = new Date(value);
@@ -173,9 +165,11 @@ const extractSupplierBalanceSnapshot = (payload = {}) => {
 };
 
 const getDefaultDashboardRange = () => {
-  const today = shiftDateByDays(new Date(), 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   return {
-    startDate: toDateInputValue(shiftDateByDays(today, -(DASHBOARD_DEFAULT_RANGE_DAYS - 1))),
+    startDate: toDateInputValue(firstDayOfMonth),
     endDate: toDateInputValue(today),
   };
 };

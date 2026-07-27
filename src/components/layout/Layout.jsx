@@ -5,8 +5,6 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import AmbientBackground from './AmbientBackground';
 import { useLanguage } from '../../context/LanguageContext';
-import useAuthStore from '../../store/useAuthStore';
-import { isAdminRole } from '../../utils/authRoles';
 import BackToTopButton from '../ui/BackToTopButton';
 import { registerVisitedPath } from '../../utils/navigation';
 import oscarLogo from '../../assets/ms-removebg-preview.webp';
@@ -43,7 +41,6 @@ const Layout = ({ children = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { dir, language } = useLanguage();
-  const { user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -82,7 +79,6 @@ const Layout = ({ children = null }) => {
     '/admin/dashboard',
   ].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
-  const isAdmin = isAdminRole(user?.role);
   const isCustomerDashboard = location.pathname === '/dashboard';
   const isBuyTargetPage = location.pathname === '/buy-target';
   const isWalletTopupPage = (
@@ -90,7 +86,6 @@ const Layout = ({ children = null }) => {
     || location.pathname.startsWith('/wallet/payment-details/')
   );
   const shellOffset = !isMobile ? (isSidebarOpen ? '302px' : '100px') : '0';
-  const showCopyrightFooter = !isAdmin || isHomePage;
 
   const handleGoBack = () => {
     navigate(-1);
@@ -155,7 +150,7 @@ const Layout = ({ children = null }) => {
             {children || <Outlet />}
           </div>
         </main>
-        {showCopyrightFooter ? <SiteCopyrightFooter isArabic={language === 'ar' || dir === 'rtl'} /> : null}
+        <SiteCopyrightFooter isArabic={language === 'ar' || dir === 'rtl'} />
       </div>
       <BackToTopButton />
     </div>

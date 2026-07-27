@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Link2,
   Lock,
   Mail,
   User,
@@ -32,6 +33,7 @@ import {
 import { COUNTRY_CATALOG, buildCurrencyCatalogFromCountries } from '../data/countryCatalog';
 import { getDefaultRouteForRole } from '../utils/authRoles';
 import { getAccountAccessRoute, normalizeAccountStatus } from '../utils/accountStatus';
+import { GOOGLE_PROFILE_SETUP_ENABLED } from '../config/featureFlags';
 import styles from './Auth.module.css';
 
 const GoogleMark = () => (
@@ -139,9 +141,14 @@ const Auth = () => {
   const [name, setName] = useState('');
   const [country, setCountry] = useState(DEFAULT_GOOGLE_SETUP_COUNTRY);
   const [currency, setCurrency] = useState('EGP');
+  const [invitationCode, setInvitationCode] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return String(params.get('ref') || '').trim().toUpperCase();
+  });
   const [countries] = useState(COUNTRY_CATALOG);
   const [errors, setErrors] = useState({});
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
+  const [legalModal, setLegalModal] = useState(null);
   const [forgotEmail, setForgotEmail] = useState('');
   const [registerStep, setRegisterStep] = useState(1);
   const [twoFactorChallenge, setTwoFactorChallenge] = useState(null);
@@ -151,6 +158,12 @@ const Auth = () => {
   const googleSetupBlockingRef = useRef(false);
   const isGoogleSetupMode = Boolean(googleSetupResult?.user);
   const isArabic = dir === 'rtl';
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const codeFromLink = String(params.get('ref') || '').trim().toUpperCase();
+    if (codeFromLink) setInvitationCode(codeFromLink);
+  }, [location.search]);
 
 const countryOptions = useMemo(() => {
     const source = countries.length ? countries : fallbackCountries;
@@ -293,7 +306,12 @@ const countryOptions = useMemo(() => {
       googleSetupBlockingRef.current = true;
       const result = await loginWithGoogle();
 
-      if (result?.user && (result?.canAccessApp || result?.status === 'pending') && shouldPromptGoogleProfileSetup(result.user)) {
+      if (
+        GOOGLE_PROFILE_SETUP_ENABLED
+        && result?.user
+        && (result?.canAccessApp || result?.status === 'pending')
+        && shouldPromptGoogleProfileSetup(result.user)
+      ) {
         startGoogleProfileSetup(result);
         return;
       }
@@ -470,7 +488,13 @@ const countryOptions = useMemo(() => {
   const consumeAuthResult = (result, { source = 'email', mode = 'login' } = {}) => {
     if (!result) return;
 
-    if (source === 'google' && result?.user && (result?.canAccessApp || result?.status === 'pending') && shouldPromptGoogleProfileSetup(result.user)) {
+    if (
+      GOOGLE_PROFILE_SETUP_ENABLED
+      && source === 'google'
+      && result?.user
+      && (result?.canAccessApp || result?.status === 'pending')
+      && shouldPromptGoogleProfileSetup(result.user)
+    ) {
       startGoogleProfileSetup(result);
       return;
     }
@@ -549,6 +573,7 @@ const countryOptions = useMemo(() => {
         country,
         countryName,
         currency,
+        referralCode: invitationCode || undefined,
       });
       const setupUser = updatedUser || googleSetupResult?.user;
       markGoogleProfileSetupComplete(setupUser);
@@ -605,6 +630,7 @@ const countryOptions = useMemo(() => {
           password,
           country,
           currency,
+          referralCode: invitationCode || undefined,
           signupMethod: 'email',
         });
 
@@ -679,13 +705,12 @@ const countryOptions = useMemo(() => {
 
   const authSelectClassName =
     'h-11 w-full rounded-[var(--radius-md)] px-4 text-sm outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55';
-  const authLinkClassName = 'font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-hover)]';
   const handleBack = () => {
     navigate('/');
   };
 
   return (
-    <div className={styles.authPage}>
+    <div className={cn(styles.authPage, isLogin ? styles.loginPage : styles.signupPage)}>
       <button
         type="button"
         onClick={handleBack}
@@ -720,6 +745,19 @@ const countryOptions = useMemo(() => {
           className={styles.formPane}
         >
           <section className={styles.formCard} data-auth-no-sparkle>
+            {!isGoogleSetupMode ? (
+              <div className={styles.authModeBlock}>
+                <p className={styles.globalModeLabel}>OSCAR · GLOBAL ACCESS</p>
+                <div className={styles.modeToggle} role="tablist" aria-label={isArabic ? 'نوع الدخول' : 'Access mode'}>
+                  <button type="button" role="tab" aria-selected={isLogin} onClick={() => { if (!isLogin) toggleMode(); }} className={cn(styles.modeToggleButton, isLogin && styles.modeToggleButtonActive)}>
+                    {t('auth.signIn')}
+                  </button>
+                  <button type="button" role="tab" aria-selected={!isLogin} onClick={() => { if (isLogin) toggleMode(); }} className={cn(styles.modeToggleButton, !isLogin && styles.modeToggleButtonActive)}>
+                    {t('auth.signUp')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <header className="mb-6 text-center">
               <h1 className={styles.formTitle}>
                 {isGoogleSetupMode
@@ -792,6 +830,23 @@ const countryOptions = useMemo(() => {
                         <CreditCard className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-muted)] ${dir === 'rtl' ? 'right-3' : 'left-3'}`} />
                       </div>
                       {errors.currency && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.currency}</p>}
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+                        {isArabic ? 'كود الدعوة (اختياري)' : 'Invitation code (optional)'}
+                      </label>
+                      <Input
+                        dir="ltr"
+                        value={invitationCode}
+                        onChange={(event) => setInvitationCode(event.target.value.replace(/\s+/g, '').toUpperCase())}
+                        placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
+                        icon={<Link2 className="h-4 w-4" />}
+                        className={cn(styles.authInput, invitationCode && 'border-cyan-400/35 bg-cyan-400/5')}
+                      />
+                      <p className="mt-1.5 text-[0.68rem] font-medium text-[var(--color-text-secondary)]">
+                        {isArabic ? 'اكتب الكود الذي حصلت عليه، أو اتركه فارغًا.' : 'Enter the code you received, or leave it empty.'}
+                      </p>
                     </div>
                   </motion.div>
                 ) : isLogin && twoFactorChallenge ? (
@@ -946,6 +1001,25 @@ const countryOptions = useMemo(() => {
                       </select>
                       {errors.currency && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.currency}</p>}
                     </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
+                        {isArabic ? 'كود الدعوة (اختياري)' : 'Invitation code (optional)'}
+                      </label>
+                      <Input
+                        dir="ltr"
+                        value={invitationCode}
+                        onChange={(event) => setInvitationCode(event.target.value.replace(/\s+/g, '').toUpperCase())}
+                        placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
+                        icon={<Link2 className="h-4 w-4" />}
+                        className={cn(styles.authInput, invitationCode && 'border-cyan-400/35 bg-cyan-400/5')}
+                      />
+                      <p className="mt-1.5 text-[0.68rem] font-medium text-[var(--color-text-secondary)]">
+                        {invitationCode
+                          ? (isArabic ? 'سيتم ربط كود الدعوة بحسابك عند التسجيل.' : 'The invitation code will be linked to your account.')
+                          : (isArabic ? 'اكتب الكود الذي حصلت عليه، أو اتركه فارغًا.' : 'Enter the code you received, or leave it empty.')}
+                      </p>
+                    </div>
                   </StepTwo>
                 ) : null}
               </AnimatePresence>
@@ -1053,14 +1127,14 @@ const countryOptions = useMemo(() => {
 
               {!twoFactorChallenge && !isGoogleSetupMode && (
               <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">
+                <div className={styles.authDivider}>
+                  <div className={styles.authDividerLine} />
+                  <span className={styles.authDividerText}>
                     {t('auth.orContinueWith', {
                       defaultValue: dir === 'rtl' ? 'أو تابع باستخدام' : 'Or continue with',
                     })}
                   </span>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent via-white/10 to-transparent" />
+                  <div className={styles.authDividerLine} />
                 </div>
 
                 <motion.button
@@ -1069,12 +1143,12 @@ const countryOptions = useMemo(() => {
                   whileTap={reduceMotion ? undefined : { scale: 0.99 }}
                   onClick={handleGoogleAuth}
                   disabled={isLoading}
-                  className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-[var(--color-text)] shadow-none backdrop-blur-md transition-all hover:border-purple-500/35 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={styles.googleButton}
                 >
-                  <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white shadow-sm">
+                  <span className={styles.googleButtonIcon}>
                     <GoogleMark />
                   </span>
-                  <span className="relative">
+                  <span className={styles.googleButtonText}>
                     {t('auth.continueWithGoogle', {
                       defaultValue: dir === 'rtl' ? 'المتابعة عبر Google' : 'Continue with Google',
                     })}
@@ -1084,23 +1158,23 @@ const countryOptions = useMemo(() => {
               )}
 
               {!isGoogleSetupMode && (
-              <div className="mt-6 space-y-2 text-center">
+              <div className={styles.authFooterActions}>
                 {isLogin && (
                   <button
                     type="button"
                     onClick={() => setForgotModalOpen(true)}
-                    className="w-full rounded-lg px-4 py-2 text-sm font-medium text-[var(--color-primary)] transition hover:bg-[color:rgb(var(--color-primary-rgb)/0.08)] hover:text-[var(--color-primary-hover)]"
+                    className={styles.forgotButton}
                   >
                     {t('auth.forgotPassword')}
                   </button>
                 )}
 
-                <span className="block text-sm text-[var(--color-text-secondary)]">
+                <span className={styles.accountPrompt}>
                   {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
                   <button
                     type="button"
                     onClick={toggleMode}
-                    className={authLinkClassName}
+                    className={styles.authSwitchLink}
                   >
                     {isLogin ? t('auth.signUp') : t('auth.signIn')}
                   </button>
@@ -1109,8 +1183,52 @@ const countryOptions = useMemo(() => {
               )}
             </form>
           </section>
+
+          <footer className={styles.authLegalFooter} data-auth-no-sparkle>
+            <span>{isArabic ? 'باستخدامك المنصة، أنت توافق على' : 'By using the platform, you agree to the'}</span>
+            <span className={styles.authLegalLinks}>
+              <button type="button" onClick={() => setLegalModal('privacy')}>{isArabic ? 'سياسة الخصوصية' : 'Privacy Policy'}</button>
+              <span aria-hidden="true">•</span>
+              <button type="button" onClick={() => setLegalModal('terms')}>{isArabic ? 'الشروط والسياسات' : 'Terms & Policies'}</button>
+            </span>
+          </footer>
         </motion.div>
       </main>
+
+      <Modal
+        isOpen={Boolean(legalModal)}
+        onClose={() => setLegalModal(null)}
+        title={legalModal === 'privacy'
+          ? (isArabic ? 'سياسة الخصوصية' : 'Privacy Policy')
+          : (isArabic ? 'الشروط والسياسات' : 'Terms & Policies')}
+        placement="bottom"
+        size="lg"
+      >
+        <div className="space-y-4 text-sm leading-7 text-[var(--color-text-secondary)]">
+          {legalModal === 'privacy' ? (
+            <>
+              <p>{isArabic ? 'نحترم خصوصيتك ونلتزم بحماية البيانات التي تقدمها عند إنشاء الحساب أو استخدام خدمات Oscar Store.' : 'We respect your privacy and protect the information you provide when creating an account or using Oscar Store.'}</p>
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                <h3 className="font-black text-[var(--color-text)]">{isArabic ? 'البيانات التي نستخدمها' : 'Information we use'}</h3>
+                <p className="mt-1">{isArabic ? 'بيانات الحساب والتواصل والدولة والعملة وسجل الطلبات، وذلك لتشغيل الخدمة وتأمين الحساب وتحسين تجربتك.' : 'Account, contact, country, currency, and order information used to operate the service, secure your account, and improve your experience.'}</p>
+              </div>
+              <p>{isArabic ? 'لا نبيع بياناتك الشخصية. وقد نشارك القدر الضروري فقط مع مزودي الخدمة لتنفيذ الطلبات أو الالتزام بالمتطلبات القانونية.' : 'We do not sell personal information. Only necessary information may be shared with service providers to fulfill orders or meet legal requirements.'}</p>
+            </>
+          ) : (
+            <>
+              <p>{isArabic ? 'باستخدام Oscar Store أو إنشاء حساب، فإنك توافق على استخدام المنصة بطريقة قانونية وتقديم بيانات صحيحة.' : 'By using Oscar Store or creating an account, you agree to use the platform lawfully and provide accurate information.'}</p>
+              <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-4">
+                <h3 className="font-black text-[var(--color-text)]">{isArabic ? 'الاستخدام والطلبات' : 'Use and orders'}</h3>
+                <p className="mt-1">{isArabic ? 'أنت مسؤول عن حماية بيانات دخولك ومراجعة تفاصيل المنتج والسعر قبل تأكيد الطلب. تخضع عمليات التنفيذ والتسليم لحالة الطلب وشروط المنتج.' : 'You are responsible for securing your login details and reviewing product and price information before confirming an order. Fulfillment is subject to order status and product terms.'}</p>
+              </div>
+              <p>{isArabic ? 'يحق للمنصة تعليق الحسابات المخالفة أو التي تتضمن نشاطًا احتياليًا، مع الحفاظ على الحقوق المالية وفق الحالة الفعلية للحساب.' : 'The platform may suspend accounts involved in violations or fraudulent activity while preserving financial rights according to the account’s actual status.'}</p>
+            </>
+          )}
+          <Button type="button" className={styles.primaryButton} onClick={() => setLegalModal(null)}>
+            {isArabic ? 'فهمت' : 'Got it'}
+          </Button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={forgotModalOpen}

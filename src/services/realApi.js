@@ -2572,14 +2572,64 @@ const realApi = {
 
       for (const [endpoint, params] of endpointCandidates) {
         try {
-          const res = await http.get(endpoint, { params });
-          const data = unwrap(res);
-          const users = Array.isArray(data) ? data : (data?.users || []);
-          const deleted = normaliseUsers(users).filter((entry) => (
-            Boolean(entry?.deletedAt)
-            || Boolean(entry?.isDeleted)
-            || String(entry?.status || '').trim().toLowerCase() === 'deleted'
-          ));
+          const deleted = [];
+          const seenIds = new Set();
+
+          for (let page = 1; page <= 1000; page += 1) {
+            const res = await http.get(endpoint, {
+              params: { ...params, page, limit: 100 },
+            });
+            const body = res.data || {};
+            const data = unwrap(res);
+            const users = Array.isArray(data) ? data : (data?.users || []);
+            const normalizedPage = normaliseUsers(users).filter((entry) => (
+              Boolean(entry?.deletedAt)
+              || Boolean(entry?.isDeleted)
+              || String(entry?.status || '').trim().toLowerCase() === 'deleted'
+            ));
+            let addedCount = 0;
+
+            normalizedPage.forEach((entry) => {
+              const key = String(entry?.id || entry?._id || entry?.email || '').trim().toLowerCase();
+              if (!key || seenIds.has(key)) return;
+              seenIds.add(key);
+              deleted.push(entry);
+              addedCount += 1;
+            });
+
+            const pagination = body.pagination || data?.pagination || null;
+            const currentPage = Number(pagination?.page ?? pagination?.currentPage ?? page);
+            const totalPages = Number(
+              pagination?.pages
+              ?? pagination?.totalPages
+              ?? pagination?.total_pages
+              ?? pagination?.pageCount
+            );
+            const hasNext = pagination?.hasNextPage ?? pagination?.hasNext ?? pagination?.nextPage;
+            const total = Number(
+              pagination?.total
+              ?? pagination?.totalItems
+              ?? pagination?.totalCount
+              ?? pagination?.count
+            );
+            const pageLimit = Number(
+              pagination?.limit
+              ?? pagination?.perPage
+              ?? pagination?.pageSize
+              ?? 100
+            );
+
+            const shouldContinue = Number.isFinite(totalPages)
+              ? currentPage < totalPages
+              : hasNext !== undefined && hasNext !== null
+                ? Boolean(hasNext)
+                : Number.isFinite(total) && pageLimit > 0
+                  ? currentPage * pageLimit < total
+                  : users.length >= 100 && addedCount > 0;
+
+            if (!shouldContinue) break;
+          }
+
           // Only accept if the dedicated endpoint returned results or if it's
           // the dedicated endpoint (which returns [] legitimately when empty).
           if (deleted.length > 0 || endpoint.endsWith('/deleted')) {

@@ -565,7 +565,7 @@ const ChatMessage = memo(({
 
 ChatMessage.displayName = 'ChatMessage';
 
-const OscarAIAssistant = () => {
+const OscarAIAssistant = ({ showLauncher = true }) => {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -583,6 +583,12 @@ const OscarAIAssistant = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    const handleExternalOpen = () => setIsOpen(true);
+    window.addEventListener('oscar-assistant:open', handleExternalOpen);
+    return () => window.removeEventListener('oscar-assistant:open', handleExternalOpen);
+  }, []);
   const [pendingIntent, setPendingIntent] = useState(null);
 
   const messagesEndRef = useRef(null);
@@ -1311,7 +1317,7 @@ const OscarAIAssistant = () => {
 
   return (
     <div className={`oscar-ai-assistant-shell ${isOpen ? 'is-open' : ''}`}>
-      {!isOpen ? (
+      {!isOpen && showLauncher ? (
         <button
           type="button"
           className="oscar-ai-launcher"
@@ -1331,7 +1337,7 @@ const OscarAIAssistant = () => {
             />
           </span>
         </button>
-      ) : (
+      ) : isOpen ? (
         <section
           className="oscar-ai-panel"
           role="dialog"
@@ -1469,7 +1475,7 @@ const OscarAIAssistant = () => {
             <span>{copy.subtitle}</span>
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 };
