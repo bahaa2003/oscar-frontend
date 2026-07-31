@@ -241,6 +241,42 @@ const useOrderStore = create((set, get) => ({
             ''
           ).trim();
 
+          if (isRealProvider) {
+            const orderFieldsValues = customInputsObject;
+            const serverPayload = {
+              productId: order.productId,
+              quantity: Number(order.quantity || 1),
+              playerId,
+              customInputs: rawCustomInputs,
+              orderFieldsValues,
+              idempotencyKey: order.idempotencyKey,
+              preferCustomerOrderEndpoint: order.preferCustomerOrderEndpoint,
+              preferLegacyOrderEndpoint: order.preferLegacyOrderEndpoint,
+            };
+
+            const created = await apiClient.orders.create(serverPayload);
+            const createdOrder = created?.order || created || {};
+            const nextOrder = {
+              ...createdOrder,
+              customInputs: createdOrder?.customInputs ?? rawCustomInputs,
+              orderFields: createdOrder?.orderFields || createdOrder?.orderFieldsValues || orderFieldsValues,
+              orderFieldsValues: createdOrder?.orderFieldsValues || createdOrder?.orderFields || orderFieldsValues,
+              customerInput: createdOrder?.customerInput || (Object.keys(orderFieldsValues).length ? { values: orderFieldsValues } : undefined),
+            };
+
+            set((state) => ({
+              orders: [nextOrder, ...state.orders],
+              ordersLastLoadedAt: Date.now(),
+              ordersLastLoadedScope: state.ordersLastLoadedScope || `user:${nextOrder.userId}`,
+              adminOrders: [nextOrder, ...state.adminOrders],
+            }));
+
+            return {
+              order: nextOrder,
+              updatedBalance: created?.updatedBalance,
+            };
+          }
+
           // Get current pricing and exchange rates for financial snapshot
           const currencies = await apiClient.system.currencies().catch(() => []);
           const products = await apiClient.products.list().catch(() => []);

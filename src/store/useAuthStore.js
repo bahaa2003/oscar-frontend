@@ -311,7 +311,7 @@ const useAuthStore = create((set, get) => ({
         }
       },
 
-      loginWithGoogle: async () => {
+      loginWithGoogle: async (options = {}) => {
         set({
           isLoading: true,
           error: null,
@@ -319,7 +319,7 @@ const useAuthStore = create((set, get) => ({
           blockedUser: null,
         });
         try {
-          const response = await apiClient.auth.loginWithGoogle();
+          const response = await apiClient.auth.loginWithGoogle(options);
           if (response?.redirectTo && !response?.user && !response?.token) {
             const callbackStatus = normalizeAccountStatus(response?.status);
 
@@ -519,7 +519,7 @@ const useAuthStore = create((set, get) => ({
         }
       },
 
-      completeGoogleProfileSetup: async ({ country, countryName, currency, referralCode } = {}) => {
+      completeGoogleProfileSetup: async ({ country, countryName, currency } = {}) => {
         const { user, token } = get();
         if (!user?.id) {
           throw new Error('No authenticated user found');
@@ -527,12 +527,10 @@ const useAuthStore = create((set, get) => ({
 
         const normalizedCountry = String(country || '').trim().toUpperCase();
         const normalizedCurrency = String(currency || '').trim().toUpperCase();
-        const normalizedReferralCode = String(referralCode || '').trim().toUpperCase();
         const updatedUser = await apiClient.users.updateProfile(user.id, {
           country: normalizedCountry,
           countryName: countryName || '',
           currency: normalizedCurrency,
-          ...(normalizedReferralCode ? { referralCode: normalizedReferralCode } : {}),
         }, user);
         const nextUser = {
           ...user,

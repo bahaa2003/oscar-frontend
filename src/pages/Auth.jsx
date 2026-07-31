@@ -277,6 +277,8 @@ const countryOptions = useMemo(() => {
   }, [availableCurrencyOptions, selectedCountryCurrencyCodes]);
 
   useEffect(() => {
+    if (location.search.includes('oauth_code=')) return;
+    if (location.search.includes('oauth_error=')) return;
     if (location.search.includes('token=')) return;
     if (location.search.includes('status=')) return;
     if (isGoogleSetupMode || googleSetupBlockingRef.current) return;
@@ -296,15 +298,33 @@ const countryOptions = useMemo(() => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const token = params.get('token');
+    const oauthCode = params.get('oauth_code');
+    const oauthError = params.get('oauth_error');
+    const legacyToken = params.get('token');
     const callbackStatus = normalizeAccountStatus(params.get('status'));
-    if ((!token && !callbackStatus) || oauthHandledRef.current) return;
+    if ((!oauthCode && !oauthError && !legacyToken && !callbackStatus) || oauthHandledRef.current) return;
+
+    const cleanupOAuthUrl = () => {
+      if (typeof window === 'undefined') return;
+
+      const nextParams = new URLSearchParams(location.search);
+      ['oauth_code', 'oauth_error', 'token', 'status'].forEach((key) => nextParams.delete(key));
+      const nextSearch = nextParams.toString();
+      const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash || ''}`;
+      window.history.replaceState({}, document.title, nextUrl);
+    };
 
     oauthHandledRef.current = true;
+    cleanupOAuthUrl();
 
     const handleGoogleCallback = async () => {
       googleSetupBlockingRef.current = true;
-      const result = await loginWithGoogle();
+      const result = await loginWithGoogle({
+        oauthCode,
+        oauthError,
+        legacyToken,
+        callbackStatus,
+      });
 
       if (
         GOOGLE_PROFILE_SETUP_ENABLED
@@ -573,7 +593,6 @@ const countryOptions = useMemo(() => {
         country,
         countryName,
         currency,
-        referralCode: invitationCode || undefined,
       });
       const setupUser = updatedUser || googleSetupResult?.user;
       markGoogleProfileSetupComplete(setupUser);
@@ -630,7 +649,7 @@ const countryOptions = useMemo(() => {
           password,
           country,
           currency,
-          referralCode: invitationCode || undefined,
+          referrerCode: invitationCode || undefined,
           signupMethod: 'email',
         });
 
@@ -672,7 +691,7 @@ const countryOptions = useMemo(() => {
 
   const handleGoogleAuth = async () => {
     googleSetupBlockingRef.current = true;
-    const result = await loginWithGoogle();
+    const result = await loginWithGoogle({ referrerCode: invitationCode || undefined });
     if (!result) {
       googleSetupBlockingRef.current = false;
       return;

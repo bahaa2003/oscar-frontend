@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownToLine,
   BadgeDollarSign,
@@ -22,16 +22,19 @@ import {
 } from 'lucide-react';
 import useAdminStore from '../../store/useAdminStore';
 import useGroupStore from '../../store/useGroupStore';
+import useResellerApplicationStore from '../../store/useResellerApplicationStore';
 import agentProofImage from '../../assets/slide-3.webp';
 import { resolveUserAvatar } from '../../utils/avatar';
 import { useLanguage } from '../../context/LanguageContext';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import apiClient from '../../services/client';
 
 const REFERRAL_RATE_STORAGE_KEY = 'kanzcoins_admin_referral_commission_rate';
 const WITHDRAWAL_METHODS_KEY = 'kanzcoins_referral_withdrawal_methods';
 const WITHDRAWAL_REQUESTS_KEY = 'kanzcoins_referral_withdrawal_requests';
 const SUB_AGENT_REQUESTS_KEY = 'oscar_sub_agent_requests';
+const IS_REAL_DATA_PROVIDER = String(import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() === 'real';
 const DEFAULT_METHODS = [
   { id: 'wallet', name: 'محفظة البرنامج', enabled: true, requiresAccount: false, discountPercent: 0 },
   { id: 'vodafone', name: 'فودافون كاش', enabled: true, requiresAccount: true, discountPercent: 0 },
@@ -112,9 +115,21 @@ const formatDate = (value, locale = 'ar-EG') => {
 const AdminReferrals = () => {
   const { dir } = useLanguage();
   const isArabic = dir === 'rtl';
+  const isRealReferralMode = IS_REAL_DATA_PROVIDER;
   const { addToast } = useToast();
   const { users, loadUsers, isLoadingUsers, updateUserGroup } = useAdminStore();
   const { groups, loadGroups } = useGroupStore();
+  const {
+    adminApplications,
+    isLoadingAdminApplications,
+    isReviewingApplication,
+    adminApplicationError,
+    fetchAdminApplications,
+    approveApplication,
+    rejectApplication,
+    suspendApplication,
+    reactivateApplication,
+  } = useResellerApplicationStore();
   const [query, setQuery] = useState('');
   const [activePanel, setActivePanel] = useState('earnings');
   const [filter, setFilter] = useState('all');
@@ -131,15 +146,43 @@ const AdminReferrals = () => {
   const [localRequests, setLocalRequests] = useState(() => {
     try { return JSON.parse(window.localStorage.getItem(WITHDRAWAL_REQUESTS_KEY)) || []; } catch { return []; }
   });
+  const [adminPayouts, setAdminPayouts] = useState([]);
+  const [isLoadingAdminPayouts, setIsLoadingAdminPayouts] = useState(false);
+  const [adminPayoutError, setAdminPayoutError] = useState('');
+  const [processingAdminPayoutId, setProcessingAdminPayoutId] = useState('');
   const [commissionRate, setCommissionRate] = useState(() => {
     const savedRate = typeof window !== 'undefined' ? Number(window.localStorage.getItem(REFERRAL_RATE_STORAGE_KEY)) : 5;
     return Number.isFinite(savedRate) && savedRate >= 0 && savedRate <= 100 ? savedRate : 5;
   });
 
+  const loadAdminPayouts = useCallback(async () => {
+    if (!isRealReferralMode) return;
+    setIsLoadingAdminPayouts(true);
+    setAdminPayoutError('');
+    try {
+      const result = await apiClient.adminReferralPayouts.list({ page: 1, limit: 50 });
+      const items = Array.isArray(result?.items) ? result.items : (Array.isArray(result) ? result : []);
+      setAdminPayouts(items);
+    } catch (error) {
+      setAdminPayoutError(error?.message || (isArabic ? 'تعذر تحميل طلبات السحب.' : 'Could not load payout requests.'));
+    } finally {
+      setIsLoadingAdminPayouts(false);
+    }
+  }, [isArabic, isRealReferralMode]);
+
   useEffect(() => {
     loadUsers().catch(() => {});
     loadGroups({ force: true }).catch(() => {});
   }, [loadGroups, loadUsers]);
+
+  useEffect(() => {
+    loadAdminPayouts();
+  }, [loadAdminPayouts]);
+
+  useEffect(() => {
+    if (!isRealReferralMode || activePanel !== 'agents') return;
+    fetchAdminApplications({ page: 1, limit: 50 }).catch(() => {});
+  }, [activePanel, fetchAdminApplications, isRealReferralMode]);
 
   const persistAgentRequests = (nextRequests) => {
     setAgentRequests(nextRequests);
@@ -147,6 +190,32 @@ const AdminReferrals = () => {
   };
 
   const updateAgentRequestStatus = async (request, status) => {
+    if (isRealReferralMode && request?.isServer) {
+      try {
+        if (status === 'approved') {
+          const selectedGroupId = agentGroupSelections[request.id];
+          if (!selectedGroupId) {
+            addToast(isArabic ? 'Ø§Ø®ØªØ± Ù…Ø¬Ù…ÙˆØ¹Ø© Ø§Ù„ÙˆÙƒÙ„Ø§Ø¡ Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© Ø£ÙˆÙ„Ù‹Ø§.' : 'Choose the new agent group first.', 'error');
+            return;
+          }
+          await approveApplication(request.id, { assignedGroupId: selectedGroupId });
+        } else if (status === 'rejected') {
+          const reason = window.prompt(isArabic ? 'Ø³Ø¨Ø¨ Ø±ÙØ¶ Ø·Ù„Ø¨ Ø§Ù„ÙˆÙƒÙŠÙ„' : 'Reason for rejecting this application');
+          if (!reason || !reason.trim()) return;
+          await rejectApplication(request.id, { rejectionReason: reason.trim() });
+        } else if (status === 'suspended') {
+          const reason = window.prompt(isArabic ? 'Ø³Ø¨Ø¨ ØªØ¹Ù„ÙŠÙ‚ Ø§Ù„ÙˆÙƒÙŠÙ„' : 'Reason for suspending this reseller');
+          if (!reason || !reason.trim()) return;
+          await suspendApplication(request.id, { suspensionReason: reason.trim() });
+        } else if (status === 'reactivated') {
+          await reactivateApplication(request.id, { assignedGroupId: agentGroupSelections[request.id] || undefined });
+        }
+        addToast(isArabic ? 'ØªÙ… ØªØ­Ø¯ÙŠØ« Ø·Ù„Ø¨ Ø§Ù„ÙˆÙƒÙŠÙ„.' : 'Reseller application updated.', 'success');
+      } catch (error) {
+        addToast(error?.message || (isArabic ? 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø·Ù„Ø¨.' : 'Could not update the application.'), 'error');
+      }
+      return;
+    }
     if (status === 'approved') {
       const selectedGroupId = agentGroupSelections[request.id];
       const selectedGroup = groups.find((group) => String(group.id || group._id) === String(selectedGroupId));
@@ -201,6 +270,14 @@ const AdminReferrals = () => {
     addToast(isArabic ? `تمت إضافة طريقة السحب: ${name}` : `Withdrawal method added: ${name}`, 'success');
   };
   const updateRequest = (request, updates) => {
+    if (isRealReferralMode && request?.isServer) {
+      if (updates?.status === 'failed') {
+        handleAdminRejectPayout(request);
+      } else if (updates?.status === 'completed') {
+        handleAdminSettlePayout(request);
+      }
+      return;
+    }
     const next = { ...request, ...updates };
     setRequestOverrides((current) => ({ ...current, [request.id]: next }));
     if (request.isLocal) {
@@ -226,6 +303,47 @@ const AdminReferrals = () => {
     }
   };
 
+  async function handleAdminRejectPayout(request) {
+    if (!isRealReferralMode || !request?.id) return;
+    const reason = window.prompt(isArabic ? 'سبب رفض طلب السحب' : 'Reason for rejecting this payout');
+    if (!reason || !reason.trim()) return;
+    setProcessingAdminPayoutId(request.id);
+    try {
+      await apiClient.adminReferralPayouts.reject(request.id, { rejectionReason: reason.trim() });
+      await loadAdminPayouts();
+      addToast(isArabic ? 'تم رفض طلب السحب وإتاحة العمولات مرة أخرى.' : 'Payout rejected and commissions unlocked.', 'success');
+    } catch (error) {
+      addToast(error?.message || (isArabic ? 'تعذر رفض طلب السحب.' : 'Could not reject payout request.'), 'error');
+    } finally {
+      setProcessingAdminPayoutId('');
+    }
+  }
+
+  async function handleAdminSettlePayout(request) {
+    if (!isRealReferralMode || !request?.id) return;
+    const isManual = String(request.rawMethod || request.method || '').toUpperCase() === 'MANUAL';
+    let externalReference = '';
+    if (isManual) {
+      externalReference = window.prompt(isArabic ? 'مرجع التحويل اليدوي' : 'Manual settlement reference') || '';
+      if (!externalReference.trim()) return;
+    } else if (!window.confirm(isArabic ? 'تأكيد تحويل طلب السحب إلى محفظة المستخدم؟' : 'Confirm wallet settlement for this payout?')) {
+      return;
+    }
+    setProcessingAdminPayoutId(request.id);
+    try {
+      await apiClient.adminReferralPayouts.settle(request.id, {
+        externalReference: externalReference.trim(),
+        settlementNote: isManual ? 'Manual settlement recorded from admin referral dashboard' : '',
+      });
+      await loadAdminPayouts();
+      addToast(isArabic ? 'تم تسوية طلب السحب.' : 'Payout settled.', 'success');
+    } catch (error) {
+      addToast(error?.message || (isArabic ? 'تعذر تسوية طلب السحب.' : 'Could not settle payout request.'), 'error');
+    } finally {
+      setProcessingAdminPayoutId('');
+    }
+  }
+
   const visibleOwners = useMemo(() => owners.filter((owner) => {
     const term = query.trim().toLowerCase();
     const matchesSearch = !term || `${owner.name} ${owner.email} ${owner.code}`.toLowerCase().includes(term);
@@ -245,6 +363,32 @@ const AdminReferrals = () => {
 
   const currency = owners[0]?.currency || 'EGP';
   const allWithdrawalRequests = useMemo(() => {
+    if (isRealReferralMode) {
+      return adminPayouts.map((payout) => {
+        const rawStatus = String(payout.status || 'PENDING').toUpperCase();
+        const rawMethod = String(payout.method || 'WALLET').toUpperCase();
+        return {
+          id: payout.id || payout._id,
+          isServer: true,
+          rawMethod,
+          ownerName: payout.referrer?.name || (isArabic ? 'مستخدم إحالة' : 'Referral user'),
+          ownerEmail: payout.referrer?.email || '',
+          ownerAvatar: resolveUserAvatar(payout.referrer || {}, payout.referrer?.email || payout.referrer?.name),
+          method: rawMethod === 'WALLET' ? 'wallet' : 'manual',
+          methodName: rawMethod === 'WALLET' ? (isArabic ? 'محفظة المنصة' : 'Platform wallet') : (isArabic ? 'تسوية يدوية' : 'Manual settlement'),
+          requestedAmount: Number(payout.amountUsd || 0) || 0,
+          amount: Number(payout.amountUsd || 0) || 0,
+          amountDisplay: String(payout.amountUsd || '0.00'),
+          currency: payout.currency || 'USD',
+          status: rawStatus === 'PAID' ? 'completed' : rawStatus === 'REJECTED' ? 'failed' : 'processing',
+          createdAt: payout.requestedAt || payout.createdAt,
+          completedAt: payout.paidAt || payout.rejectedAt || null,
+          commissionCount: payout.commissionCount || payout.commissionIds?.length || 0,
+          externalReference: payout.externalReference || '',
+          receiptImage: rawStatus === 'PENDING' ? 'server-payout' : '',
+        };
+      });
+    }
     const gatheredRequests = [
       ...localRequests.map((request) => ({ ...request, isLocal: true })),
       ...owners.flatMap((owner) => owner.withdrawals.map((request, index) => ({ ...request, id: request?.id || `${owner.id}-withdrawal-${index}`, ownerName: owner.name, ownerEmail: owner.email, ownerAvatar: owner.avatar, currency: request?.currency || owner.currency }))),
@@ -265,7 +409,23 @@ const AdminReferrals = () => {
         amount: netAmount,
       };
     });
-  }, [owners, localRequests, requestOverrides, withdrawalMethods]);
+  }, [adminPayouts, isArabic, isRealReferralMode, owners, localRequests, requestOverrides, withdrawalMethods]);
+  const visibleAgentRequests = useMemo(() => {
+    if (!isRealReferralMode) return agentRequests;
+    return (adminApplications || []).map((application) => ({
+      id: application.id || application._id,
+      isServer: true,
+      name: application.user?.name || application.businessName || (isArabic ? 'Ù…ØªÙ‚Ø¯Ù…' : 'Applicant'),
+      email: application.user?.emailMasked || '',
+      message: application.experienceSummary || '',
+      proofImage: agentProofImage,
+      status: String(application.status || 'PENDING').toLowerCase(),
+      createdAt: application.submittedAt || application.createdAt,
+      assignedGroup: application.assignedGroup || null,
+      rejectionReason: application.rejectionReason || null,
+      suspensionReason: application.suspensionReason || null,
+    }));
+  }, [adminApplications, agentRequests, isArabic, isRealReferralMode]);
   const locale = isArabic ? 'ar-EG' : 'en-GB';
   const statCards = [
     { label: isArabic ? 'أصحاب أكواد الإحالة' : 'Referral owners', value: stats.owners, icon: Share2, iconClass: 'bg-violet-500/10 text-violet-500' },
@@ -284,7 +444,7 @@ const AdminReferrals = () => {
             <span className="block text-center text-[0.48rem] font-black text-violet-200">{isArabic ? 'إدارة نظام المكافآت' : 'Rewards management'}</span>
             <div className="mx-auto mt-2 grid w-full max-w-md grid-cols-2 gap-1 rounded-xl border border-white/25 bg-black/18 p-1 backdrop-blur-md">
               <button type="button" onClick={() => setActivePanel('earnings')} aria-pressed={activePanel === 'earnings'} className={`flex h-9 items-center justify-center rounded-lg border px-2 text-[0.68rem] font-black transition-all sm:text-xs ${activePanel === 'earnings' ? 'border-white/85 bg-[linear-gradient(105deg,#ffffff,#e9d5ff)] text-violet-800' : 'border-transparent bg-white/5 text-white/72 hover:bg-white/12 hover:text-white'}`}>{isArabic ? 'أرباح كود الإحالة' : 'Referral code earnings'}</button>
-              <button type="button" onClick={() => setActivePanel('agents')} aria-pressed={activePanel === 'agents'} className={`flex h-9 items-center justify-center gap-1 rounded-lg border px-2 text-[0.68rem] font-black transition-all sm:text-xs ${activePanel === 'agents' ? 'border-cyan-100/90 bg-[linear-gradient(105deg,#cffafe,#ddd6fe)] text-cyan-950' : 'border-transparent bg-white/5 text-white/72 hover:bg-white/12 hover:text-white'}`}><span>{isArabic ? 'طلبات الوكلاء الفرعيين' : 'Sub-agent requests'}</span><span className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[0.5rem] ${activePanel === 'agents' ? 'bg-cyan-700 text-white' : 'bg-white/15 text-white'}`}>{agentRequests.filter((request) => request.status === 'pending').length}</span></button>
+              <button type="button" onClick={() => setActivePanel('agents')} aria-pressed={activePanel === 'agents'} className={`flex h-9 items-center justify-center gap-1 rounded-lg border px-2 text-[0.68rem] font-black transition-all sm:text-xs ${activePanel === 'agents' ? 'border-cyan-100/90 bg-[linear-gradient(105deg,#cffafe,#ddd6fe)] text-cyan-950' : 'border-transparent bg-white/5 text-white/72 hover:bg-white/12 hover:text-white'}`}><span>{isArabic ? 'طلبات الوكلاء الفرعيين' : 'Sub-agent requests'}</span><span className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[0.5rem] ${activePanel === 'agents' ? 'bg-cyan-700 text-white' : 'bg-white/15 text-white'}`}>{visibleAgentRequests.filter((request) => request.status === 'pending').length}</span></button>
             </div>
           </div>
         </div>
@@ -296,10 +456,12 @@ const AdminReferrals = () => {
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-500/10 text-cyan-500"><UserRoundPlus className="h-4 w-4" /></span>
             <div><h2 className="text-xs font-black text-[var(--color-text)]">{isArabic ? 'طلبات الوكلاء الفرعيين' : 'Sub-agent requests'}</h2><p className="text-[0.55rem] font-semibold text-[var(--color-text-secondary)]">{isArabic ? 'راجع الرسالة والإثبات ثم اختر المجموعة المناسبة.' : 'Review the message and proof, then select the appropriate group.'}</p></div>
           </div>
-          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[0.55rem] font-black text-amber-500">{agentRequests.filter((request) => request.status === 'pending').length} {isArabic ? 'معلق' : 'pending'}</span>
+          <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[0.55rem] font-black text-amber-500">{visibleAgentRequests.filter((request) => request.status === 'pending').length} {isArabic ? 'معلق' : 'pending'}</span>
         </div>
+        {isRealReferralMode && adminApplicationError ? <p className="px-3 pt-2 text-xs font-semibold text-rose-500">{adminApplicationError}</p> : null}
+        {isRealReferralMode && isLoadingAdminApplications ? <p className="px-3 pt-2 text-xs font-semibold text-[var(--color-text-secondary)]">{isArabic ? 'جارٍ تحميل الطلبات...' : 'Loading applications...'}</p> : null}
         <div className="grid gap-2 p-2.5 lg:grid-cols-2">
-          {agentRequests.map((request) => {
+          {visibleAgentRequests.map((request) => {
             const status = String(request.status || 'pending');
             return (
               <article key={request.id} className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.5)] bg-[color:rgb(var(--color-surface-rgb)/0.58)] p-3">
@@ -311,6 +473,17 @@ const AdminReferrals = () => {
                 <div className="mt-2.5 rounded-lg border border-[color:rgb(var(--color-border-rgb)/0.42)] bg-[color:rgb(var(--color-card-rgb)/0.52)] p-2.5"><p className="text-[0.52rem] font-black text-cyan-500">{isArabic ? 'رسالة المتقدم' : 'Applicant message'}</p><p className="mt-1 text-[0.66rem] font-semibold leading-5 text-[var(--color-text-secondary)]">{request.message}</p></div>
                 <a href={request.proofImage} target="_blank" rel="noreferrer" className="mt-2 flex items-center gap-2 rounded-lg border border-violet-400/18 bg-violet-500/6 p-2 transition hover:border-violet-400/35"><img src={request.proofImage} alt={isArabic ? 'صورة إثبات العملاء' : 'Customer proof'} className="h-12 w-20 rounded-md object-cover" /><div><p className="text-[0.58rem] font-black text-[var(--color-text)]">{isArabic ? 'صورة إثبات وجود عملاء' : 'Customer proof image'}</p><p className="text-[0.5rem] font-semibold text-violet-500">{isArabic ? 'اضغط لعرض الصورة كاملة' : 'Open full image'}</p></div></a>
                 {status === 'pending' ? <div className="mt-2.5 flex items-center gap-1.5"><select value={agentGroupSelections[request.id] || ''} onChange={(event) => setAgentGroupSelections((current) => ({ ...current, [request.id]: event.target.value }))} className="h-6 min-w-0 max-w-36 flex-1 rounded-md border border-[color:rgb(var(--color-border-rgb)/0.6)] bg-[var(--color-surface)] px-1.5 text-[0.48rem] font-black text-[var(--color-text)] outline-none"><option value="">{isArabic ? 'اختر المجموعة الجديدة' : 'Choose new group'}</option>{groups.map((group) => <option key={group.id || group._id} value={group.id || group._id}>{isArabic ? (group.nameAr || group.name) : (group.name || group.nameAr)}</option>)}</select><button type="button" onClick={() => updateAgentRequestStatus(request, 'rejected')} className="h-8 rounded-lg bg-rose-500/10 px-2 text-[0.55rem] font-black text-rose-500">{isArabic ? 'رفض' : 'Reject'}</button><button type="button" onClick={() => updateAgentRequestStatus(request, 'approved')} className="h-8 rounded-lg bg-emerald-500 px-2.5 text-[0.55rem] font-black text-white">{isArabic ? 'قبول وتغيير المجموعة' : 'Approve'}</button></div> : null}
+                {isRealReferralMode && status === 'approved' ? (
+                  <div className="mt-2.5 flex justify-end">
+                    <button type="button" disabled={isReviewingApplication} onClick={() => updateAgentRequestStatus(request, 'suspended')} className="h-8 rounded-lg bg-amber-500/10 px-2 text-[0.55rem] font-black text-amber-500 disabled:opacity-50">{isArabic ? 'تعليق' : 'Suspend'}</button>
+                  </div>
+                ) : null}
+                {isRealReferralMode && status === 'suspended' ? (
+                  <div className="mt-2.5 flex items-center gap-1.5">
+                    <select value={agentGroupSelections[request.id] || ''} onChange={(event) => setAgentGroupSelections((current) => ({ ...current, [request.id]: event.target.value }))} className="h-6 min-w-0 max-w-36 flex-1 rounded-md border border-[color:rgb(var(--color-border-rgb)/0.6)] bg-[var(--color-surface)] px-1.5 text-[0.48rem] font-black text-[var(--color-text)] outline-none"><option value="">{isArabic ? 'المجموعة السابقة أو بديلة' : 'Previous or replacement group'}</option>{groups.map((group) => <option key={group.id || group._id} value={group.id || group._id}>{isArabic ? (group.nameAr || group.name) : (group.name || group.nameAr)}</option>)}</select>
+                    <button type="button" disabled={isReviewingApplication} onClick={() => updateAgentRequestStatus(request, 'reactivated')} className="h-8 rounded-lg bg-emerald-500 px-2.5 text-[0.55rem] font-black text-white disabled:opacity-50">{isArabic ? 'إعادة تفعيل' : 'Reactivate'}</button>
+                  </div>
+                ) : null}
               </article>
             );
           })}
@@ -417,6 +590,11 @@ const AdminReferrals = () => {
         <div className="rounded-[1.4rem] border border-[color:rgb(var(--color-border-rgb)/0.55)] bg-[color:rgb(var(--color-card-rgb)/0.84)] p-4">
           <h2 className="text-sm font-black text-[var(--color-text)]">{isArabic ? 'طلبات سحب العملاء' : 'Customer withdrawals'}</h2>
           <p className="mt-1 text-[0.6rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'أرفق صورة التحويل ثم وافق على الطلب.' : 'Attach the transfer receipt, then approve.'}</p>
+          {isRealReferralMode && (isLoadingAdminPayouts || adminPayoutError || processingAdminPayoutId) ? (
+            <p className={`mt-2 rounded-lg px-2 py-1 text-[0.58rem] font-black ${adminPayoutError ? 'bg-rose-500/8 text-rose-500' : 'bg-violet-500/8 text-violet-500'}`}>
+              {adminPayoutError || (processingAdminPayoutId ? (isArabic ? 'جارٍ تنفيذ إجراء طلب السحب...' : 'Processing payout action...') : (isArabic ? 'جارٍ تحميل طلبات السحب...' : 'Loading payout requests...'))}
+            </p>
+          ) : null}
           <div className="mt-3 max-h-[430px] space-y-2 overflow-y-auto">{allWithdrawalRequests.map((request) => { const status = String(request.status || 'processing').toLowerCase(); const ownerName = request.accountHolder || request.ownerName || request.name || (isArabic ? 'عميل' : 'Customer'); const accountNumber = request.accountNumber || request.phone || ''; return <article key={request.id} className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.48)] p-3"><div className="flex items-center gap-2"><img src={request.ownerAvatar || resolveUserAvatar({ name: request.ownerName, email: request.ownerEmail }, request.ownerEmail)} alt="" className="h-9 w-9 rounded-full object-cover" /><div className="min-w-0 flex-1"><button type="button" onClick={() => copyRequestValue(ownerName, isArabic ? 'الاسم' : 'name')} title={isArabic ? 'اضغط لنسخ الاسم' : 'Click to copy name'} className="block max-w-full truncate text-xs font-black text-[var(--color-text)] hover:text-violet-500">{ownerName}</button><div className="mt-0.5 flex min-w-0 items-center gap-1 text-[0.55rem] text-[var(--color-text-secondary)]"><span className="shrink-0">{request.methodName || withdrawalMethods.find((method) => method.id === request.method)?.name || request.method} ·</span><button type="button" dir="ltr" onClick={() => copyRequestValue(accountNumber, isArabic ? 'رقم الحساب' : 'account number')} title={isArabic ? 'اضغط لنسخ الرقم' : 'Click to copy'} className="truncate font-black hover:text-violet-500 hover:underline">{accountNumber || '—'}</button></div></div><div className="text-end"><p dir="ltr" className="text-sm font-black text-[var(--color-text)]">{number(request.amount).toLocaleString('en-US')} {request.currency || 'EGP'}</p><span className={`text-[0.55rem] font-black ${status === 'completed' ? 'text-emerald-500' : status === 'failed' ? 'text-rose-500' : 'text-amber-500'}`}>{status === 'completed' ? (isArabic ? 'تم التحويل' : 'Completed') : status === 'failed' ? (isArabic ? 'مرفوض' : 'Rejected') : (isArabic ? 'قيد المراجعة' : 'Pending')}</span></div></div><div className="mt-2 flex flex-wrap items-center gap-1.5"><label className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg bg-violet-500/10 px-2 text-[0.55rem] font-black text-violet-500"><ImagePlus className="h-3.5 w-3.5" />{request.receiptImage ? (isArabic ? 'تغيير الصورة' : 'Change receipt') : (isArabic ? 'أرفق الصورة أولًا' : 'Attach receipt first')}<input type="file" accept="image/*" className="hidden" onChange={(event) => attachReceipt(request, event.target.files?.[0])} /></label>{request.receiptImage ? <a href={request.receiptImage} target="_blank" rel="noreferrer" className="text-[0.55rem] font-black text-sky-500 underline">{isArabic ? 'معاينة' : 'Preview'}</a> : null}<span className="flex-1" />{status === 'processing' ? <><button type="button" onClick={() => updateRequest(request, { status: 'failed' })} className="h-8 rounded-lg bg-rose-500/10 px-2 text-[0.55rem] font-black text-rose-500">{isArabic ? 'رفض' : 'Reject'}</button><button type="button" disabled={!request.receiptImage} title={!request.receiptImage ? (isArabic ? 'أرفق صورة التحويل أولًا' : 'Attach receipt first') : ''} onClick={() => updateRequest(request, { status: 'completed', completedAt: new Date().toISOString() })} className="h-8 rounded-lg bg-emerald-500 px-2.5 text-[0.55rem] font-black text-white disabled:cursor-not-allowed disabled:bg-slate-400 disabled:opacity-55">{isArabic ? 'موافقة وتحويل' : 'Approve'}</button></> : null}</div></article>; })}{!allWithdrawalRequests.length ? <p className="py-8 text-center text-xs text-[var(--color-text-secondary)]">{isArabic ? 'لا توجد طلبات سحب.' : 'No withdrawal requests.'}</p> : null}</div>
         </div>
       </section>

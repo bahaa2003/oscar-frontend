@@ -1,6 +1,6 @@
 # Oscar Frontend
 
-A production-ready **React + Vite** frontend for the Oscar digital products platform. The app provides a public storefront, authenticated customer panel, wallet and deposit flows, dynamic product purchase forms, target purchase requests, and a permission-aware admin/supervisor console.
+A production-ready **React + Vite** frontend for the Oscar digital products platform. The app provides a public storefront, authenticated customer panel, wallet and deposit flows, dynamic product purchase forms, referral/sub-agent tools, target purchase requests, customer support widgets, and a permission-aware admin/supervisor console.
 
 The frontend is designed to work in two modes:
 
@@ -21,14 +21,15 @@ The frontend is designed to work in two modes:
 8. [Product and Order Experience](#8-product-and-order-experience)
 9. [Wallet, Top-ups, and Financial Snapshots](#9-wallet-top-ups-and-financial-snapshots)
 10. [Target Purchase System](#10-target-purchase-system)
-11. [Admin and Supervisor Capabilities](#11-admin-and-supervisor-capabilities)
-12. [Localization, Theme, and UI System](#12-localization-theme-and-ui-system)
-13. [Setup and Installation](#13-setup-and-installation)
-14. [Environment Configuration](#14-environment-configuration)
-15. [Available Scripts](#15-available-scripts)
-16. [Build and Deployment](#16-build-and-deployment)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Related Documentation](#18-related-documentation)
+11. [Referral, Support, and Mobile Additions](#11-referral-support-and-mobile-additions)
+12. [Admin and Supervisor Capabilities](#12-admin-and-supervisor-capabilities)
+13. [Localization, Theme, and UI System](#13-localization-theme-and-ui-system)
+14. [Setup and Installation](#14-setup-and-installation)
+15. [Environment Configuration](#15-environment-configuration)
+16. [Available Scripts](#16-available-scripts)
+17. [Build and Deployment](#17-build-and-deployment)
+18. [Troubleshooting](#18-troubleshooting)
+19. [Related Documentation](#19-related-documentation)
 
 ---
 
@@ -36,7 +37,7 @@ The frontend is designed to work in two modes:
 
 Oscar Frontend is the browser client for a digital products marketplace. Customers can browse products, register or sign in, manage their account, add wallet balance, purchase products, submit order-specific details, and track order history.
 
-Admins and supervisors use the same app to manage users, products, groups, wallet operations, top-up approvals, payment settings, currencies, suppliers, orders, target requests, and supervisor permissions.
+Admins and supervisors use the same app to manage users, products, groups, wallet operations, top-up approvals, payment settings, currencies, suppliers, orders, referral/sub-agent activity, WhatsApp sessions, target requests, and supervisor permissions.
 
 **Core problems solved:**
 
@@ -47,6 +48,7 @@ Admins and supervisors use the same app to manage users, products, groups, walle
 - Preserving financial and order snapshots for historical display accuracy
 - Providing route-level role and permission gates
 - Keeping key reference data fresh without blocking initial rendering
+- Supporting mobile builds through Capacitor Android
 
 ---
 
@@ -95,6 +97,12 @@ Admin routes use permission constants from `src/utils/permissions.js`, including
 - `MANAGE_CURRENCIES`
 - `MANAGE_SUPPLIERS`
 - `MANAGE_TARGETS`
+- `MANAGE_SETTINGS`
+- `MANAGE_WALLET`
+- `MANAGE_USERS`
+- `CONFIRM_ACCOUNTS`
+- `CONFIRM_ORDERS`
+- `CONFIRM_TARGET_REQUESTS`
 - `VIEW_ACTIVITY_LOGS`
 
 ### Product Purchase Flow
@@ -117,6 +125,22 @@ Customers can view wallet balance, see transaction history, select payment metho
 
 Customers can submit target app purchase requests with payment proof. Admins can manage target apps/products and review target requests.
 
+### Referral and Sub-Agent System
+
+Customers can open `/referral` to copy/share referral codes, review invited customers, request earnings withdrawals, and submit sub-agent applications. Admins can use `/admin/referrals` to review referral owners, configure withdrawal methods and deduction percentages, attach withdrawal receipts, and approve/reject sub-agent requests.
+
+### Customer Support Widgets
+
+The authenticated app includes a floating customer service widget with WhatsApp, phone call, and Oscar Assistant actions. WhatsApp links use `VITE_ADMIN_WHATSAPP_NUMBER` when configured and fall back to the built-in support number.
+
+### Oscar AI Assistant
+
+`LazyOscarAIAssistant` mounts after idle time and supports product search, order/top-up guidance, payment help, navigation shortcuts, and local chat history. The dashboard shows the launcher directly, while the support widget can open the assistant from other supported customer routes.
+
+### Route Transitions
+
+`BarbaPageTransition` and Framer Motion provide branded page transitions while respecting reduced-motion preferences.
+
 ### Session Bootstrap
 
 `SessionBootstrap` refreshes the active session, refreshes the profile, warms reference data, polls payment settings, listens for forced logout events, and synchronizes payment setting changes across tabs.
@@ -131,7 +155,7 @@ The theme context supports dark and light modes. Dark mode is the default.
 
 ### Static Hosting Support
 
-The app includes `public/_redirects` for SPA fallback routing:
+The app includes `public/_redirects` for SPA fallback routing and `public/_headers` for static hosting headers:
 
 ```text
 /* /index.html 200
@@ -156,17 +180,21 @@ src/App.jsx
   +-- SessionBootstrap
   +-- BrowserRouter
         |
+        +-- Floating Support Widgets
+        |     LazyOscarAIAssistant, FloatingWhatsApp
+        |
         +-- Public Routes
         |     /, /catalog, /about-us, /auth, /login
         |
         +-- Protected Layout
               |
               +-- Customer Routes
-              |     dashboard, products, orders, wallet, account, target requests
+              |     dashboard, products, orders, wallet, account, referral, target requests
               |
               +-- Admin/Supervisor Routes
                     users, groups, products, wallet, payments, orders,
-                    payment methods, currencies, suppliers, target requests
+                    payment methods, currencies, suppliers, referrals,
+                    WhatsApp, target requests
 
 State Layer
   |
@@ -220,22 +248,28 @@ Login/register/2FA
 | `src/pages` | Route-level page components |
 | `src/pages/admin` | Admin and supervisor page components |
 | `src/components` | Shared UI and feature components |
+| `src/components/ai-assistant` | Lazy Oscar Assistant, assistant intent detection, and customer-support knowledge helpers |
+| `src/components/app` | App-wide bootstrap components |
 | `src/components/layout` | Authenticated shell, header, sidebars, brand UI |
 | `src/components/home` | Public storefront sections |
 | `src/components/orders` | Order tables, cards, filters, status badges, admin actions |
-| `src/components/products` | Product cards, product detail sheets, purchase controls |
+| `src/components/products` | Product cards, product search, loading skeletons, and empty states |
 | `src/components/wallet` | Wallet cards, transaction UI, payment methods, receipt upload |
 | `src/components/target` | Target request forms and admin target tables |
 | `src/components/account` | Account security, OTP, confirmation, save bar |
 | `src/components/ui` | Reusable primitives such as button, badge, card, modal, input, table, toast |
+| `src/config` | Frontend feature flags |
 | `src/context` | Theme and language providers |
-| `src/utils` | Formatting, routing, pricing, auth, permissions, order, wallet, image, and validation helpers |
+| `src/services/accountSecurityApi.js` | Mock/in-memory account security and email OTP adapter used by the account security UI |
+| `src/utils` | Formatting, routing, pricing, auth, permissions, order, wallet, image, WhatsApp, cache, and validation helpers |
 | `src/data` | Mock data, country catalog, legacy translations, wallet seed data |
 | `src/locales` | Bundled i18next locale JSON |
-| `public/locales` | Public locale JSON copies |
 | `src/theme/tokens.css` | Design tokens |
 | `src/assets` | Static product/storefront imagery |
-| `public` | Favicons, app icons, and static hosting redirects |
+| `public` | Favicons, app icons, static hosting redirects, and response headers |
+| `android` | Capacitor Android project generated from the web build |
+| `capacitor.config.ts` | Capacitor app id/name and web directory configuration |
+| `scripts/build-android.ps1` | Android APK/AAB build helper |
 | `scripts/generate-favicons.mjs` | Favicon generation script |
 
 ---
@@ -265,7 +299,7 @@ Legacy account routes redirect:
 
 ### Authenticated Customer Routes
 
-These routes allow `customer`, `admin`, and supervisor roles:
+Most authenticated customer routes allow `customer`, `admin`, and supervisor roles. Customer-only routes are noted below.
 
 | Route | Page | Purpose |
 | --- | --- | --- |
@@ -275,7 +309,6 @@ These routes allow `customer`, `admin`, and supervisor roles:
 | `/products` | `Products` | Authenticated product browser |
 | `/products/:productId` | `ProductDetails` | Product details |
 | `/products/:id` | `ProductDetails` | Product details alias |
-| `/purchase/:productId` | `ProductPurchasePage` | Product purchase form |
 | `/wallet` | `Wallet` | Wallet overview |
 | `/wallet/add-balance` | `AddBalance` | Add balance flow |
 | `/wallet/topups` | `WalletTopupHistory` | Top-up history |
@@ -285,6 +318,7 @@ These routes allow `customer`, `admin`, and supervisor roles:
 | `/account` | `Account` | Account profile |
 | `/account/security` | `AccountSecurity` | Account security and 2FA |
 | `/account-security` | `AccountSecurity` | Security alias |
+| `/referral` | `Referral` | Customer-only referral, earnings withdrawal, and sub-agent request page |
 | `/contact-us` | `ContactUs` | Contact page |
 | `/buy-target` | `BuyTarget` | Target purchase form |
 | `/target-orders` | `TargetOrders` | Customer target order history |
@@ -308,6 +342,7 @@ These routes allow `customer`, `admin`, and supervisor roles:
 | `/admin/groups` | `AdminGroups` | `MANAGE_GROUPS` |
 | `/admin/products` | `AdminProducts` | `MANAGE_PRODUCTS` |
 | `/admin/wallet` | `AdminWallet` | `VIEW_WALLET` |
+| `/admin/referrals` | `AdminReferrals` | Admin panel role; referral feature flag must be enabled |
 | `/admin/payments` | `AdminPayments` | `MANAGE_DEPOSITS` |
 | `/admin/orders` | `AdminOrders` | `MANAGE_ORDERS` |
 | `/admin/user-transactions` | `AdminUserTransactions` | Role gate only in the current permissions map |
@@ -319,6 +354,7 @@ These routes allow `customer`, `admin`, and supervisor roles:
 | `/admin/currencies` | `AdminCurrencies` | `MANAGE_CURRENCIES` |
 | `/admin/suppliers` | `AdminSuppliers` | `MANAGE_SUPPLIERS` |
 | `/admin/target-requests` | `AdminTargetRequests` | `MANAGE_TARGETS` |
+| `/admin/whatsapp` | `AdminWhatsApp` | `MANAGE_SETTINGS` |
 
 ### ProtectedRoute Behavior
 
@@ -396,6 +432,7 @@ The provider modules expose these major sections so stores can switch between mo
 | `targetApps` | Target app management |
 | `targetPurchases` | Target request lifecycle |
 | `system` | Currencies, payment settings, runtime settings |
+| `whatsapp` | Admin WhatsApp session status, reconnect, and reset actions |
 | `audit` | Audit log access |
 | `wallet` | Customer wallet stats and transactions |
 
@@ -433,6 +470,11 @@ The app uses Zustand stores under `src/store`. Stores own async data loading, ca
 | --- | --- | --- |
 | `auth-storage` | localStorage | Persisted auth state and bearer token |
 | `auth:logout-reason` | localStorage | Session logout reason, usually expired |
+| `oscar-ai-assistant-history-v1` | localStorage | Local Oscar Assistant chat history |
+| `kanzcoins_admin_referral_commission_rate` | localStorage | Admin referral commission-rate setting |
+| `kanzcoins_referral_withdrawal_methods` | localStorage | Referral withdrawal method settings |
+| `kanzcoins_referral_withdrawal_requests` | localStorage | Local referral withdrawal request queue |
+| `oscar_sub_agent_requests` | localStorage | Local sub-agent request/review state |
 | `oscar:media-cache:v1` | sessionStorage | Product/category cache |
 | `oscar:currencies-cache:v1` | sessionStorage | Currency cache |
 
@@ -507,6 +549,8 @@ Order helpers in `src/utils/orders.js` handle:
 - Manual order status labels
 - Automatic vs manual order type display
 - Site order number and supplier order number display
+- Formatted order creation/update timestamps
+- Fulfillment duration display from creation to completion/update time
 - Dynamic order field display
 - Primary identifier detection
 - Money formatting using execution currency
@@ -552,6 +596,7 @@ The frontend should:
 - Treat current exchange rates as affecting new transactions only
 - Avoid recalculating old wallet or order amounts from current rates
 - Keep backend-approved amounts as the source of truth
+- Preserve and visibly highlight negative wallet balances when credit limits or admin adjustments allow them
 
 Related helpers include:
 
@@ -600,7 +645,55 @@ The target purchase system is separate from the standard product order flow. It 
 
 ---
 
-## 11. Admin and Supervisor Capabilities
+## 11. Referral, Support, and Mobile Additions
+
+The referral and sub-agent UI is enabled by `REFERRALS_ENABLED` in `src/config/featureFlags.js`.
+
+Customer referral capabilities:
+
+- Copy the authenticated user's referral code
+- Share a signup link; Real API mode combines the backend relative `sharePath` with `window.location.origin`
+- Review invited customers, backend commission totals, commission history, filters, and pagination
+- In Real API mode, select available commissions and submit payout requests to the backend
+- In Mock mode, keep local/demo withdrawal previews for UI review
+- Submit a sub-agent/reseller application and read backend current/history status in Real API mode
+
+Admin referral capabilities:
+
+- Review referral owners and invited-customer earnings
+- Save a referral commission-rate setting
+- Enable, disable, add, delete, and configure withdrawal methods
+- Apply withdrawal deduction percentages
+- Review backend payout requests in Real API mode and call admin reject/settle APIs
+- Review local/mock withdrawal requests, attach transfer receipts, and mark them completed or failed in Mock mode
+- Review backend reseller applications in Real API mode and call approve, reject, suspend, or reactivate APIs
+- Approve or reject local/mock sub-agent requests and optionally move approved mock users into a selected group
+
+In `VITE_DATA_PROVIDER=real`, the referral page uses `realApi.referrals.getDashboard()`, `getCommissions(params)`, `getInvitees(params)`, `getPayouts(params)`, and `createPayout(payload)` through `useReferralStore`. Financial totals come from persisted backend `ReferralCommission` records and remain Decimal strings in state; the browser does not calculate commission totals or use localStorage as a financial source. Submitting a payout sends selected commission ids and method only. Real-mode API failures show loading/error/empty states and do not fall back to mock commission data.
+
+In Real API mode, the sub-agent area uses `realApi.resellerApplications.submit()`, `getCurrent()`, and `getHistory(params)` through `useResellerApplicationStore`. The browser does not write `oscar_sub_agent_requests`, approve itself, change reseller state, or mutate Groups locally in Real mode.
+
+In Real API mode, `/admin/referrals` calls `realApi.adminReferralPayouts.list()`, `reject()`, and `settle()` for payouts and `realApi.adminResellerApplications.list()`, `approve()`, `reject()`, `suspend()`, and `reactivate()` for reseller applications. Backend actions own payout status, reseller state, and Group assignment; the admin UI does not locally mutate commission status, wallet balances, reseller status, or user Groups for server-backed records. Manual settlement prompts for an external reference; wallet settlement asks for confirmation and relies on backend wallet ledger idempotency. External payment-provider execution, payout cancellation, commission editing, reseller wallet credit limits, automatic reseller approval, and new auth roles are not implemented.
+
+Phase 3B Real API mode renders backend-resolved product prices and uses `realApi.pricing.quote()` for purchase totals. The browser submits product id, quantity, and order fields only; it does not submit authoritative unit prices, totals, Groups, percentages, reseller status, exchange rates, or alternate user ids. Created order responses and immutable backend snapshots are the display truth after checkout. Real API failures do not fall back to mock pricing. Mock mode keeps its local demo pricing and quote logic independently.
+
+Mock mode remains independent and local. Mock payout, withdrawal, and sub-agent request data is for UI review only and is not used as a fallback after Real API failures.
+
+### Support and Assistant Widgets
+
+`FloatingWhatsApp` appears on supported authenticated routes for customers and admins. It offers WhatsApp, phone call, and Oscar Assistant actions, then builds support links through `src/utils/whatsapp.js`.
+
+`LazyOscarAIAssistant` mounts after browser idle time and keeps local chat history under `oscar-ai-assistant-history-v1`. Assistant knowledge covers catalog search, payment methods, wallet/top-up guidance, order tracking, target services, support/contact navigation, and refund-policy responses.
+
+### Motion and Mobile Shell
+
+Route changes use `BarbaPageTransition` plus Framer Motion, with reduced-motion fallbacks. The newer shell also includes the compact/preview sidebar, wallet balance in the header/sidebar, unread-notification polling, and support-widget entry points.
+
+The project now includes a tracked Capacitor Android project under `android/`; build commands are documented in the scripts and deployment sections.
+
+---
+
+## 12. Admin and Supervisor Capabilities
 
 ### User Management
 
@@ -639,7 +732,7 @@ Admins can:
 Admins and permitted supervisors can:
 
 - View paginated admin orders
-- Filter/search orders
+- Filter/search orders by query, date range, page, and row limit
 - Open order details
 - Approve/complete orders
 - Reject orders
@@ -657,6 +750,7 @@ Admins can:
 - Review top-up requests
 - Approve/reject payment proof
 - Configure payment methods and payment groups
+- Manage WhatsApp support/payment contact number through payment settings
 
 ### Currency and Group Management
 
@@ -681,9 +775,22 @@ Admins can manage supervisor-like users and monitor supervisor activity through:
 - `/admin/supervisors/:supervisorId/monitoring`
 - `/admin/supervisor-monitoring`
 
+### Referral and Sub-Agent Management
+
+Admins can review referral earnings, configure withdrawal methods, process referral withdrawal requests, and approve/reject sub-agent applications through `/admin/referrals`.
+
+### WhatsApp Session Management
+
+Admins and permitted supervisor roles can use `/admin/whatsapp` to:
+
+- Poll WhatsApp service status
+- Display and refresh QR login state
+- Reconnect the WhatsApp service
+- Reset the stored WhatsApp session
+
 ---
 
-## 12. Localization, Theme, and UI System
+## 13. Localization, Theme, and UI System
 
 ### Localization
 
@@ -693,8 +800,6 @@ i18next is configured in `src/i18n.js`.
 | --- | --- |
 | `src/locales/ar/common.json` | Bundled Arabic translations |
 | `src/locales/en/common.json` | Bundled English translations |
-| `public/locales/ar/common.json` | Public Arabic locale |
-| `public/locales/en/common.json` | Public English locale |
 | `src/data/translations.js` | Legacy translation fallback |
 
 Defaults:
@@ -736,10 +841,17 @@ Reusable UI lives in `src/components/ui`:
 - `LanguageSwitcher`
 - `FloatingWhatsApp`
 - `BackToTopButton`
+- `BarbaPageTransition`
+
+Feature UI also includes:
+
+- `LazyOscarAIAssistant` and `OscarAIAssistant` in `src/components/ai-assistant`
+- `ReferralBanner` on the public/customer home experience when referrals are enabled
+- `WalletSidebarCard`, which keeps customer wallet balance visible in the sidebar
 
 ---
 
-## 13. Setup and Installation
+## 14. Setup and Installation
 
 ### Prerequisites
 
@@ -805,7 +917,7 @@ Note: `vite.config.js` also defines `server.port = 5173`, but the package script
 
 ---
 
-## 14. Environment Configuration
+## 15. Environment Configuration
 
 Create `.env.local` in the frontend root.
 
@@ -815,6 +927,7 @@ Recommended local backend integration:
 VITE_API_BASE_URL=http://localhost:5000/api
 VITE_DATA_PROVIDER=real
 VITE_ADMIN_WHATSAPP_NUMBER=01066762671
+VITE_PUBLIC_APP_URL=http://localhost:3000
 VITE_APP_ENV=development
 VITE_APP_MODE=development
 APP_URL=http://localhost:3000
@@ -827,7 +940,11 @@ GEMINI_API_KEY=your_gemini_api_key_here
 | --- | --- | --- |
 | `VITE_DATA_PROVIDER` | Recommended | `mock` or `real`. Defaults to `mock` when missing. |
 | `VITE_API_BASE_URL` | Required for real mode | Base backend API URL. Example: `http://localhost:5000/api`. |
-| `VITE_ADMIN_WHATSAPP_NUMBER` | Optional | Number used by the WhatsApp floating/contact UI. |
+| `VITE_ADMIN_WHATSAPP_NUMBER` | Optional | Number used by the WhatsApp floating/contact UI. Local Egyptian numbers such as `010...` are normalized to country code `20`. |
+| `ADMIN_WHATSAPP_NUMBER` | Legacy fallback | Legacy non-`VITE_` name referenced by the WhatsApp helper. Vite client builds should use `VITE_ADMIN_WHATSAPP_NUMBER`. |
+| `VITE_PUBLIC_APP_URL` | Optional | Public app origin used to build referral signup links. Defaults to `https://oscarstor.com`. |
+| `VITE_OSCAR_BUILD_ID` | Optional | Build identifier exposed to the client by `vite.config.js`. |
+| `VITE_APP_VERSION` | Optional | Fallback build identifier when `VITE_OSCAR_BUILD_ID` is not set. |
 | `VITE_APP_ENV` | Optional | App environment label. |
 | `VITE_APP_MODE` | Optional | App mode flag for feature/config checks. |
 | `APP_URL` | Optional | Public frontend URL for app/self-reference integrations. |
@@ -862,7 +979,7 @@ Important notes:
 
 ---
 
-## 15. Available Scripts
+## 16. Available Scripts
 
 | Command | Description |
 | --- | --- |
@@ -870,6 +987,9 @@ Important notes:
 | `npm run build` | Create a production build in `dist/`. |
 | `npm run preview` | Preview the production build locally. |
 | `npm run lint` | Run TypeScript checks with `tsc --noEmit`. |
+| `npm run sync:android` | Build the web app and sync `dist/` into the Capacitor Android project. |
+| `npm run build:apk` | Build an Android debug APK through `scripts/build-android.ps1`. |
+| `npm run build:aab` | Build an Android release bundle through `scripts/build-android.ps1`. |
 | `npm run generate:favicons` | Generate favicon assets. |
 | `npm run clean` | Remove `dist/`. |
 
@@ -884,7 +1004,7 @@ There is currently no dedicated frontend unit test script in `package.json`. The
 
 ---
 
-## 16. Build and Deployment
+## 17. Build and Deployment
 
 ### Production Build
 
@@ -898,11 +1018,33 @@ Vite writes production assets to:
 dist/
 ```
 
+`vite.config.js` also assigns `import.meta.env.VITE_OSCAR_BUILD_ID` from `VITE_OSCAR_BUILD_ID`, `VITE_APP_VERSION`, supported deploy commit variables, or a generated mode/timestamp fallback. Rollup chunks are grouped for major vendors such as React, React Router, Framer Motion, i18next, Zustand, Axios, and shared UI helpers.
+
 ### Preview Build
 
 ```powershell
 npm run preview
 ```
+
+### Android Build
+
+The Android project is generated and tracked under `android/`, with Capacitor configured by `capacitor.config.ts`:
+
+```ts
+appId: 'com.oscar.app'
+appName: 'Oscar'
+webDir: 'dist'
+```
+
+Common Android commands:
+
+```powershell
+npm run sync:android
+npm run build:apk
+npm run build:aab
+```
+
+`sync:android` creates a fresh web build before running Capacitor sync. The APK/AAB scripts call `scripts/build-android.ps1` with the Gradle task needed for debug APK or release bundle output.
 
 ### Static Hosting
 
@@ -916,19 +1058,24 @@ For Netlify-style static hosting, `public/_redirects` provides SPA fallback supp
 
 For other hosts, configure all unknown routes to serve `index.html` so React Router deep links continue to work.
 
+`public/_headers` is included for static-host response header configuration where the host supports it.
+
 ### Real API Deployment Checklist
 
 1. Set `VITE_DATA_PROVIDER=real`
 2. Set `VITE_API_BASE_URL` to the deployed backend API URL
-3. Confirm backend CORS allows the frontend origin
-4. Confirm auth refresh endpoint support if session refresh is expected
-5. Confirm upload endpoints accept the deployed frontend origin
-6. Run `npm run build`
-7. Test login, catalog, wallet, order creation, and admin routes
+3. Set `VITE_PUBLIC_APP_URL` to the deployed frontend URL if referral links should use that origin
+4. Set `VITE_ADMIN_WHATSAPP_NUMBER` if the customer support/contact widget should use a deployed support number
+5. Confirm backend CORS allows the frontend origin
+6. Confirm auth refresh endpoint support if session refresh is expected
+7. Confirm upload endpoints accept the deployed frontend origin
+8. Confirm WhatsApp admin endpoints if `/admin/whatsapp` should be enabled in real mode
+9. Run `npm run build`
+10. Test login, catalog, wallet, order creation, referral, support widgets, and admin routes
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 ### The app shows mock data while the backend is running
 
@@ -998,6 +1145,49 @@ payment-settings-updates
 
 If the browser does not support `BroadcastChannel`, the current tab still updates immediately, but other tabs may need refresh or polling.
 
+### WhatsApp support opens the wrong number
+
+Set:
+
+```env
+VITE_ADMIN_WHATSAPP_NUMBER=01066762671
+```
+
+Then restart the dev server or rebuild. Local Egyptian numbers beginning with `0` are normalized to `20...`.
+
+### Admin WhatsApp page cannot connect
+
+Check that the backend exposes:
+
+```text
+GET /admin/whatsapp/status
+POST /admin/whatsapp/reconnect
+POST /admin/whatsapp/reset
+```
+
+The frontend polls status while the session is disconnected, initializing, resetting, reconnecting, or waiting for QR scan.
+
+### Referral links use the wrong production origin
+
+Set:
+
+```env
+VITE_PUBLIC_APP_URL=https://your-frontend-domain.example
+```
+
+Then rebuild the frontend. The referral page uses this value when creating signup links.
+
+### Android sync or build fails
+
+Run a web build first, then sync Android:
+
+```powershell
+npm run build
+npm run sync:android
+```
+
+If Gradle still fails, check local Android SDK/JDK setup and rerun `npm run build:apk` or `npm run build:aab`.
+
 ### Environment changes do not apply
 
 Restart the Vite server. Vite reads environment variables at server startup/build time.
@@ -1015,7 +1205,7 @@ So `npm run lint` can report type-checking issues from JavaScript files as well 
 
 ---
 
-## 18. Related Documentation
+## 19. Related Documentation
 
 | File | Purpose |
 | --- | --- |

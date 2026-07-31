@@ -618,6 +618,59 @@ const defaultPaymentSettings = {
   paymentGroups: createDefaultPaymentGroups(),
 };
 
+const getMockReferralContext = () => {
+  const authDb = getDB('auth-storage', { state: { user: null } });
+  const usersDb = getDB('admin-storage', { state: { users: mockUsers } });
+  const currentUser = authDb?.state?.user || null;
+  const users = usersDb?.state?.users || mockUsers;
+  const code = String(currentUser?.referralCode || currentUser?.inviteCode || 'MOCKREF8').trim().toUpperCase();
+  const currentUserId = String(currentUser?.id || currentUser?._id || '');
+
+  const invitees = users
+    .filter((entry) => !entry.deletedAt)
+    .filter((entry) => (
+      String(entry.referredBy || '') === currentUserId
+      || String(entry.referredByCode || '').toUpperCase() === code
+    ));
+
+  const commissions = invitees.map((invitee, index) => {
+    const amount = (5 + index).toFixed(2);
+    return {
+      id: `mock-commission-${invitee.id || index}`,
+      status: 'AVAILABLE',
+      sourceAmountUsd: '100.00',
+      commissionRatePercent: '5',
+      commissionAmountUsd: amount,
+      commissionCurrency: 'USD',
+      availableAt: invitee.referredAt || invitee.createdAt || new Date().toISOString(),
+      lockedAt: null,
+      paidAt: null,
+      cancelledAt: null,
+      createdAt: invitee.referredAt || invitee.createdAt || new Date().toISOString(),
+      referredUserId: invitee.id,
+    };
+  });
+
+  return { code, invitees, commissions };
+};
+
+const paginateMockReferralItems = (items, { page = 1, limit = 10 } = {}) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 10));
+  const start = (safePage - 1) * safeLimit;
+  const total = items.length;
+
+  return {
+    items: items.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.ceil(total / safeLimit),
+    },
+  };
+};
+
 // --- Mock API Service ---
 const mockApi = {
   
@@ -710,7 +763,7 @@ const mockApi = {
       return { twoFactorEnabled: false };
     },
 
-    loginWithGoogle: async () => {
+    loginWithGoogle: async (_options = {}) => {
       await new Promise(resolve => setTimeout(resolve, DELAY));
       const db = getDB('admin-storage', { state: { users: mockUsers } });
       const users = db.state.users || mockUsers;
@@ -770,26 +823,41 @@ const mockApi = {
       const migrated = await secureUsersInDb(db);
       if (migrated) saveDB('admin-storage', db);
       const normalizedEmail = String(userData.email || '').trim().toLowerCase();
+      const {
+        referralCode: _legacyReferralCode,
+        invitationCode: _invitationCode,
+        referrerCode,
+        ...safeUserData
+      } = userData;
+      const normalizedReferrerCode = String(referrerCode || _invitationCode || _legacyReferralCode || '')
+        .trim()
+        .toUpperCase();
       
       if (users.some(u => String(u.email || '').toLowerCase() === normalizedEmail)) throw new Error('Email already registered');
       
       const newUser = {
         id: `u${Date.now()}`,
-        ...userData,
+        ...safeUserData,
         email: normalizedEmail,
         passwordHash: await hashPassword(userData.password || ''),
         role: 'customer',
         coins: 0,
         creditLimit: 0,
-        group: resolveGroupName(userData.group),
+        group: resolveGroupName(safeUserData.group),
         status: 'approved',
         verified: true,
         joinDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        signupMethod: normalizeSignupMethod(userData.signupMethod || 'email'),
+        signupMethod: normalizeSignupMethod(safeUserData.signupMethod || 'email'),
+        referralCode: `MOCK${Date.now().toString(36).slice(-6).toUpperCase()}`,
+        ...(normalizedReferrerCode ? {
+          referredByCode: normalizedReferrerCode,
+          referredAt: new Date().toISOString(),
+          referralSource: 'EMAIL_REGISTRATION',
+        } : {}),
         approvedAt: null,
         rejectedAt: null,
-        avatar: resolveUserAvatar(userData, userData.name || userData.username || userData.email || 'OSCAR User')
+        avatar: resolveUserAvatar(safeUserData, safeUserData.name || safeUserData.username || userData.email || 'OSCAR User')
       };
       delete newUser.password;
       
@@ -1202,6 +1270,38 @@ const mockApi = {
   },
 
   // --- Orders ---
+  pricing: {
+    quote: async ({ items = [], currency = 'USD' } = {}) => {
+      await new Promise(resolve => setTimeout(resolve, Math.min(DELAY, 250)));
+      const products = await mockApi.products.list();
+      const quoteItems = (Array.isArray(items) ? items : []).map((item) => {
+        const product = products.find((entry) => String(entry.id || entry._id) === String(item.productId));
+        const quantity = Math.max(1, Math.trunc(Number(item.quantity || 1)));
+        const unitPrice = String(product?.finalPrice || product?.displayPrice || product?.basePriceCoins || product?.basePrice || product?.priceCoins || 0);
+        const lineTotal = String(Number(unitPrice || 0) * quantity);
+        return {
+          productId: item.productId,
+          quantity,
+          unitPrice,
+          lineTotal,
+          currency,
+        };
+      });
+      const total = quoteItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
+      return {
+        items: quoteItems,
+        subtotal: String(total),
+        total: String(total),
+        currency,
+        pricingContext: {
+          pricingType: 'MOCK',
+          effectiveGroupName: 'Mock',
+          calculationVersion: 'mock',
+        },
+      };
+    },
+  },
+
   orders: {
     list: async (userId) => {
       await new Promise(resolve => setTimeout(resolve, DELAY));
@@ -1989,6 +2089,313 @@ const mockApi = {
   },
 
   // --- Topups ---
+  referrals: {
+    getDashboard: async () => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const { code, invitees, commissions } = getMockReferralContext();
+      const available = commissions
+        .filter((item) => item.status === 'AVAILABLE')
+        .reduce((sum, item) => sum + Number(item.commissionAmountUsd || 0), 0)
+        .toFixed(2);
+
+      return {
+        referral: {
+          code,
+          sharePath: `/auth?mode=signup&ref=${encodeURIComponent(code)}`,
+        },
+        referrals: {
+          total: invitees.length,
+        },
+        commissions: {
+          count: commissions.length,
+          currency: 'USD',
+          totals: {
+            available,
+            locked: '0.00',
+            paid: '0.00',
+            cancelled: '0.00',
+          },
+        },
+      };
+    },
+
+    getCommissions: async (params = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const { commissions } = getMockReferralContext();
+      const status = String(params.status || '').trim().toUpperCase();
+      const filtered = status
+        ? commissions.filter((item) => item.status === status)
+        : commissions;
+      return paginateMockReferralItems(filtered, params);
+    },
+
+    getInvitees: async (params = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const { invitees, commissions } = getMockReferralContext();
+      const source = String(params.source || '').trim().toUpperCase();
+      const filtered = source
+        ? invitees.filter((item) => String(item.referralSource || '').toUpperCase() === source)
+        : invitees;
+      const items = filtered.map((invitee) => {
+        const inviteeCommissions = commissions.filter((item) => String(item.referredUserId) === String(invitee.id));
+        const available = inviteeCommissions
+          .filter((item) => item.status === 'AVAILABLE')
+          .reduce((sum, item) => sum + Number(item.commissionAmountUsd || 0), 0)
+          .toFixed(2);
+        const [local, domain = 'example.com'] = String(invitee.email || '').split('@');
+
+        return {
+          id: invitee.id,
+          displayName: invitee.name || invitee.username || 'Mock referral',
+          maskedEmail: invitee.email ? `${local.slice(0, 1)}***@${domain}` : null,
+          joinedAt: invitee.referredAt || invitee.createdAt || null,
+          referralSource: invitee.referralSource || 'EMAIL_REGISTRATION',
+          commissionSummary: {
+            count: inviteeCommissions.length,
+            totalAvailableUsd: available,
+          },
+        };
+      });
+
+      return paginateMockReferralItems(items, params);
+    },
+
+    createPayout: async (payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('referral-payout-storage', { state: { payouts: [] } });
+      const { commissions } = getMockReferralContext();
+      const commissionIds = [...new Set((payload.commissionIds || []).map(String).filter(Boolean))];
+      const selected = commissions.filter((item) => (
+        commissionIds.includes(String(item.id))
+        && String(item.status || '').toUpperCase() === 'AVAILABLE'
+      ));
+      if (!selected.length || selected.length !== commissionIds.length) {
+        throw new Error('Selected commissions are not available for payout.');
+      }
+      const amountUsd = selected.reduce((sum, item) => sum + Number(item.commissionAmountUsd || 0), 0).toFixed(2);
+      const payout = {
+        id: `mock-payout-${Date.now()}`,
+        status: 'PENDING',
+        method: String(payload.method || 'WALLET').toUpperCase(),
+        amountUsd,
+        currency: 'USD',
+        commissionCount: selected.length,
+        requestedAt: new Date().toISOString(),
+        reviewedAt: null,
+        paidAt: null,
+        rejectedAt: null,
+      };
+      db.state.payouts = [payout, ...(db.state.payouts || [])];
+      saveDB('referral-payout-storage', db);
+      return payout;
+    },
+
+    getPayouts: async (params = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('referral-payout-storage', { state: { payouts: [] } });
+      const status = String(params.status || '').trim().toUpperCase();
+      const method = String(params.method || '').trim().toUpperCase();
+      const filtered = (db.state.payouts || []).filter((item) => (
+        (!status || String(item.status || '').toUpperCase() === status)
+        && (!method || String(item.method || '').toUpperCase() === method)
+      ));
+      return paginateMockReferralItems(filtered, params);
+    },
+
+    getPayout: async (id) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('referral-payout-storage', { state: { payouts: [] } });
+      return (db.state.payouts || []).find((item) => String(item.id) === String(id)) || null;
+    },
+  },
+
+  adminReferralPayouts: {
+    list: async (params = {}) => mockApi.referrals.getPayouts(params),
+    get: async (id) => mockApi.referrals.getPayout(id),
+    reject: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('referral-payout-storage', { state: { payouts: [] } });
+      db.state.payouts = (db.state.payouts || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'REJECTED', rejectedAt: new Date().toISOString(), rejectionReason: payload.rejectionReason || payload.reason || '' }
+          : item
+      ));
+      saveDB('referral-payout-storage', db);
+      return (db.state.payouts || []).find((item) => String(item.id) === String(id));
+    },
+    settle: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('referral-payout-storage', { state: { payouts: [] } });
+      db.state.payouts = (db.state.payouts || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'PAID', paidAt: new Date().toISOString(), externalReference: payload.externalReference || item.externalReference || null }
+          : item
+      ));
+      saveDB('referral-payout-storage', db);
+      return (db.state.payouts || []).find((item) => String(item.id) === String(id));
+    },
+  },
+
+  resellerApplications: {
+    submit: async (payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const auth = readAuthLocalStorage();
+      const user = auth?.state?.user || auth?.user || {};
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const currentUserId = String(user.id || user._id || user.userId || user.email || 'mock-user');
+      const existing = (db.state.applications || []).find((item) => (
+        String(item.userId) === currentUserId && String(item.status).toUpperCase() === 'PENDING'
+      ));
+      if (existing) return existing;
+      const now = new Date().toISOString();
+      const application = {
+        id: `mock-reseller-${Date.now()}`,
+        applicationNumber: `RSA-MOCK-${Date.now()}`,
+        userId: currentUserId,
+        name: user.name || user.email || 'Mock user',
+        email: user.email || '',
+        status: 'PENDING',
+        businessName: payload.businessName || user.name || 'Mock reseller',
+        businessType: String(payload.businessType || 'INDIVIDUAL').toUpperCase(),
+        country: payload.country || 'Egypt',
+        city: payload.city || 'Cairo',
+        expectedMonthlyVolume: String(payload.expectedMonthlyVolume || '0'),
+        experienceSummary: payload.experienceSummary || payload.message || '',
+        salesChannels: payload.salesChannels || ['OTHER'],
+        targetMarkets: payload.targetMarkets || ['Local'],
+        contactPhone: payload.contactPhone || '',
+        submittedAt: now,
+        createdAt: now,
+        reviewedAt: null,
+        approvedAt: null,
+        rejectedAt: null,
+        rejectionReason: null,
+        suspendedAt: null,
+        suspensionReason: null,
+        assignedGroup: null,
+      };
+      db.state.applications = [application, ...(db.state.applications || [])];
+      saveDB('mock-reseller-applications', db);
+      return application;
+    },
+
+    getCurrent: async () => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const auth = readAuthLocalStorage();
+      const user = auth?.state?.user || auth?.user || {};
+      const currentUserId = String(user.id || user._id || user.userId || user.email || 'mock-user');
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const application = (db.state.applications || []).find((item) => String(item.userId) === currentUserId) || null;
+      const resellerStatus = application?.status === 'APPROVED'
+        ? 'APPROVED'
+        : application?.status === 'SUSPENDED'
+          ? 'SUSPENDED'
+          : application?.status === 'REJECTED'
+            ? 'REJECTED'
+            : application
+              ? 'PENDING'
+              : 'NONE';
+      return {
+        resellerStatus,
+        application,
+        commercial: {
+          approved: resellerStatus === 'APPROVED',
+          assignedGroup: application?.assignedGroup || null,
+        },
+        canApply: ['NONE', 'REJECTED'].includes(resellerStatus),
+      };
+    },
+
+    getHistory: async (params = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const auth = readAuthLocalStorage();
+      const user = auth?.state?.user || auth?.user || {};
+      const currentUserId = String(user.id || user._id || user.userId || user.email || 'mock-user');
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const items = (db.state.applications || []).filter((item) => String(item.userId) === currentUserId);
+      return paginateMockReferralItems(items, params);
+    },
+  },
+
+  adminPricing: {
+    preview: async ({ userId, productId, quantity = 1, currency = 'USD' } = {}) => {
+      const quote = await mockApi.pricing.quote({ items: [{ productId, quantity }], currency });
+      return {
+        userId,
+        productId,
+        quantity,
+        currency,
+        pricingContext: quote.pricingContext,
+        finalUnitPrice: quote.items?.[0]?.unitPrice || '0',
+        lineTotal: quote.items?.[0]?.lineTotal || '0',
+        calculationVersion: 'mock',
+      };
+    },
+  },
+
+  adminResellerApplications: {
+    list: async (params = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const status = String(params.status || '').trim().toUpperCase();
+      const items = (db.state.applications || []).filter((item) => !status || String(item.status).toUpperCase() === status);
+      return paginateMockReferralItems(items, params);
+    },
+    get: async (id) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      return (db.state.applications || []).find((item) => String(item.id) === String(id)) || null;
+    },
+    approve: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const group = (mockGroups || []).find((item) => String(item.id || item._id) === String(payload.assignedGroupId || payload.groupId)) || null;
+      db.state.applications = (db.state.applications || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'APPROVED', reviewedAt: new Date().toISOString(), approvedAt: new Date().toISOString(), assignedGroup: group }
+          : item
+      ));
+      saveDB('mock-reseller-applications', db);
+      return (db.state.applications || []).find((item) => String(item.id) === String(id));
+    },
+    reject: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      db.state.applications = (db.state.applications || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'REJECTED', reviewedAt: new Date().toISOString(), rejectedAt: new Date().toISOString(), rejectionReason: payload.rejectionReason || payload.reason || '' }
+          : item
+      ));
+      saveDB('mock-reseller-applications', db);
+      return (db.state.applications || []).find((item) => String(item.id) === String(id));
+    },
+    suspend: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      db.state.applications = (db.state.applications || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'SUSPENDED', suspendedAt: new Date().toISOString(), suspensionReason: payload.suspensionReason || payload.reason || '' }
+          : item
+      ));
+      saveDB('mock-reseller-applications', db);
+      return (db.state.applications || []).find((item) => String(item.id) === String(id));
+    },
+    reactivate: async (id, payload = {}) => {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+      const db = getDB('mock-reseller-applications', { state: { applications: [] } });
+      const group = payload.assignedGroupId
+        ? (mockGroups || []).find((item) => String(item.id || item._id) === String(payload.assignedGroupId)) || null
+        : null;
+      db.state.applications = (db.state.applications || []).map((item) => (
+        String(item.id) === String(id)
+          ? { ...item, status: 'APPROVED', reactivatedAt: new Date().toISOString(), assignedGroup: group || item.assignedGroup || null }
+          : item
+      ));
+      saveDB('mock-reseller-applications', db);
+      return (db.state.applications || []).find((item) => String(item.id) === String(id));
+    },
+  },
+
   topups: {
     list: async () => {
       await new Promise(resolve => setTimeout(resolve, DELAY));

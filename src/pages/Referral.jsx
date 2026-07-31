@@ -31,6 +31,8 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { useToast } from '../components/ui/Toast';
 import { resolveUserAvatar } from '../utils/avatar';
+import useReferralStore from '../store/useReferralStore';
+import useResellerApplicationStore from '../store/useResellerApplicationStore';
 import referralHeroImage from '../assets/slide-3.webp';
 
 const copyText = async (value) => {
@@ -124,6 +126,48 @@ const Referral = () => {
   const { dir } = useLanguage();
   const { addToast } = useToast();
   const isArabic = dir === 'rtl';
+  const isRealReferralMode = String(import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() === 'real';
+  const {
+    dashboard,
+    commissions,
+    invitees,
+    payouts,
+    commissionPagination,
+    inviteePagination,
+    payoutPagination,
+    commissionFilters,
+    inviteeFilters,
+    selectedCommissionIds,
+    selectedTotalUsd,
+    isLoadingDashboard,
+    isLoadingCommissions,
+    isLoadingInvitees,
+    isLoadingPayouts,
+    isCreatingPayout,
+    dashboardError,
+    commissionsError,
+    inviteesError,
+    payoutError,
+    fetchReferralDashboard,
+    fetchReferralCommissions,
+    fetchReferralInvitees,
+    fetchReferralPayouts,
+    createReferralPayout,
+    setSelectedCommissionIds,
+  } = useReferralStore();
+  const {
+    currentApplication,
+    applicationHistory,
+    resellerStatus,
+    commercial,
+    canApply,
+    isLoadingApplication,
+    isSubmittingApplication,
+    applicationError,
+    fetchCurrentApplication,
+    fetchApplicationHistory,
+    submitApplication,
+  } = useResellerApplicationStore();
   const [activePage, setActivePage] = useState('referral');
   const [copiedField, setCopiedField] = useState('');
   const [agentForm, setAgentForm] = useState({ message: '', proofImage: '' });
@@ -139,7 +183,11 @@ const Referral = () => {
       return requests.filter((request) => request.email === user?.email);
     } catch { return []; }
   });
-  const isApprovedSubAgent = agentRequestHistory.some((request) => String(request.status || '').toLowerCase() === 'approved');
+  const visibleAgentRequest = isRealReferralMode ? currentApplication : agentRequest;
+  const visibleAgentHistory = isRealReferralMode ? applicationHistory : agentRequestHistory;
+  const isApprovedSubAgent = isRealReferralMode
+    ? (resellerStatus === 'APPROVED' || commercial?.approved)
+    : agentRequestHistory.some((request) => String(request.status || '').toLowerCase() === 'approved');
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
   const [withdrawalMethod, setWithdrawalMethod] = useState('wallet');
   const [withdrawalMethods, setWithdrawalMethods] = useState(() => {
@@ -165,6 +213,7 @@ const Referral = () => {
 
   useEffect(() => {
     if (activePage !== 'agent') return;
+    if (isRealReferralMode) return;
     try {
       const requests = JSON.parse(window.localStorage.getItem(SUB_AGENT_REQUESTS_KEY)) || [];
       const ownRequests = requests.filter((request) => request.email === user?.email);
@@ -173,7 +222,36 @@ const Referral = () => {
     } catch {
       setAgentRequestHistory([]);
     }
-  }, [activePage, user?.email]);
+  }, [activePage, isRealReferralMode, user?.email]);
+
+  useEffect(() => {
+    if (!isRealReferralMode || !user || activePage !== 'agent') return;
+    void fetchCurrentApplication().catch(() => {});
+    void fetchApplicationHistory({ page: 1, limit: 10 }).catch(() => {});
+  }, [
+    activePage,
+    fetchApplicationHistory,
+    fetchCurrentApplication,
+    isRealReferralMode,
+    user,
+  ]);
+
+  useEffect(() => {
+    if (!isRealReferralMode || !user) return;
+    void fetchReferralDashboard().catch(() => {});
+    void fetchReferralCommissions({ page: 1, limit: commissionFilters.limit || 10 }).catch(() => {});
+    void fetchReferralInvitees({ page: 1, limit: inviteeFilters.limit || 10 }).catch(() => {});
+    void fetchReferralPayouts({ page: 1, limit: 10 }).catch(() => {});
+  }, [
+    isRealReferralMode,
+    user?.id,
+    user?._id,
+    fetchReferralDashboard,
+    fetchReferralCommissions,
+    fetchReferralInvitees,
+    fetchReferralPayouts,
+  ]);
+
   const withdrawalRequestedAmount = Math.max(0, Number(withdrawalForm.amount || 0));
   const withdrawalDiscountAmount = Number(((withdrawalRequestedAmount * withdrawalDiscountPercent) / 100).toFixed(2));
   const withdrawalNetAmount = Number(Math.max(0, withdrawalRequestedAmount - withdrawalDiscountAmount).toFixed(2));
@@ -182,13 +260,37 @@ const Referral = () => {
     if (selectedMethod && selectedMethod.id !== withdrawalMethod) setWithdrawalMethod(selectedMethod.id);
   }, [selectedMethod, withdrawalMethod]);
 
-  const referralCode = createSevenLetterCode(
-    user?.referralCode || user?.inviteCode || user?.id || user?._id || user?.userId
-  );
+  const referralCode = isRealReferralMode
+    ? String(dashboard?.referral?.code || '').trim()
+    : createSevenLetterCode(
+      user?.referralCode || user?.inviteCode || user?.id || user?._id || user?.userId
+    );
+  const realSharePath = String(dashboard?.referral?.sharePath || '').trim();
   const referralLink = typeof window === 'undefined'
     ? ''
-    : `${getPublicAppUrl()}/auth?mode=signup&ref=${encodeURIComponent(referralCode)}`;
+    : isRealReferralMode
+      ? (realSharePath ? `${window.location.origin.replace(/\/+$/, '')}${realSharePath}` : '')
+      : `${getPublicAppUrl()}/auth?mode=signup&ref=${encodeURIComponent(referralCode)}`;
   const customersSource = user?.referrals || user?.referredCustomers || user?.invitedCustomers;
+  const apiReferredCustomers = invitees.map((customer, index) => {
+    const invitedAt = customer?.joinedAt || null;
+    const totalAvailableUsd = String(customer?.commissionSummary?.totalAvailableUsd || '0.00');
+
+    return {
+      id: customer?.id || `api-referral-${index}`,
+      name: customer?.displayName || (isArabic ? `Ø¹Ù…ÙŠÙ„ ${index + 1}` : `Customer ${index + 1}`),
+      email: customer?.maskedEmail || '',
+      avatar: resolveUserAvatar({ name: customer?.displayName || customer?.maskedEmail }, customer?.displayName || customer?.maskedEmail || `Customer ${index + 1}`),
+      addedAmount: 0,
+      addedAmountDisplay: '0.00',
+      earnings: 0,
+      earningsDisplay: totalAvailableUsd,
+      commissionCount: Number(customer?.commissionSummary?.count || 0) || 0,
+      currency: 'USD',
+      invitedAt,
+      expiresAt: null,
+    };
+  });
   const realReferredCustomers = Array.isArray(customersSource)
     ? customersSource.map((customer, index) => {
       const invitedAt = customer?.invitedAt
@@ -225,9 +327,11 @@ const Referral = () => {
     });
     })
     : [];
-  const referredCustomers = realReferredCustomers.length
-    ? realReferredCustomers
-    : [{
+  const referredCustomers = isRealReferralMode
+    ? apiReferredCustomers
+    : (realReferredCustomers.length
+      ? realReferredCustomers
+      : [{
       id: 'test-referral-customer',
       name: isArabic ? 'أحمد محمد' : 'Ahmed Mohamed',
       email: 'ahmed.test@kanzcoins.com',
@@ -238,16 +342,26 @@ const Referral = () => {
       invitedAt: '2026-07-19T00:00:00.000Z',
       expiresAt: '2026-08-18T00:00:00.000Z',
       isTest: true,
-    }];
-  const referralCount = Number(user?.referralCount ?? user?.referralsCount ?? referredCustomers.length)
-    || referredCustomers.length;
+    }]);
+  const referralCount = isRealReferralMode
+    ? Number(dashboard?.referrals?.total ?? inviteePagination.total ?? referredCustomers.length) || 0
+    : (Number(user?.referralCount ?? user?.referralsCount ?? referredCustomers.length)
+      || referredCustomers.length);
   const customersEarningsTotal = referredCustomers.reduce((sum, customer) => sum + customer.earnings, 0);
-  const rewardTotal = Number(
-    user?.referralRewards
-    ?? user?.referralEarnings
-    ?? customersEarningsTotal
-  ) || 0;
-  const currency = String(user?.currency || 'USD').toUpperCase();
+  const realAvailableTotal = String(dashboard?.commissions?.totals?.available || '0.00');
+  const rewardTotal = isRealReferralMode
+    ? 0
+    : (Number(
+      user?.referralRewards
+      ?? user?.referralEarnings
+      ?? customersEarningsTotal
+    ) || 0);
+  const rewardTotalDisplay = isRealReferralMode
+    ? realAvailableTotal
+    : rewardTotal.toLocaleString('en-US');
+  const currency = isRealReferralMode
+    ? String(dashboard?.commissions?.currency || 'USD').toUpperCase()
+    : String(user?.currency || 'USD').toUpperCase();
   const withdrawalSource = user?.referralWithdrawals || user?.withdrawalRequests;
   const realWithdrawals = Array.isArray(withdrawalSource)
     ? withdrawalSource.map((withdrawal, index) => ({
@@ -262,6 +376,29 @@ const Referral = () => {
       receiptImage: withdrawal?.receiptImage || withdrawal?.transferImage || '',
     }))
     : [];
+  const realApiPayoutHistory = payouts.map((payout) => ({
+    id: payout?.id,
+    method: String(payout?.method || 'WALLET').toLowerCase(),
+    amount: 0,
+    amountDisplay: String(payout?.amountUsd || '0.00'),
+    currency: String(payout?.currency || 'USD').toUpperCase(),
+    status: String(payout?.status || 'PENDING').toLowerCase(),
+    createdAt: payout?.requestedAt || null,
+    completedAt: payout?.paidAt || payout?.rejectedAt || null,
+    commissionCount: payout?.commissionCount || 0,
+  }));
+  const realApiCommissionHistory = commissions.map((commission) => ({
+    id: commission?.id,
+    method: 'commission',
+    amount: 0,
+    amountDisplay: String(commission?.commissionAmountUsd || '0.00'),
+    currency: String(commission?.commissionCurrency || 'USD').toUpperCase(),
+    status: String(commission?.status || 'AVAILABLE').toLowerCase(),
+    createdAt: commission?.createdAt || commission?.availableAt || null,
+    completedAt: commission?.availableAt || null,
+    ratePercent: commission?.commissionRatePercent || null,
+    sourceAmountUsd: commission?.sourceAmountUsd || null,
+  }));
   const previewWithdrawals = realWithdrawals.length || localWithdrawals.length
     ? []
     : [
@@ -269,7 +406,12 @@ const Referral = () => {
       { id: 'test-processing', method: 'wallet', amount: 25, currency, status: 'processing', createdAt: '2026-07-16T14:20:00.000Z', isTest: true },
       { id: 'test-failed', method: 'vodafone', amount: 20, currency: 'EGP', status: 'failed', createdAt: '2026-07-14T11:10:00.000Z', phone: '01000000000', isTest: true },
     ];
-  const withdrawals = [...localWithdrawals, ...realWithdrawals, ...previewWithdrawals];
+  const withdrawals = isRealReferralMode
+    ? [...realApiPayoutHistory, ...realApiCommissionHistory]
+    : [...localWithdrawals, ...realWithdrawals, ...previewWithdrawals];
+  const availableCommissions = commissions.filter((commission) => (
+    String(commission?.status || '').toUpperCase() === 'AVAILABLE'
+  ));
   const shareText = isArabic
     ? `انضم إلى كنز كوينز من خلال رابط دعوتي:\n${referralLink}`
     : `Join Kanz Coins using my invitation link:\n${referralLink}`;
@@ -319,8 +461,73 @@ const Referral = () => {
     setWithdrawalForm((current) => ({ ...current, [field]: event.target.value }));
   };
 
-  const handleWithdrawalSubmit = (event) => {
+  const updateCommissionStatusFilter = (event) => {
+    void fetchReferralCommissions({
+      ...commissionFilters,
+      status: event.target.value,
+      page: 1,
+    }).catch(() => {});
+  };
+
+  const updateInviteeSourceFilter = (event) => {
+    void fetchReferralInvitees({
+      ...inviteeFilters,
+      source: event.target.value,
+      page: 1,
+    }).catch(() => {});
+  };
+
+  const goToCommissionPage = (page) => {
+    void fetchReferralCommissions({
+      ...commissionFilters,
+      page: Math.max(1, Math.min(Number(commissionPagination.pages || 1), page)),
+    }).catch(() => {});
+  };
+
+  const goToInviteePage = (page) => {
+    void fetchReferralInvitees({
+      ...inviteeFilters,
+      page: Math.max(1, Math.min(Number(inviteePagination.pages || 1), page)),
+    }).catch(() => {});
+  };
+
+  const handleWithdrawalSubmit = async (event) => {
     event.preventDefault();
+
+    if (isRealReferralMode) {
+      if (!selectedCommissionIds.length) {
+        addToast(
+          isArabic ? 'اختر عمولة متاحة واحدة على الأقل.' : 'Select at least one available commission.',
+          'error'
+        );
+        return;
+      }
+
+      try {
+        await createReferralPayout({
+          commissionIds: selectedCommissionIds,
+          method: withdrawalMethod === 'wallet' ? 'WALLET' : 'MANUAL',
+        });
+        await Promise.all([
+          fetchReferralDashboard(),
+          fetchReferralCommissions({ ...commissionFilters, page: 1, limit: commissionFilters.limit || 10 }),
+          fetchReferralPayouts({ page: 1, limit: payoutPagination.limit || 10 }),
+        ]);
+        setWithdrawalForm((current) => ({ ...current, amount: '0' }));
+        setWithdrawalSuccess(true);
+        addToast(
+          isArabic ? 'تم إرسال طلب السحب للمراجعة.' : 'Payout request submitted for review.',
+          'success'
+        );
+      } catch (error) {
+        addToast(
+          error?.message || (isArabic ? 'تعذر إرسال طلب السحب.' : 'Could not submit payout request.'),
+          'error'
+        );
+      }
+      return;
+    }
+
     const amount = Number(withdrawalForm.amount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -379,6 +586,10 @@ const Referral = () => {
   const closeWithdrawalModal = () => {
     setWithdrawalOpen(false);
     setWithdrawalSuccess(false);
+    if (isRealReferralMode) {
+      setSelectedCommissionIds([]);
+      setWithdrawalForm((current) => ({ ...current, amount: '0' }));
+    }
   };
 
   const handleAgentProofUpload = (event) => {
@@ -393,10 +604,31 @@ const Referral = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleAgentRequestSubmit = (event) => {
+  const handleAgentRequestSubmit = async (event) => {
     event.preventDefault();
-    if (!agentForm.message.trim() || !agentForm.proofImage) {
+    if (!agentForm.message.trim() || (!isRealReferralMode && !agentForm.proofImage)) {
       addToast(isArabic ? 'اكتب رسالتك وأرفق صورة تثبت وجود عملاء.' : 'Write your message and attach customer proof.', 'error');
+      return;
+    }
+    if (isRealReferralMode) {
+      try {
+        await submitApplication({
+          businessName: user?.name || user?.email || 'Reseller applicant',
+          businessType: 'INDIVIDUAL',
+          country: user?.country || 'Egypt',
+          city: user?.city || 'Cairo',
+          expectedMonthlyVolume: '0',
+          experienceSummary: agentForm.message.trim(),
+          salesChannels: ['OTHER'],
+          targetMarkets: ['Local'],
+          contactPhone: user?.phone || user?.mobile || 'not-provided',
+          preferredContactMethod: 'WHATSAPP',
+        });
+        setAgentForm({ message: '', proofImage: '' });
+        addToast(isArabic ? 'ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø·Ù„Ø¨ Ø§Ù„ÙˆÙƒÙŠÙ„ Ø§Ù„ÙØ±Ø¹ÙŠ Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©.' : 'Sub-agent request sent for review.', 'success');
+      } catch (error) {
+        addToast(error?.message || (isArabic ? 'ØªØ¹Ø°Ø± Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨.' : 'Could not submit the request.'), 'error');
+      }
       return;
     }
     const request = {
@@ -419,6 +651,34 @@ const Referral = () => {
   };
 
   const getWithdrawalStatus = (status) => {
+    if (status === 'available') {
+      return {
+        label: isArabic ? 'متاح' : 'Available',
+        className: 'border-emerald-400/22 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        icon: CheckCircle2,
+      };
+    }
+    if (status === 'locked') {
+      return {
+        label: isArabic ? 'معلّق' : 'Locked',
+        className: 'border-amber-400/22 bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        icon: Clock3,
+      };
+    }
+    if (status === 'paid') {
+      return {
+        label: isArabic ? 'مدفوع' : 'Paid',
+        className: 'border-emerald-400/22 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        icon: CheckCircle2,
+      };
+    }
+    if (status === 'cancelled') {
+      return {
+        label: isArabic ? 'ملغي' : 'Cancelled',
+        className: 'border-rose-400/22 bg-rose-500/10 text-rose-600 dark:text-rose-400',
+        icon: XCircle,
+      };
+    }
     if (status === 'completed' || status === 'success') {
       return {
         label: isArabic ? 'مكتمل' : 'Completed',
@@ -610,7 +870,38 @@ const Referral = () => {
           </span>
         </div>
 
-        {referredCustomers.length ? (
+        {isRealReferralMode ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:rgb(var(--color-border-rgb)/0.4)] px-4 py-3 sm:px-6">
+            <select
+              value={inviteeFilters.source || ''}
+              onChange={updateInviteeSourceFilter}
+              className="h-9 rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.65)] bg-[color:rgb(var(--color-surface-rgb)/0.72)] px-3 text-xs font-bold text-[var(--color-text)] outline-none"
+            >
+              <option value="">{isArabic ? 'كل المصادر' : 'All sources'}</option>
+              <option value="EMAIL_REGISTRATION">{isArabic ? 'تسجيل بالبريد' : 'Email registration'}</option>
+              <option value="GOOGLE_OAUTH">{isArabic ? 'جوجل' : 'Google OAuth'}</option>
+            </select>
+            <div className="inline-flex items-center gap-2 text-[0.68rem] font-black text-[var(--color-text-secondary)]">
+              <button type="button" onClick={() => goToInviteePage(Number(inviteePagination.page || 1) - 1)} disabled={Number(inviteePagination.page || 1) <= 1} className="h-8 rounded-lg border border-[color:rgb(var(--color-border-rgb)/0.65)] px-2 disabled:opacity-45">
+                {isArabic ? 'السابق' : 'Prev'}
+              </button>
+              <span dir="ltr">{inviteePagination.page || 1}/{Math.max(1, inviteePagination.pages || 1)}</span>
+              <button type="button" onClick={() => goToInviteePage(Number(inviteePagination.page || 1) + 1)} disabled={Number(inviteePagination.page || 1) >= Number(inviteePagination.pages || 1)} className="h-8 rounded-lg border border-[color:rgb(var(--color-border-rgb)/0.65)] px-2 disabled:opacity-45">
+                {isArabic ? 'التالي' : 'Next'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {isRealReferralMode && (isLoadingInvitees || isLoadingDashboard) ? (
+          <div className="px-4 py-9 text-center text-sm font-black text-[var(--color-text-secondary)] sm:px-6">
+            {isArabic ? 'جاري تحميل بيانات الإحالة...' : 'Loading referral data...'}
+          </div>
+        ) : isRealReferralMode && (inviteesError || dashboardError) ? (
+          <div className="px-4 py-9 text-center text-sm font-black text-rose-500 sm:px-6">
+            {inviteesError || dashboardError}
+          </div>
+        ) : referredCustomers.length ? (
           <div className="space-y-3 p-3 sm:p-4">
             {referredCustomers.map((customer) => (
               <article
@@ -649,13 +940,13 @@ const Referral = () => {
                   <div className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.52)] bg-[color:rgb(var(--color-card-rgb)/0.52)] px-3 py-2.5">
                     <p className="text-[0.61rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'أضاف للمحفظة' : 'Added funds'}</p>
                     <p dir="ltr" className="mt-1 text-end text-base font-black text-[var(--color-text)] sm:text-lg">
-                      {customer.addedAmount.toLocaleString('en-US')} <span className="text-[0.68rem] text-[var(--color-text-secondary)]">{customer.currency}</span>
+                      {customer.addedAmountDisplay || customer.addedAmount.toLocaleString('en-US')} <span className="text-[0.68rem] text-[var(--color-text-secondary)]">{customer.currency}</span>
                     </p>
                   </div>
                   <div className="rounded-xl border border-emerald-400/18 bg-[linear-gradient(135deg,rgb(16_185_129/0.12),rgb(52_211_153/0.05))] px-3 py-2.5 shadow-[0_12px_30px_-24px_rgb(16_185_129/0.8)]">
                     <p className="text-[0.61rem] font-bold text-emerald-600 dark:text-emerald-400">{isArabic ? 'أرباحك منه' : 'Your earnings'}</p>
                     <p dir="ltr" className="mt-1 text-end text-lg font-black text-emerald-600 dark:text-emerald-400 sm:text-xl">
-                      +{customer.earnings.toLocaleString('en-US')} <span className="text-[0.68rem]">{customer.currency}</span>
+                      +{customer.earningsDisplay || customer.earnings.toLocaleString('en-US')} <span className="text-[0.68rem]">{customer.currency}</span>
                     </p>
                   </div>
                 </div>
@@ -700,7 +991,7 @@ const Referral = () => {
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold text-white/76">{isArabic ? 'إجمالي أرباحك' : 'Your total earnings'}</p>
           <p dir="ltr" className="mt-1 text-end text-2xl font-black tracking-tight text-white">
-            {rewardTotal.toLocaleString('en-US')} <span className="text-base text-cyan-200">{currency}</span>
+            {rewardTotalDisplay} <span className="text-base text-cyan-200">{currency}</span>
           </p>
           <p className="mt-1 text-[0.68rem] font-black text-cyan-100">
             {isArabic ? 'اضغط لعرض الأرباح وطرق السحب' : 'View earnings and withdrawal methods'}
@@ -746,13 +1037,52 @@ const Referral = () => {
             <ReceiptText className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-sm font-black text-[var(--color-text)] sm:text-base">{isArabic ? 'حالة التحويلات' : 'Transfer status'}</h2>
-            <p className="text-[0.68rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'تابع طلبات السحب واطّلع على التفاصيل' : 'Track withdrawals and view their details'}</p>
+            <h2 className="text-sm font-black text-[var(--color-text)] sm:text-base">
+              {isRealReferralMode ? (isArabic ? 'سجل العمولات' : 'Commission history') : (isArabic ? 'حالة التحويلات' : 'Transfer status')}
+            </h2>
+            <p className="text-[0.68rem] font-bold text-[var(--color-text-secondary)]">
+              {isRealReferralMode ? (isArabic ? 'تابع عمولات الإحالة المحفوظة من السيرفر' : 'Track persisted referral commissions') : (isArabic ? 'تابع طلبات السحب واطّلع على التفاصيل' : 'Track withdrawals and view their details')}
+            </p>
           </div>
         </div>
 
+        {isRealReferralMode ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[color:rgb(var(--color-border-rgb)/0.4)] px-4 py-3 sm:px-6">
+            <select
+              value={commissionFilters.status || ''}
+              onChange={updateCommissionStatusFilter}
+              className="h-9 rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.65)] bg-[color:rgb(var(--color-surface-rgb)/0.72)] px-3 text-xs font-bold text-[var(--color-text)] outline-none"
+            >
+              <option value="">{isArabic ? 'كل الحالات' : 'All statuses'}</option>
+              <option value="AVAILABLE">{isArabic ? 'متاح' : 'Available'}</option>
+              <option value="LOCKED">{isArabic ? 'معلّق' : 'Locked'}</option>
+              <option value="PAID">{isArabic ? 'مدفوع' : 'Paid'}</option>
+              <option value="CANCELLED">{isArabic ? 'ملغي' : 'Cancelled'}</option>
+            </select>
+            <div className="inline-flex items-center gap-2 text-[0.68rem] font-black text-[var(--color-text-secondary)]">
+              <button type="button" onClick={() => goToCommissionPage(Number(commissionPagination.page || 1) - 1)} disabled={Number(commissionPagination.page || 1) <= 1} className="h-8 rounded-lg border border-[color:rgb(var(--color-border-rgb)/0.65)] px-2 disabled:opacity-45">
+                {isArabic ? 'السابق' : 'Prev'}
+              </button>
+              <span dir="ltr">{commissionPagination.page || 1}/{Math.max(1, commissionPagination.pages || 1)}</span>
+              <button type="button" onClick={() => goToCommissionPage(Number(commissionPagination.page || 1) + 1)} disabled={Number(commissionPagination.page || 1) >= Number(commissionPagination.pages || 1)} className="h-8 rounded-lg border border-[color:rgb(var(--color-border-rgb)/0.65)] px-2 disabled:opacity-45">
+                {isArabic ? 'التالي' : 'Next'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="space-y-2.5 p-3 sm:p-4">
-          {withdrawals.map((withdrawal) => {
+          {isRealReferralMode && isLoadingCommissions ? (
+            <p className="py-6 text-center text-sm font-black text-[var(--color-text-secondary)]">
+              {isArabic ? 'جاري تحميل سجل العمولات...' : 'Loading commission history...'}
+            </p>
+          ) : isRealReferralMode && commissionsError ? (
+            <p className="py-6 text-center text-sm font-black text-rose-500">{commissionsError}</p>
+          ) : !withdrawals.length ? (
+            <p className="py-6 text-center text-sm font-black text-[var(--color-text-secondary)]">
+              {isArabic ? 'لا توجد سجلات بعد.' : 'No records yet.'}
+            </p>
+          ) : withdrawals.map((withdrawal) => {
             const status = getWithdrawalStatus(withdrawal.status);
             const StatusIcon = status.icon;
             return (
@@ -763,14 +1093,14 @@ const Referral = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-black text-[var(--color-text)]">
-                      {withdrawal.method === 'vodafone' ? (isArabic ? 'فودافون كاش' : 'Vodafone Cash') : (isArabic ? 'محفظة البرنامج' : 'App wallet')}
+                      {withdrawal.method === 'commission' ? (isArabic ? 'عمولة إحالة' : 'Referral commission') : withdrawal.method === 'vodafone' ? (isArabic ? 'فودافون كاش' : 'Vodafone Cash') : (isArabic ? 'محفظة البرنامج' : 'App wallet')}
                     </p>
                     {withdrawal.isTest ? <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[0.56rem] font-black text-violet-500">{isArabic ? 'تجريبي' : 'Test'}</span> : null}
                   </div>
                   <p dir="ltr" className="mt-0.5 text-left text-[0.68rem] font-bold text-[var(--color-text-secondary)]">{formatWithdrawalDate(withdrawal.createdAt)}</p>
                 </div>
                 <div className="text-end">
-                  <p dir="ltr" className="text-base font-black text-[var(--color-text)]">{withdrawal.amount.toLocaleString('en-US')} <span className="text-[0.68rem] text-[var(--color-text-secondary)]">{withdrawal.currency}</span></p>
+                  <p dir="ltr" className="text-base font-black text-[var(--color-text)]">{withdrawal.amountDisplay || withdrawal.amount.toLocaleString('en-US')} <span className="text-[0.68rem] text-[var(--color-text-secondary)]">{withdrawal.currency}</span></p>
                   <span className={`mt-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6rem] font-black ${status.className}`}>
                     <StatusIcon className="h-3 w-3" />
                     {status.label}
@@ -806,39 +1136,40 @@ const Referral = () => {
             <p className="mx-auto mt-2 max-w-lg text-sm font-semibold leading-6 text-[var(--color-text-secondary)]">{isArabic ? 'تمت الموافقة على طلبك في Kanz Coins وتغيير عضويتك من عضو المتجر إلى وكيل فرعي.' : 'Kanz Coins approved your request and changed your Store Member account to a Sub-agent account.'}</p>
             <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-black text-white"><CheckCircle2 className="h-4 w-4" />{isArabic ? 'وكيل فرعي معتمد' : 'Approved sub-agent'}</span>
           </div>
-        ) : agentRequest ? (
+        ) : visibleAgentRequest ? (
           <div className="mt-5 rounded-[1.35rem] border border-amber-300/25 bg-amber-500/8 p-5 text-center">
             <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-amber-500/12 text-amber-500"><Clock3 className="h-6 w-6" /></span>
-            <h2 className="mt-3 font-black text-[var(--color-text)]">{agentRequest.status === 'approved' ? (isArabic ? 'تم قبول طلبك' : 'Your request was approved') : agentRequest.status === 'rejected' ? (isArabic ? 'تم رفض الطلب' : 'Request rejected') : (isArabic ? 'طلبك قيد المراجعة' : 'Request under review')}</h2>
+            <h2 className="mt-3 font-black text-[var(--color-text)]">{String(visibleAgentRequest.status || '').toUpperCase() === 'APPROVED' ? (isArabic ? 'تم قبول طلبك' : 'Your request was approved') : String(visibleAgentRequest.status || '').toUpperCase() === 'REJECTED' ? (isArabic ? 'تم رفض الطلب' : 'Request rejected') : String(visibleAgentRequest.status || '').toUpperCase() === 'SUSPENDED' ? (isArabic ? 'تم تعليق حساب الوكيل' : 'Sub-agent account suspended') : (isArabic ? 'طلبك قيد المراجعة' : 'Request under review')}</h2>
             <p className="mt-1 text-xs font-semibold text-[var(--color-text-secondary)]">{isArabic ? 'ستظهر لك الحالة الجديدة هنا بعد مراجعة الإدارة.' : 'The updated status will appear here after admin review.'}</p>
           </div>
         ) : null}
-        {!isApprovedSubAgent ? (
+        {!isApprovedSubAgent && (!isRealReferralMode || canApply) ? (
           <form onSubmit={handleAgentRequestSubmit} className="mt-5 space-y-4">
             <label className="block"><span className="mb-2 block text-xs font-black text-[var(--color-text)]">{isArabic ? 'رسالتك إلى الإدارة' : 'Message to admin'}</span><textarea value={agentForm.message} onChange={(event) => setAgentForm((current) => ({ ...current, message: event.target.value }))} rows={4} placeholder={isArabic ? 'اكتب عدد العملاء وطبيعة نشاطك...' : 'Describe your customers and activity...'} className="w-full resize-none rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.8)] bg-[color:rgb(var(--color-surface-rgb)/0.72)] p-3 text-sm font-semibold text-[var(--color-text)] outline-none transition focus:border-cyan-400" /></label>
             <label className="block cursor-pointer rounded-2xl border border-dashed border-violet-400/35 bg-violet-500/6 p-3 transition hover:bg-violet-500/10">
               <input type="file" accept="image/*" onChange={handleAgentProofUpload} className="hidden" />
               {agentForm.proofImage ? <img src={agentForm.proofImage} alt={isArabic ? 'صورة الإثبات' : 'Proof'} className="mx-auto max-h-52 w-full rounded-xl object-contain" /> : <div className="py-6 text-center"><UserRoundPlus className="mx-auto h-7 w-7 text-violet-500" /><p className="mt-2 text-xs font-black text-[var(--color-text)]">{isArabic ? 'ارفع صورة إثبات وجود عملاء' : 'Upload customer proof'}</p><p className="mt-1 text-[0.65rem] text-[var(--color-text-secondary)]">{isArabic ? 'اضغط لاختيار الصورة' : 'Tap to choose an image'}</p></div>}
             </label>
-            <Button type="submit" className="h-11 w-full rounded-xl">{isArabic ? 'إرسال طلب الوكيل الفرعي' : 'Send sub-agent request'}</Button>
+            {applicationError && isRealReferralMode ? <p className="text-center text-xs font-semibold text-rose-500">{applicationError}</p> : null}
+            <Button type="submit" disabled={isSubmittingApplication || isLoadingApplication} className="h-11 w-full rounded-xl">{isSubmittingApplication ? (isArabic ? 'جارٍ الإرسال...' : 'Submitting...') : (isArabic ? 'إرسال طلب الوكيل الفرعي' : 'Send sub-agent request')}</Button>
           </form>
         ) : null}
 
         <div className="mt-6 overflow-hidden rounded-[1.35rem] border border-[color:rgb(var(--color-border-rgb)/0.65)] bg-[color:rgb(var(--color-surface-rgb)/0.55)]">
           <div className="flex items-center justify-between gap-3 border-b border-[color:rgb(var(--color-border-rgb)/0.55)] px-4 py-3">
             <div className="flex items-center gap-2"><ReceiptText className="h-4 w-4 text-cyan-500" /><h2 className="text-sm font-black text-[var(--color-text)]">{isArabic ? 'حالة الطلبات' : 'Request status'}</h2></div>
-            <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[0.65rem] font-black text-violet-500">{agentRequestHistory.length}</span>
+            <span className="rounded-full bg-violet-500/10 px-2.5 py-1 text-[0.65rem] font-black text-violet-500">{visibleAgentHistory.length}</span>
           </div>
-          {agentRequestHistory.length ? (
+          {visibleAgentHistory.length ? (
             <div className="space-y-2 p-3">
-              {agentRequestHistory.map((request, index) => {
+              {visibleAgentHistory.map((request, index) => {
                 const status = String(request.status || 'pending').toLowerCase();
                 const statusLabel = status === 'approved' ? (isArabic ? 'مقبول' : 'Approved') : status === 'rejected' ? (isArabic ? 'مرفوض' : 'Rejected') : (isArabic ? 'قيد المراجعة' : 'Under review');
                 const statusClass = status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : status === 'rejected' ? 'bg-rose-500/10 text-rose-500' : 'bg-amber-500/10 text-amber-500';
                 return (
                   <article key={request.id || index} className="flex items-center gap-3 rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.45)] bg-[color:rgb(var(--color-card-rgb)/0.72)] p-3">
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${statusClass}`}>{status === 'approved' ? <CheckCircle2 className="h-4 w-4" /> : status === 'rejected' ? <XCircle className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}</span>
-                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[var(--color-text)]">{isArabic ? `طلب وكيل فرعي رقم ${agentRequestHistory.length - index}` : `Sub-agent request #${agentRequestHistory.length - index}`}</p><p dir="ltr" className="mt-0.5 text-left text-[0.65rem] font-semibold text-[var(--color-text-secondary)]">{formatWithdrawalDate(request.createdAt)}</p></div>
+                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[var(--color-text)]">{isArabic ? `طلب وكيل فرعي رقم ${visibleAgentHistory.length - index}` : `Sub-agent request #${visibleAgentHistory.length - index}`}</p><p dir="ltr" className="mt-0.5 text-left text-[0.65rem] font-semibold text-[var(--color-text-secondary)]">{formatWithdrawalDate(request.createdAt || request.submittedAt)}</p></div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.62rem] font-black ${statusClass}`}>{statusLabel}</span>
                   </article>
                 );
@@ -904,7 +1235,7 @@ const Referral = () => {
             <span className="pointer-events-none absolute -end-8 -top-12 -z-10 h-28 w-28 rounded-full bg-white/15 blur-2xl" />
             <p className="text-xs font-bold text-violet-100">{isArabic ? 'إجمالي أرباحك المتاحة' : 'Total available earnings'}</p>
             <p dir="ltr" className="mt-1 text-4xl font-black tracking-tight text-white drop-shadow-[0_4px_14px_rgb(0_0_0/0.28)]">
-              {rewardTotal.toLocaleString('en-US')} <span className="text-base font-black text-amber-200">{currency}</span>
+              {rewardTotalDisplay} <span className="text-base font-black text-amber-200">{currency}</span>
             </p>
           </div>
 
@@ -914,6 +1245,69 @@ const Referral = () => {
               {enabledWithdrawalMethods.map((method) => <button key={method.id} type="button" onClick={() => setWithdrawalMethod(method.id)} className={`rounded-2xl border p-3 text-start transition-all ${withdrawalMethod === method.id ? 'border-[color:rgb(var(--color-primary-rgb)/0.5)] bg-[color:rgb(var(--color-primary-rgb)/0.12)] shadow-[0_14px_34px_-26px_rgb(var(--color-primary-rgb)/0.8)]' : 'border-[color:rgb(var(--color-border-rgb)/0.65)] bg-[color:rgb(var(--color-surface-rgb)/0.55)]'}`}><Smartphone className="h-5 w-5 text-[var(--color-primary)]" /><p className="mt-2 text-sm font-black text-[var(--color-text)]">{method.name}</p><p className="mt-0.5 text-[0.6rem] font-bold text-[var(--color-text-secondary)]">{method.requiresAccount ? (isArabic ? 'تحويل إلى رقم الحساب أو المحفظة' : 'Transfer to account or wallet number') : (isArabic ? 'تحويل داخل المنصة' : 'Transfer inside the platform')}</p></button>)}
             </div>
           </div>
+
+          {isRealReferralMode ? (
+            <div className="rounded-[1.25rem] border border-emerald-400/18 bg-emerald-500/8 p-3.5 sm:p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-[var(--color-text)]">{isArabic ? 'العمولات المتاحة للسحب' : 'Available commissions'}</p>
+                  <p className="text-[0.65rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'اختر العمولات التي تريد قفلها داخل طلب السحب.' : 'Select the commissions to lock into this payout request.'}</p>
+                </div>
+                <span dir="ltr" className="shrink-0 rounded-lg bg-emerald-500/12 px-2.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  {selectedTotalUsd} {currency}
+                </span>
+              </div>
+              {payoutError ? (
+                <p className="mb-2 rounded-lg border border-rose-400/20 bg-rose-500/8 px-2 py-1.5 text-[0.65rem] font-bold text-rose-500">
+                  {payoutError}
+                </p>
+              ) : null}
+              <div className="max-h-52 space-y-2 overflow-y-auto pe-1">
+                {availableCommissions.map((commission) => {
+                  const commissionId = String(commission.id || commission._id || '');
+                  const checked = selectedCommissionIds.includes(commissionId);
+                  return (
+                    <label key={commissionId} className={`flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 transition ${checked ? 'border-emerald-400/45 bg-emerald-500/12' : 'border-[color:rgb(var(--color-border-rgb)/0.48)] bg-[color:rgb(var(--color-surface-rgb)/0.55)]'}`}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const nextIds = checked
+                            ? selectedCommissionIds.filter((id) => id !== commissionId)
+                            : [...selectedCommissionIds, commissionId];
+                          setSelectedCommissionIds(nextIds, commissions);
+                          const nextTotal = nextIds.reduce((sum, id) => {
+                            const item = commissions.find((entry) => String(entry.id || entry._id || '') === id);
+                            return sum + (Number(item?.commissionAmountUsd || 0) || 0);
+                          }, 0);
+                          setWithdrawalForm((current) => ({ ...current, amount: nextTotal.toFixed(2) }));
+                        }}
+                        className="h-4 w-4 accent-emerald-500"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-black text-[var(--color-text)]">
+                          {formatWithdrawalDate(commission.availableAt || commission.createdAt)}
+                        </span>
+                        <span dir="ltr" className="block text-left text-[0.62rem] font-bold text-[var(--color-text-secondary)]">
+                          {commission.sourceAmountUsd || '0.00'} USD × {commission.commissionRatePercent || '0'}%
+                        </span>
+                      </span>
+                      <span dir="ltr" className="shrink-0 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                        {commission.commissionAmountUsd || '0.00'} {commission.commissionCurrency || currency}
+                      </span>
+                    </label>
+                  );
+                })}
+                {!availableCommissions.length ? (
+                  <p className="py-5 text-center text-xs font-semibold text-[var(--color-text-secondary)]">
+                    {isLoadingCommissions || isLoadingPayouts
+                      ? (isArabic ? 'جارٍ تحميل العمولات...' : 'Loading commissions...')
+                      : (isArabic ? 'لا توجد عمولات متاحة للسحب.' : 'No available commissions to request.')}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {withdrawalDiscountPercent > 0 && withdrawalRequestedAmount > 0 ? (
             <div className="grid grid-cols-3 gap-2 rounded-2xl border border-amber-400/20 bg-amber-500/7 p-3 text-center">
@@ -956,21 +1350,22 @@ const Referral = () => {
                   <span className="flex items-center justify-between gap-3">
                     <span>{isArabic ? 'المبلغ المطلوب' : 'Requested amount'}</span>
                     <span className="font-black text-emerald-600 dark:text-emerald-400">
-                      {isArabic ? 'المتاح:' : 'Available:'} {rewardTotal.toLocaleString('en-US')} EGP
+                      {isArabic ? 'المتاح:' : 'Available:'} {rewardTotalDisplay} {currency}
                     </span>
                   </span>
                 )}
                 value={withdrawalForm.amount}
                 onChange={updateWithdrawalField('amount')}
                 inputMode="decimal"
-                placeholder="0.00 EGP"
+                placeholder={`0.00 ${currency}`}
+                disabled={isRealReferralMode}
                 icon={<CircleDollarSign className="h-4 w-4" />}
                 suffix={(
                   <button
                     type="button"
                     onClick={() => setWithdrawalForm((current) => ({
                       ...current,
-                      amount: String(rewardTotal),
+                      amount: isRealReferralMode ? selectedTotalUsd : String(rewardTotal),
                     }))}
                     className="inline-flex h-7 min-w-14 items-center justify-center rounded-lg bg-emerald-500/12 px-2 text-[0.68rem] font-black text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
                   >
@@ -992,7 +1387,7 @@ const Referral = () => {
                     <span className="flex items-center justify-between gap-3">
                       <span>{isArabic ? 'المبلغ المطلوب' : 'Requested amount'}</span>
                       <span className="font-black text-emerald-600 dark:text-emerald-400">
-                        {isArabic ? 'المتاح:' : 'Available:'} {rewardTotal.toLocaleString('en-US')} {currency}
+                        {isArabic ? 'المتاح:' : 'Available:'} {rewardTotalDisplay} {currency}
                       </span>
                     </span>
                   )}
@@ -1000,13 +1395,14 @@ const Referral = () => {
                   onChange={updateWithdrawalField('amount')}
                   inputMode="decimal"
                   placeholder={`0.00 ${currency}`}
+                  disabled={isRealReferralMode}
                   className={isArabic ? 'pl-20' : 'pr-20'}
                   suffix={(
                     <button
                       type="button"
                       onClick={() => setWithdrawalForm((current) => ({
                         ...current,
-                        amount: String(rewardTotal),
+                        amount: isRealReferralMode ? selectedTotalUsd : String(rewardTotal),
                       }))}
                       className="inline-flex h-7 min-w-14 items-center justify-center rounded-lg bg-emerald-500/12 px-2 text-[0.68rem] font-black text-emerald-600 transition-colors hover:bg-emerald-500/20 dark:text-emerald-400"
                     >
@@ -1018,8 +1414,10 @@ const Referral = () => {
             </div>
           )}
 
-          <Button type="submit" className="h-12 w-full">
-            {withdrawalMethod === 'wallet'
+          <Button type="submit" disabled={isCreatingPayout || (isRealReferralMode && !selectedCommissionIds.length)} className="h-12 w-full">
+            {isCreatingPayout
+              ? (isArabic ? 'جارٍ إرسال الطلب...' : 'Submitting request...')
+              : withdrawalMethod === 'wallet'
               ? (isArabic ? 'إرسال طلب التحويل للمحفظة' : 'Request wallet transfer')
               : (isArabic ? 'إرسال طلب سحب فودافون كاش' : 'Request Vodafone Cash withdrawal')}
           </Button>
@@ -1053,11 +1451,11 @@ const Referral = () => {
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.55)] bg-[color:rgb(var(--color-surface-rgb)/0.58)] p-3">
                   <p className="text-[0.64rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'المبلغ' : 'Amount'}</p>
-                  <p dir="ltr" className="mt-1 text-end text-xl font-black text-[var(--color-text)]">{selectedWithdrawal.amount.toLocaleString('en-US')} <span className="text-xs text-[var(--color-primary)]">{selectedWithdrawal.currency}</span></p>
+                  <p dir="ltr" className="mt-1 text-end text-xl font-black text-[var(--color-text)]">{selectedWithdrawal.amountDisplay || selectedWithdrawal.amount.toLocaleString('en-US')} <span className="text-xs text-[var(--color-primary)]">{selectedWithdrawal.currency}</span></p>
                 </div>
                 <div className="rounded-xl border border-[color:rgb(var(--color-border-rgb)/0.55)] bg-[color:rgb(var(--color-surface-rgb)/0.58)] p-3">
                   <p className="text-[0.64rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'طريقة التحويل' : 'Method'}</p>
-                  <p className="mt-1 text-sm font-black text-[var(--color-text)]">{selectedWithdrawal.method === 'vodafone' ? (isArabic ? 'فودافون كاش' : 'Vodafone Cash') : (isArabic ? 'محفظة البرنامج' : 'App wallet')}</p>
+                  <p className="mt-1 text-sm font-black text-[var(--color-text)]">{selectedWithdrawal.method === 'commission' ? (isArabic ? 'عمولة إحالة' : 'Referral commission') : selectedWithdrawal.method === 'vodafone' ? (isArabic ? 'فودافون كاش' : 'Vodafone Cash') : (isArabic ? 'محفظة البرنامج' : 'App wallet')}</p>
                 </div>
               </div>
 

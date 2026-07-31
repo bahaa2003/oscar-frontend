@@ -23,6 +23,7 @@ import useSystemStore from '../store/useSystemStore';
 import useMediaStore from '../store/useMediaStore';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../components/ui/Toast';
+import apiClient from '../services/client';
 import {
   calculateProductPrice,
   getCurrencyMeta,
@@ -40,6 +41,9 @@ import { devLogger } from '../utils/devLogger';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { isBackofficeRole } from '../utils/authRoles';
 import './ProductPurchasePage.css';
+
+const dataProvider = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase();
+const isRealProvider = dataProvider === 'real';
 
 const getCopy = (language = 'ar') => {
   if (language === 'en') {
@@ -242,6 +246,8 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrder, setSuccessOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(!providedProduct);
+  const [pricingQuote, setPricingQuote] = useState(null);
+  const [, setPricingQuoteError] = useState(null);
   const activeProvidedProductIdRef = useRef('');
   const successCloseRequestedRef = useRef(false);
 
@@ -462,6 +468,42 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
     };
   }, [isSubmitting, onSubmittingChange]);
 
+  useEffect(() => {
+    if (!isRealProvider || !product?.id || !quantityMeta) {
+      setPricingQuote(null);
+      setPricingQuoteError(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      const rawQuantity = Number(quantityInput);
+      const quoteQuantity = Number.isFinite(rawQuantity) && rawQuantity > 0
+        ? clampProductQuantity(rawQuantity, product)
+        : quantityMeta.minQty;
+
+      apiClient.pricing.quote({
+        items: [{ productId: product.id, quantity: quoteQuantity }],
+        currency: String(user?.currency || 'USD').toUpperCase(),
+      })
+        .then((quote) => {
+          if (cancelled) return;
+          setPricingQuote(quote || null);
+          setPricingQuoteError(null);
+        })
+        .catch((error) => {
+          if (cancelled) return;
+          setPricingQuote(null);
+          setPricingQuoteError(error);
+        });
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [product, quantityInput, quantityMeta, user?.currency]);
+
   if (isLoading || !product || !quantityMeta) {
     return (
       <div className={`product-purchase-page ${embedded ? '!min-h-0 !p-0' : ''}`} dir={dir}>
@@ -491,11 +533,13 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
   
   const unitPriceBase = calculateProductPrice(product, pricingGroup, pricingGroupPercentage, pricingOptions);
   const unitPrice = resolveProductUnitPrice(product, userCurrencyCode, currencies, pricingGroup, pricingGroupPercentage, pricingOptions);
-  const totalPrice = isQuantityOnly ? 0 : normalizeMoneyAmount(Number(unitPrice) * quantity);
+  const quotedItem = isRealProvider && Array.isArray(pricingQuote?.items) ? pricingQuote.items[0] : null;
+  const displayUnitPrice = quotedItem?.unitPrice ?? unitPrice;
+  const displayTotalPrice = pricingQuote?.total ?? null;
   const balance = normalizeMoneyAmount(user?.coins || 0);
   const userCurrencyMeta = getCurrencyMeta(userCurrencyCode, currencies);
 
-  const exactDisplayTotalPrice = isQuantityOnly ? '0' : multiplyRawDecimalByInteger(unitPrice, quantity);
+  const exactDisplayTotalPrice = isQuantityOnly ? '0' : (displayTotalPrice ?? multiplyRawDecimalByInteger(displayUnitPrice, quantity));
   const formattedTotalPrice = `${formatTotalPriceString(exactDisplayTotalPrice, 2)} ${userCurrencyMeta.symbol || userCurrencyCode}`;
   const primaryOrderField = purchaseOrderFields.find((field) => isPrimaryPurchaseFieldKey(field?.key))
     || purchaseOrderFields[0]
@@ -568,10 +612,10 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
     const submittedQuantity = clampProductQuantity(quantityInput, product);
     const submittedTotalPrice = isQuantityOnly
       ? 0
-      : normalizeMoneyAmount(Number(unitPrice) * submittedQuantity);
+      : normalizeMoneyAmount(Number(displayTotalPrice ?? (Number(displayUnitPrice) * submittedQuantity)));
     const submittedDisplayTotalPrice = isQuantityOnly
       ? '0'
-      : `${formatTotalPriceString(multiplyRawDecimalByInteger(unitPrice, submittedQuantity), 2)} ${userCurrencyMeta.symbol || userCurrencyCode}`;
+      : `${formatTotalPriceString(displayTotalPrice ?? multiplyRawDecimalByInteger(displayUnitPrice, submittedQuantity), 2)} ${userCurrencyMeta.symbol || userCurrencyCode}`;
 
     if (!quantityInput || !areOrderFieldsComplete) {
       return;
@@ -664,7 +708,7 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
           walletBalance: normalizedBalance,
           balance: normalizedBalance,
         });
-      } else if (!isQuantityOnly && submittedTotalPrice > 0) {
+      } else if (!isRealProvider && !isQuantityOnly && submittedTotalPrice > 0) {
         const normalizedBalance = normalizeMoneyAmount(balance - submittedTotalPrice);
         updateUserSession({
           coins: normalizedBalance,

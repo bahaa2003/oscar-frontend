@@ -24,6 +24,12 @@ import { resolveImageUrl } from '../utils/imageUrl';
 import { resolveUserAvatar } from '../utils/avatar';
 import { getAccountAccessRoute, normalizeAccountStatus } from '../utils/accountStatus';
 import { getDashboardPathForRole } from '../utils/navigation';
+import {
+  createGooglePkcePair,
+  storeGooglePkceAttempt,
+  consumeGooglePkceVerifier,
+  clearGooglePkceAttempt,
+} from '../utils/googlePkce';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -1138,7 +1144,8 @@ const normaliseProduct = (p) => {
     costPrice: p.costPrice ?? p.originalPriceCoins ?? p.originalPrice ?? '',
     displayPrice: resolvedDisplayPrice,
     markedUpPriceUSD: p.markedUpPriceUSD ?? p.finalPrice ?? null,
-    displayCurrency: p.displayCurrency ?? null,
+    displayCurrency: p.displayCurrency ?? p.pricing?.displayCurrency ?? null,
+    pricing: p.pricing || null,
     // Quantity
     minimumOrderQty: p.minQty ?? p.minimumOrderQty ?? resolvedMinQty,
     maximumOrderQty: p.maxQty ?? p.maximumOrderQty ?? resolvedMaxQty,
@@ -1263,6 +1270,7 @@ const normaliseOrder = (o) => {
         currency: o.currency || 'USD',
       },
     },
+    pricingSnapshot: o.pricingSnapshot || null,
     // Timestamps
     date: o.createdAt || o.date,
   };
@@ -1863,6 +1871,47 @@ const isAdmin = () => {
   } catch { return false; }
 };
 
+const cleanReferralQuery = (params = {}) => {
+  const allowed = ['status', 'source', 'method', 'search', 'page', 'limit', 'dateFrom', 'dateTo'];
+  return Object.fromEntries(
+    allowed
+      .map((key) => [key, params?.[key]])
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+};
+
+const normalizeReferralPagination = (pagination = {}) => ({
+  page: Number(pagination.page || 1) || 1,
+  limit: Number(pagination.limit || 10) || 10,
+  total: Number(pagination.total || 0) || 0,
+  pages: Number(pagination.pages || 0) || 0,
+});
+
+const normalizeReferralDashboard = (data = {}) => ({
+  referral: {
+    code: String(data?.referral?.code || '').trim(),
+    sharePath: data?.referral?.sharePath || null,
+  },
+  referrals: {
+    total: Number(data?.referrals?.total || 0) || 0,
+  },
+  commissions: {
+    count: Number(data?.commissions?.count || 0) || 0,
+    totals: {
+      available: String(data?.commissions?.totals?.available || '0.00'),
+      locked: String(data?.commissions?.totals?.locked || '0.00'),
+      paid: String(data?.commissions?.totals?.paid || '0.00'),
+      cancelled: String(data?.commissions?.totals?.cancelled || '0.00'),
+    },
+    currency: String(data?.commissions?.currency || 'USD').toUpperCase(),
+  },
+});
+
+const normalizeReferralListResult = (data = {}) => ({
+  items: Array.isArray(data?.items) ? data.items : [],
+  pagination: normalizeReferralPagination(data?.pagination),
+});
+
 // ═════════════════════════════════════════════════════════════════════════════
 // API Contract — same interface as mockApi
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1941,35 +1990,78 @@ const realApi = {
       return unwrap(res);
     },
 
-    loginWithGoogle: async () => {
+    loginWithGoogle: async ({
+      referrerCode,
+      invitationCode,
+      referralCode,
+      oauthCode,
+      callbackStatus,
+      oauthError,
+      legacyToken,
+    } = {}) => {
       // Google OAuth uses redirect flow — open the BE endpoint in the browser.
       // The BE redirects back either with ?token= or ?status=pending.
       // This method is called from FE after capturing the token from the redirect.
       // We keep it compatible by parsing the token from the current URL if present.
       const params = new URLSearchParams(window.location.search);
-      const callbackStatus = normalizeAccountStatus(params.get('status'));
-      if (callbackStatus && !params.get('token')) {
+      const effectiveOAuthError = oauthError || params.get('oauth_error');
+      if (effectiveOAuthError) {
+        clearGooglePkceAttempt();
+        throw new Error('Google authentication failed. Please try again.');
+      }
+
+      const effectiveStatus = normalizeAccountStatus(callbackStatus || params.get('status'));
+      const effectiveOAuthCode = String(oauthCode || params.get('oauth_code') || '').trim();
+      const effectiveLegacyToken = legacyToken || params.get('token');
+
+      if (effectiveOAuthCode) {
+        const codeVerifier = consumeGooglePkceVerifier();
+        if (!codeVerifier) {
+          throw new Error('Google sign-in session expired. Please try again.');
+        }
+
+        const res = await http.post('/auth/google/exchange', {
+          code: effectiveOAuthCode,
+          codeVerifier,
+        });
+        const data = unwrap(res);
+        const user = normaliseUser(data.user);
+        const token = data.token || data.accessToken || null;
+        setStoredAuthTokens(token, null);
+        return { user, token };
+      }
+
+      if (effectiveLegacyToken) {
+        clearGooglePkceAttempt();
+        throw new Error('Google OAuth token callback is no longer supported. Please try again.');
+      }
+
+      if (effectiveStatus) {
+        clearGooglePkceAttempt();
         return {
           user: null,
           token: null,
-          status: callbackStatus,
-          redirectTo: getAccountAccessRoute(callbackStatus),
+          status: effectiveStatus,
+          redirectTo: getAccountAccessRoute(effectiveStatus),
           canAccessApp: false,
         };
       }
 
-      const token = params.get('token');
-      if (!token) {
-        // Initiate the redirect
-        window.location.href = `${API_BASE}/auth/google`;
-        // Return a promise that never resolves (page will redirect)
+      {
+        const canonicalReferrerCode = String(
+          referrerCode || invitationCode || referralCode || ''
+        ).trim().toUpperCase();
+        const pkce = await createGooglePkcePair();
+        storeGooglePkceAttempt({ verifier: pkce.verifier, createdAt: pkce.createdAt });
+        const query = new URLSearchParams({
+          codeChallenge: pkce.challenge,
+          codeChallengeMethod: pkce.method,
+        });
+        if (canonicalReferrerCode) query.set('referrerCode', canonicalReferrerCode);
+        window.location.href = `${API_BASE}/auth/google?${query.toString()}`;
         return new Promise(() => { });
       }
       // Token captured from callback redirect — fetch profile
-      setStoredAuthTokens(token, null);
-      const res = await http.get('/users/me');
-      const user = normaliseUser(unwrap(res));
-      return { user, token };
     },
 
     resendVerification: async (email) => {
@@ -1984,6 +2076,9 @@ const realApi = {
     },
 
     register: async (userData) => {
+      const referrerCode = String(
+        userData.referrerCode || userData.invitationCode || userData.referralCode || ''
+      ).trim().toUpperCase();
       const payload = {
         name: userData.name || userData.username || '',
         email: userData.email,
@@ -1991,6 +2086,7 @@ const realApi = {
         currency: userData.currency || 'USD',
         country: userData.country || '',
         phone: userData.phone || '',
+        ...(referrerCode ? { referrerCode } : {}),
       };
 
       if (userData.username) payload.username = userData.username;
@@ -3179,6 +3275,21 @@ const realApi = {
   },
 
   // ── Orders ───────────────────────────────────────────────────────────────
+  pricing: {
+    quote: async ({ items = [], currency } = {}) => {
+      const body = {
+        items: (Array.isArray(items) ? items : []).map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          selectedOptions: item.selectedOptions,
+        })),
+        ...(currency ? { currency } : {}),
+      };
+      const res = await http.post('/pricing/me/quote', body);
+      return unwrap(res);
+    },
+  },
+
   orders: {
     /**
      * GET /admin/orders (admin) or GET /me/orders (customer).
@@ -3304,23 +3415,12 @@ const realApi = {
       const legacyBody = stripUndefined({
         ...body,
         id: orderData.id,
-        userId: orderData.userId,
         productName: orderData.productName,
         productNameAr: orderData.productNameAr,
-        total: orderData.total ?? orderData.priceCoins,
-        totalPrice: orderData.totalPrice ?? orderData.priceCoins ?? orderData.total,
-        chargedAmount: orderData.chargedAmount ?? orderData.priceCoins ?? orderData.total,
-        priceCoins: orderData.priceCoins ?? orderData.total,
         playerId,
         orderFields: hasOrderFieldsValues ? orderFieldsValues : undefined,
         customerInput: orderData.customerInput || (hasOrderFieldsValues ? { values: orderFieldsValues } : undefined),
         quantitySnapshot: orderData.quantitySnapshot,
-        unitPrice: orderData.unitPrice,
-        unitPriceBase: orderData.unitPriceBase,
-        currencyCode: orderData.currencyCode,
-        currency: orderData.currencyCode || orderData.currency,
-        exchangeRateAtExecution: orderData.exchangeRateAtExecution,
-        financialSnapshot: orderData.financialSnapshot,
         status: orderData.status,
         timestamp: orderData.timestamp,
         createdAt: orderData.createdAt,
@@ -4000,6 +4100,155 @@ const realApi = {
   },
 
   // ── Wallet ────────────────────────────────────────────────────────────────
+  referrals: {
+    getDashboard: async () => {
+      const res = await http.get('/referrals/me/dashboard');
+      return normalizeReferralDashboard(unwrap(res));
+    },
+
+    getCommissions: async (params = {}) => {
+      const res = await http.get('/referrals/me/commissions', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+
+    getInvitees: async (params = {}) => {
+      const res = await http.get('/referrals/me/invitees', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+
+    createPayout: async (payload = {}) => {
+      const commissionIds = Array.isArray(payload.commissionIds)
+        ? payload.commissionIds.map((id) => String(id)).filter(Boolean)
+        : [];
+      const method = String(payload.method || 'WALLET').trim().toUpperCase();
+      const res = await http.post('/referrals/me/payouts', { commissionIds, method });
+      return unwrap(res);
+    },
+
+    getPayouts: async (params = {}) => {
+      const res = await http.get('/referrals/me/payouts', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+
+    getPayout: async (id) => {
+      const res = await http.get(`/referrals/me/payouts/${encodeURIComponent(String(id))}`);
+      return unwrap(res);
+    },
+  },
+
+  resellerApplications: {
+    submit: async (payload = {}) => {
+      const res = await http.post('/reseller-applications/me', payload);
+      const data = unwrap(res);
+      return data?.application || data;
+    },
+
+    getCurrent: async () => {
+      const res = await http.get('/reseller-applications/me/current');
+      return unwrap(res);
+    },
+
+    getHistory: async (params = {}) => {
+      const res = await http.get('/reseller-applications/me/history', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+  },
+
+  adminResellerApplications: {
+    list: async (params = {}) => {
+      const res = await http.get('/admin/reseller-applications', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+
+    get: async (id) => {
+      const res = await http.get(`/admin/reseller-applications/${encodeURIComponent(String(id))}`);
+      return unwrap(res);
+    },
+
+    approve: async (id, payload = {}) => {
+      const res = await http.post(`/admin/reseller-applications/${encodeURIComponent(String(id))}/approve`, {
+        assignedGroupId: payload.assignedGroupId || payload.groupId || '',
+      });
+      const data = unwrap(res);
+      return data?.application || data;
+    },
+
+    reject: async (id, payload = {}) => {
+      const res = await http.post(`/admin/reseller-applications/${encodeURIComponent(String(id))}/reject`, {
+        rejectionReason: payload.rejectionReason || payload.reason || '',
+      });
+      const data = unwrap(res);
+      return data?.application || data;
+    },
+
+    suspend: async (id, payload = {}) => {
+      const res = await http.post(`/admin/reseller-applications/${encodeURIComponent(String(id))}/suspend`, {
+        suspensionReason: payload.suspensionReason || payload.reason || '',
+      });
+      const data = unwrap(res);
+      return data?.application || data;
+    },
+
+    reactivate: async (id, payload = {}) => {
+      const res = await http.post(`/admin/reseller-applications/${encodeURIComponent(String(id))}/reactivate`, {
+        assignedGroupId: payload.assignedGroupId || payload.groupId || undefined,
+      });
+      const data = unwrap(res);
+      return data?.application || data;
+    },
+  },
+
+  adminPricing: {
+    preview: async ({ userId, productId, quantity = 1, currency } = {}) => {
+      const params = new URLSearchParams();
+      params.set('userId', String(userId || ''));
+      params.set('productId', String(productId || ''));
+      params.set('quantity', String(quantity || 1));
+      if (currency) params.set('currency', String(currency).toUpperCase());
+      const res = await http.get(`/admin/reseller-pricing/preview?${params.toString()}`);
+      return unwrap(res)?.preview || unwrap(res);
+    },
+  },
+
+  adminReferralPayouts: {
+    list: async (params = {}) => {
+      const res = await http.get('/admin/referral-payouts', {
+        params: cleanReferralQuery(params),
+      });
+      return normalizeReferralListResult(unwrap(res));
+    },
+
+    get: async (id) => {
+      const res = await http.get(`/admin/referral-payouts/${encodeURIComponent(String(id))}`);
+      return unwrap(res);
+    },
+
+    reject: async (id, payload = {}) => {
+      const res = await http.post(`/admin/referral-payouts/${encodeURIComponent(String(id))}/reject`, {
+        rejectionReason: payload.rejectionReason || payload.reason || '',
+      });
+      return unwrap(res);
+    },
+
+    settle: async (id, payload = {}) => {
+      const res = await http.post(`/admin/referral-payouts/${encodeURIComponent(String(id))}/settle`, {
+        externalReference: payload.externalReference || '',
+        settlementNote: payload.settlementNote || payload.manualSettlementNote || '',
+      });
+      return unwrap(res);
+    },
+  },
+
   wallet: {
     /**
      * GET /wallet/stats — aggregated wallet stats for authenticated user.
