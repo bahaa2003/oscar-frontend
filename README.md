@@ -60,7 +60,7 @@ The public catalog is available at `/` and `/catalog`. It displays products, cat
 
 ### Authentication and Account States
 
-The app supports login, registration, Google login hooks from the API layer, email verification states, two-factor login responses, pending accounts, rejected accounts, and verification-required accounts.
+The app supports login, registration, Google login hooks from the API layer, email verification states, two-factor login responses, pending accounts, rejected accounts, verification-required accounts, and the server-driven Google profile-completion flow for country/currency setup.
 
 Account access states are routed through:
 
@@ -669,7 +669,7 @@ Admin referral capabilities:
 - Review backend reseller applications in Real API mode and call approve, reject, suspend, or reactivate APIs
 - Approve or reject local/mock sub-agent requests and optionally move approved mock users into a selected group
 
-In `VITE_DATA_PROVIDER=real`, the referral page uses `realApi.referrals.getDashboard()`, `getCommissions(params)`, `getInvitees(params)`, `getPayouts(params)`, and `createPayout(payload)` through `useReferralStore`. Financial totals come from persisted backend `ReferralCommission` records and remain Decimal strings in state; the browser does not calculate commission totals or use localStorage as a financial source. Submitting a payout sends selected commission ids and method only. Real-mode API failures show loading/error/empty states and do not fall back to mock commission data.
+In `VITE_DATA_PROVIDER=real`, the referral page uses `realApi.referrals.getDashboard()`, `getCommissions(params)`, `getInvitees(params)`, `getPayouts(params)`, and `createPayout(payload)` through `useReferralStore`. Financial totals come from persisted backend `ReferralCommission` records and remain Decimal strings in state; the browser does not calculate commission totals or use localStorage as a financial source. New currency-aware commissions display `commissionAmount` with `commissionCurrency`; payout selection refuses mixed currencies and submits selected commission ids and method only. Real-mode API failures show loading/error/empty states and do not fall back to mock commission data.
 
 In Real API mode, the sub-agent area uses `realApi.resellerApplications.submit()`, `getCurrent()`, and `getHistory(params)` through `useResellerApplicationStore`. The browser does not write `oscar_sub_agent_requests`, approve itself, change reseller state, or mutate Groups locally in Real mode.
 
@@ -678,6 +678,8 @@ In Real API mode, `/admin/referrals` calls `realApi.adminReferralPayouts.list()`
 Phase 3B Real API mode renders backend-resolved product prices and uses `realApi.pricing.quote()` for purchase totals. The browser submits product id, quantity, and order fields only; it does not submit authoritative unit prices, totals, Groups, percentages, reseller status, exchange rates, or alternate user ids. Created order responses and immutable backend snapshots are the display truth after checkout. Real API failures do not fall back to mock pricing. Mock mode keeps its local demo pricing and quote logic independently.
 
 Mock mode remains independent and local. Mock payout, withdrawal, and sub-agent request data is for UI review only and is not used as a fallback after Real API failures.
+
+Google OAuth profile completion is server-driven in Real API mode. When the backend returns `profileCompletionRequired` and `missingProfileFields`, the auth page opens the existing completion form, requires country and currency, preserves any trusted OAuth referral as locked/read-only, and sends completion data to `/api/me/profile-completion`. Local storage is not treated as server truth for referral/profile completion.
 
 ### Support and Assistant Widgets
 
@@ -933,6 +935,20 @@ VITE_APP_MODE=development
 APP_URL=http://localhost:3000
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
+
+### Phase 4B Staging Build
+
+For controlled Staging verification, use Real API mode and the approved Staging Backend URL:
+
+```env
+VITE_DATA_PROVIDER=real
+VITE_API_BASE_URL=https://staging-backend.example.com/api
+VITE_PUBLIC_APP_URL=https://staging-frontend.example.com
+VITE_APP_ENV=staging
+VITE_APP_MODE=staging
+```
+
+Do not put secrets in `VITE_` variables because they are bundled into the browser build. Real mode must not fall back to mock/local financial data after an API failure.
 
 ### Variables
 

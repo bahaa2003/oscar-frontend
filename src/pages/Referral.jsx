@@ -139,6 +139,7 @@ const Referral = () => {
     inviteeFilters,
     selectedCommissionIds,
     selectedTotalUsd,
+    selectedPayoutCurrency,
     isLoadingDashboard,
     isLoadingCommissions,
     isLoadingInvitees,
@@ -380,7 +381,7 @@ const Referral = () => {
     id: payout?.id,
     method: String(payout?.method || 'WALLET').toLowerCase(),
     amount: 0,
-    amountDisplay: String(payout?.amountUsd || '0.00'),
+    amountDisplay: String(payout?.amount || payout?.amountUsd || '0.00'),
     currency: String(payout?.currency || 'USD').toUpperCase(),
     status: String(payout?.status || 'PENDING').toLowerCase(),
     createdAt: payout?.requestedAt || null,
@@ -391,7 +392,7 @@ const Referral = () => {
     id: commission?.id,
     method: 'commission',
     amount: 0,
-    amountDisplay: String(commission?.commissionAmountUsd || '0.00'),
+    amountDisplay: String(commission?.commissionAmount || commission?.commissionAmountUsd || '0.00'),
     currency: String(commission?.commissionCurrency || 'USD').toUpperCase(),
     status: String(commission?.status || 'AVAILABLE').toLowerCase(),
     createdAt: commission?.createdAt || commission?.availableAt || null,
@@ -498,6 +499,13 @@ const Referral = () => {
       if (!selectedCommissionIds.length) {
         addToast(
           isArabic ? 'اختر عمولة متاحة واحدة على الأقل.' : 'Select at least one available commission.',
+          'error'
+        );
+        return;
+      }
+      if (selectedPayoutCurrency === 'MIXED') {
+        addToast(
+          isArabic ? 'لا يمكن جمع عمولات بعملات مختلفة في طلب سحب واحد.' : 'Commissions with different currencies cannot be paid out together.',
           'error'
         );
         return;
@@ -1254,7 +1262,7 @@ const Referral = () => {
                   <p className="text-[0.65rem] font-bold text-[var(--color-text-secondary)]">{isArabic ? 'اختر العمولات التي تريد قفلها داخل طلب السحب.' : 'Select the commissions to lock into this payout request.'}</p>
                 </div>
                 <span dir="ltr" className="shrink-0 rounded-lg bg-emerald-500/12 px-2.5 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                  {selectedTotalUsd} {currency}
+                  {selectedTotalUsd} {selectedPayoutCurrency || currency}
                 </span>
               </div>
               {payoutError ? (
@@ -1278,7 +1286,7 @@ const Referral = () => {
                           setSelectedCommissionIds(nextIds, commissions);
                           const nextTotal = nextIds.reduce((sum, id) => {
                             const item = commissions.find((entry) => String(entry.id || entry._id || '') === id);
-                            return sum + (Number(item?.commissionAmountUsd || 0) || 0);
+                            return sum + (Number(item?.commissionAmount || item?.commissionAmountUsd || 0) || 0);
                           }, 0);
                           setWithdrawalForm((current) => ({ ...current, amount: nextTotal.toFixed(2) }));
                         }}
@@ -1293,7 +1301,7 @@ const Referral = () => {
                         </span>
                       </span>
                       <span dir="ltr" className="shrink-0 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                        {commission.commissionAmountUsd || '0.00'} {commission.commissionCurrency || currency}
+                        {commission.commissionAmount || commission.commissionAmountUsd || '0.00'} {commission.commissionCurrency || currency}
                       </span>
                     </label>
                   );

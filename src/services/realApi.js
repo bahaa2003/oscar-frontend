@@ -883,6 +883,10 @@ const normaliseUser = (u) => {
     groupPercentage: Number.isFinite(groupPercentage) ? groupPercentage : null,
     // Flattened currency
     currency,
+    country: u.country || '',
+    profileCompletionRequired: Boolean(u.profileCompletionRequired),
+    missingProfileFields: Array.isArray(u.missingProfileFields) ? u.missingProfileFields : [],
+    profileCompletionReferral: u.profileCompletionReferral || null,
     // joinDate aliasing
     joinDate: u.joinDate || u.createdAt,
     createdAt: u.createdAt || u.joinDate || u.registeredAt || null,
@@ -2103,8 +2107,19 @@ const realApi = {
     getProfile: async (_userId) => {
       // Prefer the self-profile endpoint used elsewhere in this adapter.
       // Some deployments don't expose `/me` but do expose `/users/me`.
-      const res = await http.get('/users/me', { _skipPermissionRecovery: true });
+      const res = await http.get('/me', { _skipPermissionRecovery: true });
       return normaliseUser(unwrap(res));
+    },
+
+    completeProfile: async ({ country, currency, referrerCode } = {}) => {
+      const body = {
+        country: String(country || '').trim().toUpperCase(),
+        currency: String(currency || '').trim().toUpperCase(),
+      };
+      if (referrerCode) body.referrerCode = String(referrerCode).trim().toUpperCase();
+      const res = await http.patch('/me/profile-completion', body);
+      const data = unwrap(res);
+      return normaliseUser(data?.user || data);
     },
 
     refreshSession: async () => {

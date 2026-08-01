@@ -60,12 +60,15 @@ const clearStoredAuthState = () => {
 
 const buildAuthOutcome = (user) => {
   const status = normalizeAccountStatus(user?.status);
+  const profileCompletionRequired = Boolean(user?.profileCompletionRequired);
   return {
     ok: true,
     status,
     user: user || null,
-    redirectTo: getAccountAccessRoute(status) || getDefaultRouteForRole(user?.role),
-    canAccessApp: isApprovedAccountStatus(status),
+    redirectTo: profileCompletionRequired
+      ? '/auth?profile=complete'
+      : getAccountAccessRoute(status) || getDefaultRouteForRole(user?.role),
+    canAccessApp: isApprovedAccountStatus(status) && !profileCompletionRequired,
   };
 };
 
@@ -154,6 +157,9 @@ const pickPersistedUser = (user) => {
     currency: user.currency || 'USD',
     country: user.country || '',
     countryName: user.countryName || '',
+    profileCompletionRequired: Boolean(user.profileCompletionRequired),
+    missingProfileFields: Array.isArray(user.missingProfileFields) ? user.missingProfileFields : [],
+    profileCompletionReferral: user.profileCompletionReferral || null,
     group: user.group || '',
     groupName: user.groupName || user.group || '',
     groupId: user.groupId || '',
@@ -519,7 +525,7 @@ const useAuthStore = create((set, get) => ({
         }
       },
 
-      completeGoogleProfileSetup: async ({ country, countryName, currency } = {}) => {
+      completeGoogleProfileSetup: async ({ country, countryName, currency, referrerCode } = {}) => {
         const { user, token } = get();
         if (!user?.id) {
           throw new Error('No authenticated user found');
@@ -527,17 +533,20 @@ const useAuthStore = create((set, get) => ({
 
         const normalizedCountry = String(country || '').trim().toUpperCase();
         const normalizedCurrency = String(currency || '').trim().toUpperCase();
-        const updatedUser = await apiClient.users.updateProfile(user.id, {
+        const updatedUser = await apiClient.auth.completeProfile({
           country: normalizedCountry,
-          countryName: countryName || '',
           currency: normalizedCurrency,
-        }, user);
+          referrerCode,
+        });
         const nextUser = {
           ...user,
           ...updatedUser,
           country: updatedUser?.country || normalizedCountry,
           countryName: updatedUser?.countryName || countryName || '',
           currency: updatedUser?.currency || normalizedCurrency,
+          profileCompletionRequired: Boolean(updatedUser?.profileCompletionRequired),
+          missingProfileFields: Array.isArray(updatedUser?.missingProfileFields) ? updatedUser.missingProfileFields : [],
+          profileCompletionReferral: updatedUser?.profileCompletionReferral || null,
         };
         const nextStatus = normalizeAccountStatus(nextUser?.status);
 

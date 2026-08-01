@@ -40,6 +40,10 @@ const ProtectedRoute = ({ children, roles = [], permission = null }) => {
     return <Navigate to={blockedRoute} state={{ from: location }} replace />;
   }
 
+  if (user?.profileCompletionRequired && location.pathname !== '/auth') {
+    return <Navigate to="/auth?profile=complete" state={{ from: location }} replace />;
+  }
+
   const fallbackPath = getDefaultRouteForRole(user?.role);
   const redirectOnDenied = () => {
     const redirectPath = fallbackPath === location.pathname ? SAFE_FALLBACK_PATH : fallbackPath;

@@ -16,6 +16,7 @@ const initialState = {
   payoutFilters: { page: 1, limit: 10, status: '', method: '', dateFrom: '', dateTo: '' },
   selectedCommissionIds: [],
   selectedTotalUsd: '0.00',
+  selectedPayoutCurrency: '',
   isLoadingDashboard: false,
   isLoadingCommissions: false,
   isLoadingInvitees: false,
@@ -186,12 +187,17 @@ const useReferralStore = create((set, get) => ({
 
   setSelectedCommissionIds: (ids = [], commissions = get().commissions) => {
     const uniqueIds = [...new Set((Array.isArray(ids) ? ids : []).map(String).filter(Boolean))];
-    const total = (Array.isArray(commissions) ? commissions : [])
-      .filter((commission) => uniqueIds.includes(String(commission?.id || commission?._id)))
-      .reduce((sum, commission) => sum + Number(commission?.commissionAmountUsd || 0), 0);
+    const selected = (Array.isArray(commissions) ? commissions : [])
+      .filter((commission) => uniqueIds.includes(String(commission?.id || commission?._id)));
+    const currencies = new Set(selected.map((commission) => String(commission?.commissionCurrency || 'USD').toUpperCase()));
+    const canTotal = currencies.size <= 1;
+    const total = canTotal
+      ? selected.reduce((sum, commission) => sum + Number(commission?.commissionAmount || commission?.commissionAmountUsd || 0), 0)
+      : 0;
     set({
       selectedCommissionIds: uniqueIds,
       selectedTotalUsd: total.toFixed(2),
+      selectedPayoutCurrency: canTotal ? ([...currencies][0] || '') : 'MIXED',
     });
   },
 
@@ -199,7 +205,7 @@ const useReferralStore = create((set, get) => ({
     set({ isCreatingPayout: true, payoutError: null });
     try {
       const payout = await apiClient.referrals.createPayout({ commissionIds, method });
-      set({ isCreatingPayout: false, selectedCommissionIds: [], selectedTotalUsd: '0.00' });
+      set({ isCreatingPayout: false, selectedCommissionIds: [], selectedTotalUsd: '0.00', selectedPayoutCurrency: '' });
       return payout;
     } catch (error) {
       set({ isCreatingPayout: false, payoutError: normalizeError(error) });
