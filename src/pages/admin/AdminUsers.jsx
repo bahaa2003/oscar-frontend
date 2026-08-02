@@ -42,6 +42,7 @@ import { resolveUserAvatar } from '../../utils/avatar';
 
 const FILTER_OPTIONS = ['all', 'approved', 'deleted'];
 const USERS_PER_PAGE = 20;
+const IS_REAL_DATA_PROVIDER = String(import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() === 'real';
 
 const compactButtonClassName = 'h-7 rounded-[var(--radius-sm)] px-2 text-[10px]';
 const compactFieldClassName =
@@ -127,7 +128,9 @@ const AdminUsers = () => {
   const {
     users,
     deletedUsers,
+    usersPagination,
     loadUsers,
+    loadUsersPage,
     getUserById,
     wallets,
     loadWallets,
@@ -185,13 +188,59 @@ const AdminUsers = () => {
   const canConfirmAccounts = hasPermission(actor, PERMISSIONS.CONFIRM_ACCOUNTS);
   const canManageUsers = hasPermission(actor, PERMISSIONS.MANAGE_USERS);
   const canManageWallet = hasPermission(actor, PERMISSIONS.MANAGE_WALLET);
+  const usesServerPagination = IS_REAL_DATA_PROVIDER && filter !== 'deleted';
+
+  const serverUserFilters = useMemo(() => {
+    const filters = {};
+    const normalizedSearch = String(search || '').trim();
+    if (normalizedSearch) filters.search = normalizedSearch;
+    if (filter === 'approved') filters.status = 'ACTIVE';
+    if (groupFilter !== 'all') filters.groupId = groupFilter;
+    if (currencyFilter !== 'all') filters.currency = currencyFilter;
+    if (balanceFilter !== 'all') filters.balance = balanceFilter;
+
+    if (sortMode === 'oldest') {
+      filters.sortBy = 'createdAt';
+      filters.sortOrder = 'asc';
+    } else if (sortMode === 'balance_desc') {
+      filters.sortBy = 'walletBalance';
+      filters.sortOrder = 'desc';
+    } else if (sortMode === 'balance_asc') {
+      filters.sortBy = 'walletBalance';
+      filters.sortOrder = 'asc';
+    } else if (sortMode === 'name') {
+      filters.sortBy = 'name';
+      filters.sortOrder = 'asc';
+    } else {
+      filters.sortBy = 'createdAt';
+      filters.sortOrder = 'desc';
+    }
+
+    return filters;
+  }, [balanceFilter, currencyFilter, filter, groupFilter, search, sortMode]);
 
   useEffect(() => {
-    loadUsers({ force: true });
+    if (!IS_REAL_DATA_PROVIDER) {
+      loadUsers({ force: true });
+    }
     loadGroups({ force: true });
     loadCurrencies({ force: true });
     Promise.resolve(loadWallets({ force: true })).catch(() => null);
   }, [loadCurrencies, loadGroups, loadUsers, loadWallets]);
+
+  useEffect(() => {
+    if (!usesServerPagination) return;
+    loadUsersPage({
+      page: currentPage,
+      limit: USERS_PER_PAGE,
+      filters: serverUserFilters,
+    }).catch(() => null);
+  }, [currentPage, loadUsersPage, serverUserFilters, usesServerPagination]);
+
+  useEffect(() => {
+    if (!IS_REAL_DATA_PROVIDER || filter !== 'deleted') return;
+    loadUsers({ force: true }).catch(() => null);
+  }, [filter, loadUsers]);
 
   useEffect(() => {
     if (!FILTER_OPTIONS.includes(statusFromQuery)) return;
@@ -229,6 +278,13 @@ const AdminUsers = () => {
   );
 
   const groupFilterOptions = useMemo(() => {
+    if (IS_REAL_DATA_PROVIDER) {
+      return (groups || []).map((group) => ({
+        value: group.id || group._id,
+        label: group.name || group.nameAr || group.id || group._id,
+      })).filter((entry) => entry.value);
+    }
+
     const values = new Map();
     customerUsers.forEach((entry) => {
       const raw = normalizeFilterValue(entry?.groupId || entry?.group);
@@ -244,6 +300,16 @@ const AdminUsers = () => {
   }, [customerUsers, groups]);
 
   const currencyFilterOptions = useMemo(() => {
+    if (IS_REAL_DATA_PROVIDER) {
+      return (currencies || []).map((currency) => {
+        const code = normalizeFilterValue(currency?.code).toUpperCase();
+        return {
+          value: code,
+          label: currency?.name ? `${code} - ${currency.name}` : code,
+        };
+      }).filter((entry) => entry.value);
+    }
+
     const values = new Map();
     customerUsers.forEach((entry) => {
       const raw = normalizeFilterValue(entry?.currency).toUpperCase();
@@ -255,6 +321,8 @@ const AdminUsers = () => {
   }, [currencies, customerUsers]);
 
   const filteredUsers = useMemo(() => {
+    if (usesServerPagination) return [...customerUsers];
+
     const normalizedSearch = String(search || '').trim().toLowerCase();
     const sourceUsers = filter === 'deleted' ? deletedCustomerUsers : customerUsers;
     const normalizedGroupFilter = normalizeFilterValue(groupFilter);
@@ -330,14 +398,22 @@ const AdminUsers = () => {
     isArabic,
     search,
     sortMode,
+    usesServerPagination,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const serverTotalPages = Number(usersPagination?.totalPages ?? usersPagination?.pages ?? 1);
+  const totalPages = usesServerPagination
+    ? Math.max(1, Number.isFinite(serverTotalPages) ? serverTotalPages : 1)
+    : Math.max(1, Math.ceil(filteredUsers.length / USERS_PER_PAGE));
+  const totalUsersDisplay = usesServerPagination
+    ? (Number(usersPagination?.total) || 0)
+    : filteredUsers.length;
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const paginatedUsers = useMemo(() => {
+    if (usesServerPagination) return filteredUsers;
     const startIndex = (safeCurrentPage - 1) * USERS_PER_PAGE;
     return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
-  }, [filteredUsers, safeCurrentPage]);
+  }, [filteredUsers, safeCurrentPage, usesServerPagination]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1106,10 +1182,10 @@ const AdminUsers = () => {
       </div>
 
       {/* ── Pagination Controls (bottom of users list/table) ───────────────── */}
-      {filteredUsers.length > 0 && (
+      {totalUsersDisplay > 0 && (
         <div className="admin-premium-panel mt-2.5 flex flex-col gap-2 rounded-[var(--radius-md)] border border-[color:rgb(var(--color-border-rgb)/0.78)] bg-[color:rgb(var(--color-card-rgb)/0.84)] px-3 py-2 md:flex-row md:items-center md:justify-between">
           <p className="text-[11px] text-[var(--color-text-secondary)]">
-            صفحة {safeCurrentPage} من {totalPages} — إجمالي {filteredUsers.length} مستخدم
+            صفحة {safeCurrentPage} من {totalPages} — إجمالي {totalUsersDisplay} مستخدم
           </p>
           <div className="flex items-center gap-1.5">
             <Button

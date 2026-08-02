@@ -2654,6 +2654,9 @@ const realApi = {
       role,
       status,
       email,
+      groupId,
+      currency,
+      balance,
     } = {}) => {
       const normalizedSortBy = typeof sortBy === 'string' && sortBy.trim() ? sortBy.trim() : 'walletBalance';
       const normalizedSortOrder = String(sortOrder || '').trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
@@ -2666,12 +2669,23 @@ const realApi = {
       if (role) query.set('role', String(role).toUpperCase());
       if (status) query.set('status', String(status).toUpperCase());
       if (email) query.set('email', String(email).trim());
+      if (groupId) query.set('groupId', String(groupId).trim());
+      if (currency) query.set('currency', String(currency).trim().toUpperCase());
+      if (balance) query.set('balance', String(balance).trim().toLowerCase());
       const res = await http.get(`/admin/users?${query}`);
       const body = res.data || {};
       const data = body.data;
       // sendPaginated puts the array as `data` directly
       const users = Array.isArray(data) ? data : (data?.users || []);
-      return { users: normaliseUsers(users), pagination: body.pagination || null };
+      const pagination = body.pagination || null;
+      return {
+        users: normaliseUsers(users),
+        pagination: pagination ? {
+          ...pagination,
+          pages: Number(pagination.pages ?? pagination.totalPages ?? 1) || 1,
+          totalPages: Number(pagination.totalPages ?? pagination.pages ?? 1) || 1,
+        } : null,
+      };
     },
 
     listDeleted: async () => {
@@ -4261,6 +4275,17 @@ const realApi = {
         settlementNote: payload.settlementNote || payload.manualSettlementNote || '',
       });
       return unwrap(res);
+    },
+  },
+
+  adminReferralDashboard: {
+    get: async () => {
+      const res = await http.get('/admin/referrals/dashboard');
+      const data = unwrap(res);
+      return {
+        summary: data?.summary || {},
+        owners: Array.isArray(data?.owners) ? data.owners : [],
+      };
     },
   },
 

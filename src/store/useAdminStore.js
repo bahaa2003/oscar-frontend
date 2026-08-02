@@ -347,8 +347,54 @@ const useAdminStore = create((set, get) => ({
         return usersRequest;
       },
 
-      loadUsersPage: async (page) => {
-        return get().loadUsers({ force: true, page });
+      loadUsersPage: async ({
+        page = 1,
+        limit = 20,
+        filters = {},
+      } = {}) => {
+        if (!isRealProvider) {
+          return get().loadUsers({ force: true, page });
+        }
+
+        const requestedPage = Math.max(1, Math.floor(Number(page) || 1));
+        const requestedLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 20)));
+        set({ isLoadingUsers: true });
+
+        try {
+          const result = await apiClient.users.list({
+            page: requestedPage,
+            limit: requestedLimit,
+            role: 'customer',
+            ...filters,
+          });
+          const nextUsers = Array.isArray(result?.users) ? result.users : [];
+          const pagination = result?.pagination || {
+            page: requestedPage,
+            limit: requestedLimit,
+            total: nextUsers.length,
+            pages: 1,
+            totalPages: 1,
+          };
+          set({
+            users: nextUsers,
+            usersPagination: {
+              ...pagination,
+              pages: Number(pagination.pages ?? pagination.totalPages ?? 1) || 1,
+              totalPages: Number(pagination.totalPages ?? pagination.pages ?? 1) || 1,
+            },
+            usersCurrentPage: requestedPage,
+            usersLastLoadedAt: Date.now(),
+            isLoadingUsers: false,
+          });
+
+          if (isRealProvider) {
+            hasFetchedAdminUsersFromBackendThisSession = true;
+          }
+          return nextUsers;
+        } catch (error) {
+          set({ isLoadingUsers: false });
+          throw error;
+        }
       },
 
       getUserById: async (userId, { force = false } = {}) => {

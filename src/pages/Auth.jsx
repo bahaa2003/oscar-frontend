@@ -65,6 +65,39 @@ const StepTwo = ({ children }) => (
 );
 
 const DEFAULT_GOOGLE_SETUP_COUNTRY = 'EG';
+const REFERRAL_CAPTURE_SESSION_KEY = 'auth:referral-code:v1';
+
+const normalizeInvitationCode = (value) => String(value || '').replace(/\s+/g, '').trim().toUpperCase();
+
+const readCapturedReferralCode = () => {
+  if (typeof window === 'undefined' || !window.sessionStorage) return '';
+  try {
+    const raw = window.sessionStorage.getItem(REFERRAL_CAPTURE_SESSION_KEY);
+    if (!raw) return '';
+    const parsed = JSON.parse(raw);
+    return normalizeInvitationCode(parsed?.code || parsed);
+  } catch {
+    return '';
+  }
+};
+
+const writeCapturedReferralCode = (code, source = 'manual') => {
+  const normalizedCode = normalizeInvitationCode(code);
+  if (!normalizedCode || typeof window === 'undefined' || !window.sessionStorage) return normalizedCode;
+  window.sessionStorage.setItem(REFERRAL_CAPTURE_SESSION_KEY, JSON.stringify({
+    code: normalizedCode,
+    source,
+    capturedAt: Date.now(),
+  }));
+  return normalizedCode;
+};
+
+const clearCapturedReferralCode = () => {
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  window.sessionStorage.removeItem(REFERRAL_CAPTURE_SESSION_KEY);
+};
+
+const getUrlReferralCode = (search) => normalizeInvitationCode(new URLSearchParams(search).get('ref'));
 
 const getCountryDisplayName = (country, isArabic) => (
   isArabic
@@ -116,10 +149,8 @@ const Auth = () => {
   const [name, setName] = useState('');
   const [country, setCountry] = useState(DEFAULT_GOOGLE_SETUP_COUNTRY);
   const [currency, setCurrency] = useState('EGP');
-  const [invitationCode, setInvitationCode] = useState(() => {
-    const params = new URLSearchParams(location.search);
-    return String(params.get('ref') || '').trim().toUpperCase();
-  });
+  const [invitationCode, setInvitationCode] = useState(() => getUrlReferralCode(location.search) || readCapturedReferralCode());
+  const [referralCodeLockedFromLink, setReferralCodeLockedFromLink] = useState(() => Boolean(getUrlReferralCode(location.search)));
   const [countries] = useState(COUNTRY_CATALOG);
   const [errors, setErrors] = useState({});
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -136,10 +167,19 @@ const Auth = () => {
   const isArabic = dir === 'rtl';
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const codeFromLink = String(params.get('ref') || '').trim().toUpperCase();
-    if (codeFromLink) setInvitationCode(codeFromLink);
-  }, [location.search]);
+    const codeFromLink = getUrlReferralCode(location.search);
+    if (codeFromLink) {
+      writeCapturedReferralCode(codeFromLink, 'url');
+      setInvitationCode(codeFromLink);
+      setReferralCodeLockedFromLink(true);
+      return;
+    }
+
+    const storedCode = readCapturedReferralCode();
+    if (storedCode && !invitationCode) {
+      setInvitationCode(storedCode);
+    }
+  }, [invitationCode, location.search]);
 
 const countryOptions = useMemo(() => {
     const source = countries.length ? countries : fallbackCountries;
@@ -209,7 +249,7 @@ const countryOptions = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const mode = String(params.get('mode') || '').toLowerCase();
 
-    if (mode === 'signup') {
+    if (mode === 'signup' || location.pathname === '/register') {
       setIsLogin(false);
       setRegisterStep(1);
       return;
@@ -219,7 +259,7 @@ const countryOptions = useMemo(() => {
       setIsLogin(true);
       setRegisterStep(1);
     }
-  }, [location.search]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -460,6 +500,21 @@ const countryOptions = useMemo(() => {
     setCurrency(resolveDefaultCurrencyForCountry(normalizedCountryCode));
   };
 
+  const handleInvitationCodeChange = (event) => {
+    if (referralCodeLockedFromLink || googleSetupReferralLocked) return;
+    const nextCode = normalizeInvitationCode(event.target.value);
+    setInvitationCode(nextCode);
+    if (nextCode) {
+      writeCapturedReferralCode(nextCode, 'manual');
+    } else {
+      clearCapturedReferralCode();
+    }
+  };
+
+  const resolveReferralCodeForSubmit = () => (
+    normalizeInvitationCode(invitationCode) || readCapturedReferralCode()
+  );
+
   const getAuthTargetRoute = (result) => (
     result?.status === 'pending'
       ? getDefaultRouteForRole(result?.user?.role)
@@ -515,6 +570,8 @@ const countryOptions = useMemo(() => {
 
     if (source === 'google') {
       googleSetupBlockingRef.current = false;
+      clearCapturedReferralCode();
+      setReferralCodeLockedFromLink(false);
     }
 
     if (result.redirectTo) {
@@ -590,8 +647,9 @@ const countryOptions = useMemo(() => {
         country,
         countryName,
         currency,
-        referrerCode: lockedReferral || invitationCode,
+        referrerCode: lockedReferral || resolveReferralCodeForSubmit(),
       });
+      clearCapturedReferralCode();
       const setupUser = updatedUser || googleSetupResult?.user;
       setGoogleSetupResult(null);
       googleSetupBlockingRef.current = false;
@@ -646,9 +704,14 @@ const countryOptions = useMemo(() => {
           password,
           country,
           currency,
-          referrerCode: invitationCode || undefined,
+          referrerCode: resolveReferralCodeForSubmit() || undefined,
           signupMethod: 'email',
         });
+
+    if (!isLogin && result?.ok) {
+      clearCapturedReferralCode();
+      setReferralCodeLockedFromLink(false);
+    }
 
     if (isLogin && result?.requires2FA) {
       setTwoFactorChallenge(result);
@@ -688,7 +751,9 @@ const countryOptions = useMemo(() => {
 
   const handleGoogleAuth = async () => {
     googleSetupBlockingRef.current = true;
-    const result = await loginWithGoogle({ referrerCode: invitationCode || undefined });
+    const referrerCode = resolveReferralCodeForSubmit();
+    if (referrerCode) writeCapturedReferralCode(referrerCode, referralCodeLockedFromLink ? 'url' : 'manual');
+    const result = await loginWithGoogle({ referrerCode: referrerCode || undefined });
     if (!result) {
       googleSetupBlockingRef.current = false;
       return;
@@ -855,7 +920,8 @@ const countryOptions = useMemo(() => {
                       <Input
                         dir="ltr"
                         value={invitationCode}
-                        onChange={(event) => setInvitationCode(event.target.value.replace(/\s+/g, '').toUpperCase())}
+                        onChange={handleInvitationCodeChange}
+                        readOnly={referralCodeLockedFromLink || googleSetupReferralLocked}
                         placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
                         icon={<Link2 className="h-4 w-4" />}
                         className={cn(styles.authInput, invitationCode && 'border-cyan-400/35 bg-cyan-400/5')}
@@ -1025,7 +1091,8 @@ const countryOptions = useMemo(() => {
                       <Input
                         dir="ltr"
                         value={invitationCode}
-                        onChange={(event) => setInvitationCode(event.target.value.replace(/\s+/g, '').toUpperCase())}
+                        onChange={handleInvitationCodeChange}
+                        readOnly={referralCodeLockedFromLink || googleSetupReferralLocked}
                         disabled={isGoogleSetupMode && googleSetupReferralLocked}
                         placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
                         icon={<Link2 className="h-4 w-4" />}

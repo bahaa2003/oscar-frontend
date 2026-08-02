@@ -118,6 +118,7 @@ const AnimatedAppRoutes = () => {
       <Route path="/about-us" element={renderSuspended(<AboutUsPage />)} />
       <Route path="/auth" element={renderSuspended(<Auth />)} />
       <Route path="/login" element={renderSuspended(<Auth />)} />
+      <Route path="/register" element={renderSuspended(<Auth />)} />
       <Route path="/email-verified" element={renderSuspended(<EmailVerified />)} />
       <Route path={ACCOUNT_PENDING_ROUTE} element={renderSuspended(<AccountPending />)} />
       <Route path={ACCOUNT_REJECTED_ROUTE} element={renderSuspended(<AccountRejected />)} />
