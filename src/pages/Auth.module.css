@@ -73,6 +73,14 @@
   display: none;
 }
 
+/* Keep the authentication neon treatment static. */
+.authPage,
+.authPage *,
+.authPage *::before,
+.authPage *::after {
+  animation: none !important;
+}
+
 .topControls {
   position: absolute;
   left: 50%;

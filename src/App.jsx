@@ -46,6 +46,8 @@ const AdminReferrals = lazy(() => import('./pages/admin/AdminReferrals'));
 const AdminCurrencies = lazy(() => import('./pages/admin/AdminCurrencies'));
 const AdminPayments = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminPaymentMethods = lazy(() => import('./pages/admin/AdminPaymentMethods'));
+const PlatformThemeEditor = lazy(() => import('./pages/admin/PlatformThemeEditor'));
+const PlatformThemeSubscriptions = lazy(() => import('./pages/admin/PlatformThemeSubscriptions'));
 const AdminSupervisors = lazy(() => import('./pages/admin/AdminSupervisors'));
 const SupervisorMonitoring = lazy(() => import('./pages/admin/SupervisorMonitoring'));
 const AdminSuppliers = lazy(() => import('./pages/admin/AdminSuppliers'));
@@ -116,6 +118,7 @@ const AnimatedAppRoutes = () => {
       <Route path="/" element={renderSuspended(<PublicCatalog />)} />
       <Route path="/catalog" element={renderSuspended(<PublicCatalog />)} />
       <Route path="/about-us" element={renderSuspended(<AboutUsPage />)} />
+      {import.meta.env.DEV && <Route path="/theme-preview" element={renderSuspended(<PlatformThemeEditor previewOnly />)} />}
       <Route path="/auth" element={renderSuspended(<Auth />)} />
       <Route path="/login" element={renderSuspended(<Auth />)} />
       <Route path="/register" element={renderSuspended(<Auth />)} />
@@ -215,6 +218,7 @@ const AnimatedAppRoutes = () => {
             </ProtectedRoute>
           )}
         />
+        <Route path="/referral" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/referral"
           element={(
@@ -311,7 +315,22 @@ const AnimatedAppRoutes = () => {
             </ProtectedRoute>
           )}
         />
+                <Route
+          path="/admin/themes"
+          element={(
+            <ProtectedRoute roles={ADMIN_ROLES}>
+              {renderSuspended(<PlatformThemeEditor />)}
+            </ProtectedRoute>
+          )}
+        />
         <Route
+          path="/admin/theme/subscriptions"
+          element={(
+            <ProtectedRoute roles={ADMIN_ROLES}>
+              {renderSuspended(<PlatformThemeSubscriptions />)}
+            </ProtectedRoute>
+          )}
+        /><Route
           path="/admin/users"
           element={(
             <ProtectedRoute roles={ADMIN_PANEL_ROLES} permission={PERMISSIONS.ADMIN_USERS}>
@@ -351,6 +370,7 @@ const AnimatedAppRoutes = () => {
             </ProtectedRoute>
           )}
         />
+        <Route path="/admin/referrals" element={<Navigate to="/admin" replace />} />
         <Route
           path="/admin/referrals"
           element={(

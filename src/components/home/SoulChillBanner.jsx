@@ -3,17 +3,12 @@ import { Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import soulChillBanner from '../../assets/soulchill-home-banner.webp';
-import referralBanner from '../../assets/slide-3.webp';
-import { REFERRALS_ENABLED } from '../../config/featureFlags';
 
 const SoulChillBanner = ({ to = '/auth?mode=login', onClick }) => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [direction, setDirection] = useState(1);
   const slides = [
     { id: 'soulchill', image: soulChillBanner, alt: 'SoulChill - تجارب موسيقية بلا حدود' },
-    ...(REFERRALS_ENABLED
-      ? [{ id: 'referral', image: referralBanner, alt: 'رابط الإحالة — اكسب واسحب', to: '/referral' }]
-      : []),
   ];
   const sharedClassName = 'group block overflow-hidden rounded-[1.35rem] border border-[color:rgb(var(--color-border-rgb)/0.64)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.98),rgb(var(--color-primary-rgb)/0.06))] shadow-[var(--shadow-subtle)] transition-[border-color,box-shadow] duration-300 ease-out hover:border-[color:rgb(var(--color-primary-rgb)/0.24)] hover:shadow-[0_18px_48px_-36px_rgb(var(--color-primary-rgb)/0.54)] sm:rounded-[1.65rem]';
   const slide = slides[activeSlide];

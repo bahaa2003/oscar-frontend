@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../ui/Button';
+import { useTheme } from '../../context/ThemeContext';
 
 const CategoryCard = ({
   category,
@@ -9,6 +10,10 @@ const CategoryCard = ({
   onSelect,
   variant = 'neon',
 }) => {
+  const { publishedPlatformTheme, theme } = useTheme();
+  const categoryNeon = publishedPlatformTheme?.modes?.[theme]?.neon;
+  const effect = categoryNeon?.categoryCards?.[String(category?.id)] || categoryNeon?.categories;
+  const neonStyle = effect?.enabled === true ? { '--platform-neon-color': effect.color, '--platform-neon-speed': `${effect.speed}s` } : undefined;
   const isPlain = variant === 'plain';
 
   if (isPlain) {
@@ -56,9 +61,10 @@ const CategoryCard = ({
       onClick={() => onSelect(category.id)}
       className={cn(
         'storefront-category-card storefront-category-card--neon group relative flex h-full flex-col overflow-visible rounded-[1.9rem] border border-transparent bg-transparent text-start shadow-none transition-all hover:-translate-y-0.5 hover:scale-[1.002]',
-        active ? 'border-transparent bg-transparent' : 'border-transparent bg-transparent'
+        active ? 'border-transparent bg-transparent' : 'border-transparent bg-transparent',
+        effect?.enabled === true && 'platform-neon-border'
       )}
-      style={{ animation: 'page-fade-in 280ms ease-out both', animationDelay: `${Math.min(index * 35, 210)}ms` }}
+      style={{ ...(neonStyle || {}), animation: 'page-fade-in 280ms ease-out both', animationDelay: `${Math.min(index * 35, 210)}ms` }}
     >
       <div className="flex w-full justify-center">
         <div className="relative inline-block max-w-full overflow-hidden rounded-[1.35rem] p-px shadow-[0_0_12px_rgb(var(--color-primary-rgb)/0.14)]">

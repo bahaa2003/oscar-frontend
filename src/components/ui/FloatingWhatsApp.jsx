@@ -4,6 +4,7 @@ import { Headphones, Phone, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
+import useSystemStore from '../../store/useSystemStore';
 import { isAdminRole } from '../../utils/authRoles';
 import { buildWhatsAppLink, getAdminWhatsAppNumber } from '../../utils/whatsapp';
 import oscarAssistantIcon from '../../assets/ChatGPT_Image_31_مايو_2026__08_01_23_م-removebg-preview.png';
@@ -38,12 +39,15 @@ const FloatingWhatsApp = () => {
   const { i18n } = useTranslation();
   const location = useLocation();
   const { user } = useAuthStore();
+  const { paymentSettings, loadPaymentSettings } = useSystemStore();
   const reduceMotion = useReducedMotion();
   const widgetRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const normalizedRole = String(user?.role || '').trim().toLowerCase();
   const canUseCustomerSupport = normalizedRole === 'customer' || isAdminRole(normalizedRole);
   const shouldShowWidget = canUseCustomerSupport && isUserSupportRoute(location.pathname);
+
+  useEffect(() => { void loadPaymentSettings({ force: true }).catch(() => {}); }, [loadPaymentSettings]);
 
   useEffect(() => {
     setIsOpen(false);
@@ -74,7 +78,7 @@ const FloatingWhatsApp = () => {
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar')
     .toLowerCase()
     .startsWith('ar');
-  const supportNumber = getAdminWhatsAppNumber();
+  const supportNumber = paymentSettings?.supportContacts?.support || paymentSettings?.supportContacts?.owner || getAdminWhatsAppNumber();
   const message = isArabic
     ? 'مرحباً، أحتاج مساعدة من فريق OSCAR STORE'
     : 'Hello, I need help from the OSCAR STORE team';

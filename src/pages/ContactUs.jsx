@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Headphones, MessageCircle } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { getAdminWhatsAppNumber } from '../utils/whatsapp';
+import useSystemStore from '../store/useSystemStore';
 
 const WhatsAppIcon = ({ className = 'h-5 w-5' }) => (
   <svg
@@ -16,8 +18,10 @@ const WhatsAppIcon = ({ className = 'h-5 w-5' }) => (
 
 const ContactUs = () => {
   const { dir } = useLanguage();
+  const { paymentSettings, loadPaymentSettings } = useSystemStore();
+  useEffect(() => { void loadPaymentSettings({ force: true }).catch(() => {}); }, [loadPaymentSettings]);
   const isRTL = dir === 'rtl';
-  const whatsappPhoneNumber = getAdminWhatsAppNumber() || 'YOUR_PHONE_NUMBER';
+  const whatsappPhoneNumber = paymentSettings?.supportContacts?.support || paymentSettings?.supportContacts?.owner || getAdminWhatsAppNumber();
   const whatsappHref = `https://wa.me/${whatsappPhoneNumber}`;
 
   const text = isRTL

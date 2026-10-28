@@ -1,32 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { isSafeThemeMediaPath } from '../../theme/platformTheme';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const HeroSlider = ({ slides }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const { i18n } = useTranslation();
-  const hasMultipleSlides = (slides?.length || 0) > 1;
+  const { publishedPlatformTheme, theme } = useTheme();
+  const visibleSlides = (slides || []).map((slide, index) => {
+    const replacement = publishedPlatformTheme?.brand?.slides?.[index];
+    return isSafeThemeMediaPath(replacement) ? { ...slide, image: resolveImageUrl(replacement) } : slide;
+  });
+  const hasMultipleSlides = visibleSlides.length > 1;
   const isArabic = (i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const verseText = isArabic
     ? 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ  ﴿ وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا (2) وَيَرْزُقْهُ مِنْ حَيْثُ لَا يَحْتَسِبُ (3) ﴾  صَدَقَ اللَّهُ الْعَظِيمُ'
     : 'In the name of Allah, the Most Gracious, the Most Merciful. Whoever fears Allah, He will make for him a way out and provide for him from where he does not expect.';
 
+  const marqueeText = isArabic ? publishedPlatformTheme?.brand?.marqueeTextArabic : '';
+
   useEffect(() => {
     if (!hasMultipleSlides) return undefined;
 
     const timer = window.setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % visibleSlides.length);
     }, 6200);
 
     return () => window.clearInterval(timer);
-  }, [hasMultipleSlides, slides]);
+  }, [hasMultipleSlides, visibleSlides.length]);
 
-  if (!slides?.length) return null;
+  if (!visibleSlides.length) return null;
 
-  const safeCurrentSlide = currentSlide >= slides.length ? 0 : currentSlide;
-  const slide = slides[safeCurrentSlide];
-  const goToPrevious = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  const goToNext = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
+  const safeCurrentSlide = currentSlide >= visibleSlides.length ? 0 : currentSlide;
+  const slide = visibleSlides[safeCurrentSlide];
+  const goToPrevious = () => setCurrentSlide((prev) => (prev - 1 + visibleSlides.length) % visibleSlides.length);
+  const goToNext = () => setCurrentSlide((prev) => (prev + 1) % visibleSlides.length);
   const SlideFrame = slide.href ? 'a' : 'div';
   const slideFrameProps = slide.href
     ? {
@@ -39,7 +49,7 @@ const HeroSlider = ({ slides }) => {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-1.5 px-0 sm:space-y-2 sm:px-2">
-      <section className="group relative overflow-hidden rounded-[1.1rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-card-rgb)/0.72)] shadow-[0_22px_70px_-42px_rgb(var(--color-primary-rgb)/0.82)] sm:rounded-[1.55rem]">
+      <section data-platform-neon={publishedPlatformTheme?.modes?.[theme]?.neon?.hero?.enabled ? 'true' : undefined} className="group relative overflow-hidden rounded-[1.1rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-card-rgb)/0.72)] shadow-[0_22px_70px_-42px_rgb(var(--color-primary-rgb)/0.82)] sm:rounded-[1.55rem]">
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.08),transparent_22%,transparent_78%,rgba(255,255,255,0.08))]" />
         <div className="pointer-events-none absolute inset-x-8 bottom-0 z-10 h-px bg-[linear-gradient(90deg,transparent,rgb(var(--color-primary-rgb)/0.65),transparent)]" />
         <div className="relative aspect-[3/1] min-h-[9.5rem] sm:min-h-[14rem] lg:min-h-[18rem]">
@@ -87,7 +97,7 @@ const HeroSlider = ({ slides }) => {
         <div className="marquee-wrap" dir={isArabic ? 'rtl' : 'ltr'}>
           <div className="marquee-track-smooth">
             <span className="marquee-chunk text-[11px] font-semibold tracking-[0.02em] text-[var(--color-text)] sm:text-[12px]">
-              {verseText}
+              {marqueeText || verseText}
             </span>
           </div>
         </div>

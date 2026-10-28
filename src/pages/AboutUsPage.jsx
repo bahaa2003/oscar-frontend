@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, LogIn, Menu, MessageCircle, ShieldCheck, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
+import useSystemStore from '../store/useSystemStore';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import BrandMark from '../components/layout/BrandMark';
 import HeaderBrand from '../components/layout/HeaderBrand';
@@ -34,7 +35,7 @@ const AboutUsPage = () => {
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
 
   const whatsappLink = useMemo(() => buildWhatsAppLink({
-    number: getAdminWhatsAppNumber(),
+    number: paymentSettings?.supportContacts?.owner || getAdminWhatsAppNumber(),
     message: isArabic
       ? 'مرحبا، أريد التواصل مع خدمة العملاء بخصوص شكوى.'
       : 'Hello, I want to contact customer support about a complaint.',

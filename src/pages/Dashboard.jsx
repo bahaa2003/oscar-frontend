@@ -16,12 +16,17 @@ import {
   getStorefrontLanguage,
 } from '../utils/storefront';
 import { isBackofficeRole } from '../utils/authRoles';
+import { useTheme } from '../context/ThemeContext';
+import { isSafeThemeMediaPath } from '../theme/platformTheme';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 const Dashboard = () => {
   const { user, refreshProfile } = useAuthStore();
   const { categories, products, loadProducts } = useMediaStore();
   const groupsLastLoadedAt = useGroupStore((state) => state.groupsLastLoadedAt);
   const { i18n } = useTranslation();
+  const { publishedPlatformTheme } = useTheme();
+  const targetBanner = publishedPlatformTheme?.brand?.targetBannerPath;
   const navigate = useNavigate();
   const language = getStorefrontLanguage(i18n);
   const isTwoFactorEnabled = Boolean(user?.twoFactorEnabled ?? user?.isTwoFactorEnabled);
@@ -127,7 +132,7 @@ const Dashboard = () => {
             className="group mx-auto flex w-full items-center gap-2.5 rounded-[1rem] border border-[color:rgb(var(--color-primary-rgb)/0.18)] bg-[color:rgb(var(--color-primary-rgb)/0.06)] px-3 py-2.5 text-start transition-all hover:border-[color:rgb(var(--color-primary-rgb)/0.3)] hover:bg-[color:rgb(var(--color-primary-rgb)/0.09)]"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-[color:rgb(var(--color-primary-rgb)/0.12)] text-[var(--color-primary)]">
-              <Target className="h-5 w-5" />
+              {isSafeThemeMediaPath(targetBanner) ? <img src={resolveImageUrl(targetBanner)} alt="OSCAR Target" className="h-full w-full object-cover" /> : <Target className="h-5 w-5" />}
             </span>
 
             <span className="min-w-0 flex-1">

@@ -10,6 +10,7 @@ import HeaderBrand from './HeaderBrand';
 import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 import { getDefaultRouteForRole, isAdminRole, isSupervisorRole } from '../../utils/authRoles';
 import { cn } from '../ui/Button';
+import { useTheme } from '../../context/ThemeContext';
 
 const parseHeaderWalletNumber = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -60,6 +61,8 @@ const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { user } = useAuthStore();
+  const { publishedPlatformTheme } = useTheme();
+  const headerTheme = publishedPlatformTheme?.chrome?.header;
   const { notifications, unreadCount, isLoading, loadNotifications, loadUnreadCount, markAllAsRead, clearNotifications } = useNotificationStore();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);
@@ -245,9 +248,10 @@ const Header = ({ toggleSidebar }) => {
     <header dir={isRTL ? 'rtl' : 'ltr'} className="w-full max-w-full">
       <div className={cn(
         'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[22px] border px-2.5 py-1.5 backdrop-blur-[22px] sm:rounded-[28px] sm:px-5 sm:py-1.5',
+        headerTheme && 'rounded-none py-0',
         isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
-      )}>
-        <div dir="ltr" className="grid min-h-[3.05rem] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:min-h-[3.25rem] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
+      )} data-header-template={headerTheme?.template || 'bar'} style={headerTheme ? { boxSizing: 'border-box', background: headerTheme.background, color: headerTheme.foreground, height: headerTheme.height + 'px', width: String(headerTheme.width) + '%', marginInline: 'auto', borderRadius: headerTheme.radius + 'px', borderColor: headerTheme.accent } : undefined}>
+        <div dir="ltr" className="grid min-h-[3.05rem] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:min-h-[3.25rem] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5" style={headerTheme ? { height: '100%', minHeight: 0 } : undefined}>
           <div className="col-start-2 row-start-1 min-w-0 justify-self-center">
             <button
               type="button"

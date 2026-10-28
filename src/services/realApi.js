@@ -118,6 +118,8 @@ const normalizePaymentSettingsResponse = (settings) => {
       .filter((item) => item.countryCode),
     instructions: String(source?.instructions || '').trim(),
     whatsappNumber: String(source?.whatsappNumber || '').trim(),
+    supportContacts: source?.supportContacts && typeof source.supportContacts === 'object' ? source.supportContacts : null,
+    adminNotificationWhatsApp: String(source?.adminNotificationWhatsApp || '').trim(),
     paymentGroups: normalizePaymentGroups(normalizeSettingArray(source?.paymentGroups), { fallbackToDefault: false }),
   };
 };
@@ -1921,6 +1923,31 @@ const normalizeReferralListResult = (data = {}) => ({
 // ═════════════════════════════════════════════════════════════════════════════
 
 const realApi = {
+  platformTheme: {
+    getPublished: async () => unwrap(await http.get('/theme/published')),
+    getSettings: async () => unwrap(await http.get('/admin/theme/settings')),
+    getPresets: async () => unwrap(await http.get('/admin/theme/presets')),
+    validate: async (configuration) => unwrap(await http.post('/admin/theme/preview/validate', configuration)),
+    saveDraft: async (configuration) => unwrap(await http.post('/admin/theme/draft', configuration)),
+    resetDraft: async () => unwrap(await http.post('/admin/theme/draft/reset')),
+    publish: async (configuration) => unwrap(await http.post('/admin/theme/publish', configuration)),
+    restore: async (version) => unwrap(await http.post('/admin/theme/restore', { version })),
+    getHistory: async (page = 1) => unwrap(await http.get('/admin/theme/history', { params: { page } })),
+    getSubscription: async () => unwrap(await http.get('/admin/theme/subscription')),
+    getPayments: async () => unwrap(await http.get('/admin/theme/subscription/payment-status')),
+    getReviewQueue: async () => unwrap(await http.get('/admin/theme/subscription/review-queue')),
+    checkout: async () => unwrap(await http.post('/admin/theme/subscription/checkout')),
+    createManualOrder: async (network, planId = 'THEME_PRO') => unwrap(await http.post('/admin/theme/subscription/manual-order', { network, planId })),
+    confirmManualOrder: async (reference, chainTransactionId) => unwrap(await http.post('/admin/theme/subscription/manual-order/confirm', { reference, chainTransactionId })),
+    reissueManualCode: async (reference) => unwrap(await http.post('/admin/theme/subscription/manual-order/reissue-code', { reference })),
+    redeemCode: async (reference, code) => unwrap(await http.post('/admin/theme/subscription/redeem', { reference, code })),
+    uploadMedia: async (file) => {
+      const form = new FormData();
+      form.append('image', file);
+      return unwrap(await http.post('/admin/theme/media/upload', form));
+    },
+  },
+
 
   whatsapp: {
     getStatus: async () => {
@@ -3962,6 +3989,8 @@ const realApi = {
           instructions: find('paymentInstructions'),
           whatsappNumber: find('whatsappNumber'),
           paymentGroups: find('paymentGroups'),
+          supportContacts: find('supportContacts'),
+          adminNotificationWhatsApp: find('adminNotificationWhatsApp'),
         });
         return normalized;
       } catch (error) {
@@ -4018,12 +4047,16 @@ const realApi = {
         ...(payload?.paymentGroups !== undefined ? {
           paymentGroups: serializePaymentGroupsForApi(payload.paymentGroups),
         } : {}),
+        ...(payload?.supportContacts !== undefined ? { supportContacts: payload.supportContacts } : {}),
+        ...(payload?.adminNotificationWhatsApp !== undefined ? { adminNotificationWhatsApp: String(payload.adminNotificationWhatsApp || '').trim() } : {}),
       };
       const keyMap = {
         countryAccounts: 'paymentCountryAccounts',
         instructions: 'paymentInstructions',
         whatsappNumber: 'whatsappNumber',
         paymentGroups: 'paymentGroups',
+        supportContacts: 'supportContacts',
+        adminNotificationWhatsApp: 'adminNotificationWhatsApp',
       };
       const updates = Object.entries(keyMap)
         .filter(([feKey]) => normalizedPayload[feKey] !== undefined)
@@ -4040,6 +4073,8 @@ const realApi = {
         instructions: find('paymentInstructions'),
         whatsappNumber: find('whatsappNumber'),
         paymentGroups: find('paymentGroups'),
+        supportContacts: find('supportContacts'),
+        adminNotificationWhatsApp: find('adminNotificationWhatsApp'),
       });
     },
 

@@ -3,8 +3,10 @@ import { ArrowLeft, ArrowRight, ClipboardList } from 'lucide-react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import PlatformBottomNav from './PlatformBottomNav';
 import AmbientBackground from './AmbientBackground';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import BackToTopButton from '../ui/BackToTopButton';
 import { registerVisitedPath } from '../../utils/navigation';
 import oscarLogo from '../../assets/ms-removebg-preview.webp';
@@ -41,6 +43,9 @@ const Layout = ({ children = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { dir, language } = useLanguage();
+  const { publishedPlatformTheme } = useTheme();
+  const topHeaderTemplate = publishedPlatformTheme?.chrome?.header?.template || 'floating';
+  const topHeaderHeight = publishedPlatformTheme?.chrome?.header?.height || 64;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -107,14 +112,14 @@ const Layout = ({ children = null }) => {
         <div
           className="fixed z-40 max-w-full transition-all duration-300"
           style={{
-            top: isMobile ? 'max(0.75rem, env(safe-area-inset-top))' : '1rem',
+            top: topHeaderTemplate === 'bar' ? 0 : (isMobile ? 'max(0.75rem, env(safe-area-inset-top))' : '1rem'),
             [dir === 'rtl' ? 'right' : 'left']: isMobile ? '12px' : shellOffset,
             [dir === 'rtl' ? 'left' : 'right']: isMobile ? '12px' : '16px',
           }}
         >
           <Header toggleSidebar={() => setIsSidebarOpen((current) => !current)} />
         </div>
-        <div className="h-[4.9rem] sm:h-[6.5rem]" aria-hidden="true" />
+        <div style={{ height: `calc(${topHeaderHeight}px + ${topHeaderTemplate === 'bar' ? '0px' : '1rem'})`, flex: '0 0 auto' }} aria-hidden="true" />
 
         {!isHomePage && (
           <div className="mt-4 w-full px-4 md:px-6 lg:px-8">
@@ -150,6 +155,7 @@ const Layout = ({ children = null }) => {
             {children || <Outlet />}
           </div>
         </main>
+        <PlatformBottomNav />
         <SiteCopyrightFooter isArabic={language === 'ar' || dir === 'rtl'} />
       </div>
       <BackToTopButton />

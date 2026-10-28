@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Building2,
-  BadgeCheck,
   ChevronDown,
   ChevronLeft,
   Check,
@@ -15,14 +14,13 @@ import {
   MessageCircle,
   MonitorCog,
   Package,
+  Palette,
   Settings,
-  Share2,
   ShieldCheck,
   ShoppingBag,
   Target,
   User,
   UserCog,
-  UserRoundPlus,
   Users,
   Wallet,
   X
@@ -30,7 +28,6 @@ import {
 import ConfirmDialog from '../account/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
-import useNotificationStore from '../../store/useNotificationStore';
 import { cn } from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
@@ -39,7 +36,7 @@ import HeaderBrand from './HeaderBrand';
 import { SUPERVISOR_ROLES, getDefaultRouteForRole, hasRequiredRole } from '../../utils/authRoles';
 import { PERMISSIONS, hasPermission } from '../../utils/permissions';
 import { resolveUserAvatar } from '../../utils/avatar';
-import { REFERRALS_ENABLED } from '../../config/featureFlags';
+import { useTheme } from '../../context/ThemeContext';
 
 const ADMIN_NAV_ROLES = ['admin', 'super_admin', ...SUPERVISOR_ROLES];
 
@@ -90,6 +87,9 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState(false);
   const { user, logout } = useAuthStore();
+  const { publishedPlatformTheme } = useTheme();
+  const sidebarTemplate = publishedPlatformTheme?.brand?.sidebarTemplate || 'default';
+  const sidebarMetrics = publishedPlatformTheme?.brand?.sidebarMetrics || { width: 270, height: 100, radius: 28 };
   const location = useLocation();
   const navigate = useNavigate();
   const { dir } = useLanguage();
@@ -100,7 +100,9 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const isExpanded = isPinnedExpanded || isPreviewMode;
   const showExpandedContent = isPinnedExpanded;
   const userId = String(user?.id || user?._id || user?.userId || '').trim();
-  const sidebarWidth = isMobile ? 'min(72vw, 270px)' : isExpanded ? '270px' : '74px';
+  const sidebarWidth = isMobile
+    ? `min(${sidebarMetrics.width}px, calc(100vw - 2rem))`
+    : isExpanded ? `${sidebarMetrics.width}px` : '74px';
   const sidebarTransform = isMobile && !isOpen
     ? `translate3d(${dir === 'rtl' ? 'calc(100% + 2rem)' : 'calc(-100% - 2rem)'}, 0, 0)`
     : 'translate3d(0, 0, 0)';
@@ -202,7 +204,6 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
     },
     { icon: User, label: t('sidebar.myAccount', { defaultValue: dir === 'rtl' ? 'حسابي' : 'My Account' }), path: '/account', roles: ['admin', 'customer', ...SUPERVISOR_ROLES] },
     { icon: ShieldCheck, label: t('sidebar.accountProtection', { defaultValue: dir === 'rtl' ? 'حماية الحساب' : 'Account Security' }), path: '/account-security', roles: ['admin', 'customer', ...SUPERVISOR_ROLES] },
-    { icon: UserRoundPlus, label: dir === 'rtl' ? 'الوكيل الفرعي والإحالة' : 'Sub-agent & Referral', path: '/referral', roles: ['customer'], enabled: REFERRALS_ENABLED },
     { icon: Wallet, label: t('sidebar.wallet'), path: '/wallet', roles: ['customer'] },
     {
       icon: ShoppingBag,
@@ -212,11 +213,11 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
     },
     { icon: Target, label: 'بيع التارجت', path: '/buy-target', roles: ['customer'] },
     { icon: Users, label: t('sidebar.users'), path: '/admin/users', roles: ADMIN_NAV_ROLES, permission: PERMISSIONS.ADMIN_USERS },
-    { icon: UserRoundPlus, label: dir === 'rtl' ? 'الوكلاء الفرعيون' : 'Sub-agents', path: '/admin/referrals', roles: ADMIN_NAV_ROLES, enabled: REFERRALS_ENABLED },
     { icon: UserCog, label: t('sidebar.supervisors'), path: '/admin/supervisors', roles: ['admin'] },
     { icon: MonitorCog, label: 'مراقبة المشرفين', path: '/admin/supervisor-monitoring', roles: ['admin'] },
     { icon: Users, label: t('sidebar.groupsManager'), path: '/admin/groups', roles: ADMIN_NAV_ROLES, permission: PERMISSIONS.ADMIN_GROUPS },
     { icon: Package, label: t('sidebar.productsManager'), path: '/admin/products', roles: ADMIN_NAV_ROLES, permission: PERMISSIONS.ADMIN_PRODUCTS },
+    { icon: Palette, label: dir === 'rtl' ? 'مظهر المنصة' : 'Platform appearance', path: '/admin/themes', roles: ['admin'] },
     {
       icon: ShoppingBag,
       label: t('sidebar.ordersManager', { defaultValue: dir === 'rtl' ? 'إدارة الطلبات' : 'Orders Manager' }),
@@ -272,44 +273,11 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   }, [dir, filteredNavItems, t]);
   const showWalletCard = String(user?.role || '').toLowerCase() === 'customer' && showExpandedContent;
   const isAdmin = String(user?.role || '').toLowerCase() === 'admin';
-  const addNotification = useNotificationStore((state) => state.addNotification);
-  const [isSubAgent, setIsSubAgent] = useState(false);
-  useEffect(() => {
-    const refreshSubAgentStatus = () => {
-      try {
-        const requests = JSON.parse(window.localStorage.getItem('oscar_sub_agent_requests')) || [];
-        const approved = requests.some((request) => String(request.email || '').toLowerCase() === String(user?.email || '').toLowerCase() && request.status === 'approved');
-        setIsSubAgent(approved);
-        if (approved && String(user?.role || '').toLowerCase() === 'customer' && user?.email) {
-          const notificationKey = `kanz_coins_sub_agent_congratulated_v2_${String(user.email).toLowerCase()}`;
-          if (!window.localStorage.getItem(notificationKey)) {
-            addNotification({
-              title: dir === 'rtl' ? 'مبروك، أصبحت وكيلًا فرعيًا' : 'Congratulations, you are now a sub-agent',
-              message: dir === 'rtl' ? 'تم قبول طلبك وتوثيق حسابك كوكيل فرعي في Kanz Coins.' : 'Your request was approved and your Kanz Coins sub-agent account is now verified.',
-              type: 'success',
-              targetUrl: '/referral',
-              sectionName: dir === 'rtl' ? 'الوكيل الفرعي' : 'Sub-agent',
-            });
-            window.localStorage.setItem(notificationKey, '1');
-          }
-        }
-      } catch { setIsSubAgent(false); }
-    };
-    refreshSubAgentStatus();
-    window.addEventListener('storage', refreshSubAgentStatus);
-    window.addEventListener('sub-agent-status-updated', refreshSubAgentStatus);
-    return () => {
-      window.removeEventListener('storage', refreshSubAgentStatus);
-      window.removeEventListener('sub-agent-status-updated', refreshSubAgentStatus);
-    };
-  }, [addNotification, dir, user?.email, user?.role]);
   const userDisplayName = user?.name || user?.email || (dir === 'rtl' ? 'حسابي' : 'My Account');
   const userAvatar = resolveUserAvatar(user, userDisplayName);
   const userRoleLabel = isAdmin
     ? (dir === 'rtl' ? 'مدير المنصة' : 'Platform Admin')
-    : isSubAgent
-      ? (dir === 'rtl' ? 'وكيل فرعي' : 'Sub-agent')
-      : (dir === 'rtl' ? 'عضو المتجر' : 'Store Member');
+    : (dir === 'rtl' ? 'عضو المتجر' : 'Store Member');
 
   const renderNavItem = (item) => (
     item.isExternal ? (
@@ -369,6 +337,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         data-preview={isPreviewMode ? 'true' : 'false'}
         style={{
           width: sidebarWidth,
+          height: `calc(${sidebarMetrics.height}vh - 4rem)`,
           transform: sidebarTransform,
           contain: 'layout paint style',
         }}
@@ -381,9 +350,9 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         )}
       >
         <div className={cn(
-          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col rounded-[32px] border',
+          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col border',
           isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
-        )}>
+        )} data-sidebar-template={sidebarTemplate} style={{ borderRadius: `${sidebarMetrics.radius}px` }}>
           <div className="relative z-10 px-4 pb-4 pt-5">
             <div className={cn('relative flex items-center', isExpanded ? 'justify-center' : 'justify-center')}>
               <button
@@ -479,7 +448,6 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                       <div className="truncate text-sm font-black leading-tight text-[var(--color-text)]">{userDisplayName}</div>
                       <div className="mt-1 flex items-center gap-1 text-xs font-black text-[var(--color-primary-hover)]">
                         <span className="truncate">{userRoleLabel}</span>
-                        {isSubAgent ? <BadgeCheck className="h-4 w-4 shrink-0 fill-emerald-500 text-white drop-shadow-[0_2px_5px_rgb(16_185_129/0.45)]" aria-label={dir === 'rtl' ? 'حساب وكيل فرعي موثق' : 'Verified sub-agent'} /> : null}
                       </div>
                     </div>
 

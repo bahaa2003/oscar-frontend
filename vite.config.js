@@ -50,6 +50,9 @@ export default defineConfig(({ mode }) => {
     server: {
       hmr: process.env.DISABLE_HMR !== 'true',
       port: 5173,
+      proxy: mode === 'development' ? {
+        '/api': { target: env.API_PROXY_TARGET || 'http://localhost:5000', changeOrigin: true },
+      } : undefined,
     },
   };
 });

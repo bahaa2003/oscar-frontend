@@ -48,6 +48,8 @@ const createInitialPaymentSettings = () => ({
   instructions: '',
   whatsappNumber: isRealProvider ? '' : getDefaultWhatsAppNumber(),
   paymentGroups: isRealProvider ? [] : createDefaultPaymentGroups(),
+  supportContacts: null,
+  adminNotificationWhatsApp: '',
 });
 
 const normalizeStorePaymentSettings = (settings = {}) => ({
@@ -55,6 +57,8 @@ const normalizeStorePaymentSettings = (settings = {}) => ({
   instructions: settings?.instructions || '',
   whatsappNumber: settings?.whatsappNumber || (isRealProvider ? '' : getDefaultWhatsAppNumber()),
   paymentGroups: normalizePaymentGroups(settings?.paymentGroups, { fallbackToDefault: !isRealProvider }),
+  supportContacts: settings?.supportContacts && typeof settings.supportContacts === 'object' ? settings.supportContacts : null,
+  adminNotificationWhatsApp: String(settings?.adminNotificationWhatsApp || '').trim(),
 });
 
 const notifyPaymentSettingsChanged = () => {

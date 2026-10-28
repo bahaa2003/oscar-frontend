@@ -9,7 +9,6 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Link2,
   Lock,
   Mail,
   User,
@@ -64,40 +63,8 @@ const StepTwo = ({ children }) => (
   </motion.div>
 );
 
+const GOOGLE_PROFILE_SETUP_STORAGE_PREFIX = 'auth:google-profile-setup:v1:';
 const DEFAULT_GOOGLE_SETUP_COUNTRY = 'EG';
-const REFERRAL_CAPTURE_SESSION_KEY = 'auth:referral-code:v1';
-
-const normalizeInvitationCode = (value) => String(value || '').replace(/\s+/g, '').trim().toUpperCase();
-
-const readCapturedReferralCode = () => {
-  if (typeof window === 'undefined' || !window.sessionStorage) return '';
-  try {
-    const raw = window.sessionStorage.getItem(REFERRAL_CAPTURE_SESSION_KEY);
-    if (!raw) return '';
-    const parsed = JSON.parse(raw);
-    return normalizeInvitationCode(parsed?.code || parsed);
-  } catch {
-    return '';
-  }
-};
-
-const writeCapturedReferralCode = (code, source = 'manual') => {
-  const normalizedCode = normalizeInvitationCode(code);
-  if (!normalizedCode || typeof window === 'undefined' || !window.sessionStorage) return normalizedCode;
-  window.sessionStorage.setItem(REFERRAL_CAPTURE_SESSION_KEY, JSON.stringify({
-    code: normalizedCode,
-    source,
-    capturedAt: Date.now(),
-  }));
-  return normalizedCode;
-};
-
-const clearCapturedReferralCode = () => {
-  if (typeof window === 'undefined' || !window.sessionStorage) return;
-  window.sessionStorage.removeItem(REFERRAL_CAPTURE_SESSION_KEY);
-};
-
-const getUrlReferralCode = (search) => normalizeInvitationCode(new URLSearchParams(search).get('ref'));
 
 const getCountryDisplayName = (country, isArabic) => (
   isArabic
@@ -110,6 +77,30 @@ const getCountryCurrencyCodes = (country) => (
     .map((code) => String(code || '').trim().toUpperCase())
     .filter(Boolean)
 );
+
+const getGoogleSetupStorageKey = (userId) => (
+  `${GOOGLE_PROFILE_SETUP_STORAGE_PREFIX}${String(userId || '').trim()}`
+);
+
+const hasCompletedGoogleProfileSetup = (user) => {
+  if (!user?.id || typeof window === 'undefined') return false;
+
+  try {
+    return window.localStorage.getItem(getGoogleSetupStorageKey(user.id)) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const markGoogleProfileSetupComplete = (user) => {
+  if (!user?.id || typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(getGoogleSetupStorageKey(user.id), '1');
+  } catch {
+    // Best-effort marker only.
+  }
+};
 
 const isGoogleAccount = (user) => {
   const signupMethod = String(user?.signupMethod || '').trim().toLowerCase();
@@ -149,8 +140,6 @@ const Auth = () => {
   const [name, setName] = useState('');
   const [country, setCountry] = useState(DEFAULT_GOOGLE_SETUP_COUNTRY);
   const [currency, setCurrency] = useState('EGP');
-  const [invitationCode, setInvitationCode] = useState(() => getUrlReferralCode(location.search) || readCapturedReferralCode());
-  const [referralCodeLockedFromLink, setReferralCodeLockedFromLink] = useState(() => Boolean(getUrlReferralCode(location.search)));
   const [countries] = useState(COUNTRY_CATALOG);
   const [errors, setErrors] = useState({});
   const [forgotModalOpen, setForgotModalOpen] = useState(false);
@@ -163,23 +152,7 @@ const Auth = () => {
   const [isSavingGoogleSetup, setIsSavingGoogleSetup] = useState(false);
   const googleSetupBlockingRef = useRef(false);
   const isGoogleSetupMode = Boolean(googleSetupResult?.user);
-  const googleSetupReferralLocked = Boolean(googleSetupResult?.user?.profileCompletionReferral?.locked);
   const isArabic = dir === 'rtl';
-
-  useEffect(() => {
-    const codeFromLink = getUrlReferralCode(location.search);
-    if (codeFromLink) {
-      writeCapturedReferralCode(codeFromLink, 'url');
-      setInvitationCode(codeFromLink);
-      setReferralCodeLockedFromLink(true);
-      return;
-    }
-
-    const storedCode = readCapturedReferralCode();
-    if (storedCode && !invitationCode) {
-      setInvitationCode(storedCode);
-    }
-  }, [invitationCode, location.search]);
 
 const countryOptions = useMemo(() => {
     const source = countries.length ? countries : fallbackCountries;
@@ -249,7 +222,7 @@ const countryOptions = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const mode = String(params.get('mode') || '').toLowerCase();
 
-    if (mode === 'signup' || location.pathname === '/register') {
+    if (mode === 'signup') {
       setIsLogin(false);
       setRegisterStep(1);
       return;
@@ -259,7 +232,7 @@ const countryOptions = useMemo(() => {
       setIsLogin(true);
       setRegisterStep(1);
     }
-  }, [location.pathname, location.search]);
+  }, [location.search]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -293,8 +266,6 @@ const countryOptions = useMemo(() => {
   }, [availableCurrencyOptions, selectedCountryCurrencyCodes]);
 
   useEffect(() => {
-    if (location.search.includes('oauth_code=')) return;
-    if (location.search.includes('oauth_error=')) return;
     if (location.search.includes('token=')) return;
     if (location.search.includes('status=')) return;
     if (isGoogleSetupMode || googleSetupBlockingRef.current) return;
@@ -314,52 +285,15 @@ const countryOptions = useMemo(() => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (
-      GOOGLE_PROFILE_SETUP_ENABLED
-      && params.get('profile') === 'complete'
-      && isAuthenticated
-      && user
-      && shouldPromptGoogleProfileSetup(user)
-      && !isGoogleSetupMode
-    ) {
-      startGoogleProfileSetup({
-        ok: true,
-        user,
-        redirectTo: getDefaultRouteForRole(user?.role),
-        canAccessApp: false,
-      });
-    }
-  }, [isAuthenticated, isGoogleSetupMode, location.search, user]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const oauthCode = params.get('oauth_code');
-    const oauthError = params.get('oauth_error');
-    const legacyToken = params.get('token');
+    const token = params.get('token');
     const callbackStatus = normalizeAccountStatus(params.get('status'));
-    if ((!oauthCode && !oauthError && !legacyToken && !callbackStatus) || oauthHandledRef.current) return;
-
-    const cleanupOAuthUrl = () => {
-      if (typeof window === 'undefined') return;
-
-      const nextParams = new URLSearchParams(location.search);
-      ['oauth_code', 'oauth_error', 'token', 'status'].forEach((key) => nextParams.delete(key));
-      const nextSearch = nextParams.toString();
-      const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash || ''}`;
-      window.history.replaceState({}, document.title, nextUrl);
-    };
+    if ((!token && !callbackStatus) || oauthHandledRef.current) return;
 
     oauthHandledRef.current = true;
-    cleanupOAuthUrl();
 
     const handleGoogleCallback = async () => {
       googleSetupBlockingRef.current = true;
-      const result = await loginWithGoogle({
-        oauthCode,
-        oauthError,
-        legacyToken,
-        callbackStatus,
-      });
+      const result = await loginWithGoogle();
 
       if (
         GOOGLE_PROFILE_SETUP_ENABLED
@@ -500,21 +434,6 @@ const countryOptions = useMemo(() => {
     setCurrency(resolveDefaultCurrencyForCountry(normalizedCountryCode));
   };
 
-  const handleInvitationCodeChange = (event) => {
-    if (referralCodeLockedFromLink || googleSetupReferralLocked) return;
-    const nextCode = normalizeInvitationCode(event.target.value);
-    setInvitationCode(nextCode);
-    if (nextCode) {
-      writeCapturedReferralCode(nextCode, 'manual');
-    } else {
-      clearCapturedReferralCode();
-    }
-  };
-
-  const resolveReferralCodeForSubmit = () => (
-    normalizeInvitationCode(invitationCode) || readCapturedReferralCode()
-  );
-
   const getAuthTargetRoute = (result) => (
     result?.status === 'pending'
       ? getDefaultRouteForRole(result?.user?.role)
@@ -523,9 +442,14 @@ const countryOptions = useMemo(() => {
 
   const shouldPromptGoogleProfileSetup = (googleUser) => {
     if (!isGoogleAccount(googleUser) || !googleUser?.id) return false;
-    if (googleUser.profileCompletionRequired) return true;
-    const missing = Array.isArray(googleUser.missingProfileFields) ? googleUser.missingProfileFields : [];
-    return missing.length > 0;
+    if (hasCompletedGoogleProfileSetup(googleUser)) return false;
+
+    const userCountryCode = String(googleUser.country || '').trim().toUpperCase();
+    const userCurrencyCode = String(googleUser.currency || '').trim().toUpperCase();
+    const countryItem = countryOptions.find((item) => item.cca2 === userCountryCode);
+    const countryCurrencyCodes = getCountryCurrencyCodes(countryItem);
+
+    return !countryItem || !userCurrencyCode || !countryCurrencyCodes.includes(userCurrencyCode);
   };
 
   const startGoogleProfileSetup = (result) => {
@@ -538,10 +462,6 @@ const countryOptions = useMemo(() => {
     googleSetupBlockingRef.current = true;
     setCountry(setupCountryCode);
     setCurrency(setupCurrencyCode);
-    const lockedReferral = googleUser?.profileCompletionReferral?.locked
-      ? String(googleUser.profileCompletionReferral.code || '').trim().toUpperCase()
-      : '';
-    if (lockedReferral) setInvitationCode(lockedReferral);
     setGoogleSetupResult({
       ...result,
       user: googleUser,
@@ -570,8 +490,6 @@ const countryOptions = useMemo(() => {
 
     if (source === 'google') {
       googleSetupBlockingRef.current = false;
-      clearCapturedReferralCode();
-      setReferralCodeLockedFromLink(false);
     }
 
     if (result.redirectTo) {
@@ -640,17 +558,13 @@ const countryOptions = useMemo(() => {
     setIsSavingGoogleSetup(true);
     try {
       const countryName = getCountryDisplayName(selectedSetupCountry, isArabic);
-      const lockedReferral = googleSetupResult?.user?.profileCompletionReferral?.locked
-        ? String(googleSetupResult.user.profileCompletionReferral.code || '').trim().toUpperCase()
-        : '';
       const updatedUser = await completeGoogleProfileSetup({
         country,
         countryName,
         currency,
-        referrerCode: lockedReferral || resolveReferralCodeForSubmit(),
       });
-      clearCapturedReferralCode();
       const setupUser = updatedUser || googleSetupResult?.user;
+      markGoogleProfileSetupComplete(setupUser);
       setGoogleSetupResult(null);
       googleSetupBlockingRef.current = false;
       oauthHandledRef.current = false;
@@ -704,14 +618,8 @@ const countryOptions = useMemo(() => {
           password,
           country,
           currency,
-          referrerCode: resolveReferralCodeForSubmit() || undefined,
           signupMethod: 'email',
         });
-
-    if (!isLogin && result?.ok) {
-      clearCapturedReferralCode();
-      setReferralCodeLockedFromLink(false);
-    }
 
     if (isLogin && result?.requires2FA) {
       setTwoFactorChallenge(result);
@@ -751,9 +659,7 @@ const countryOptions = useMemo(() => {
 
   const handleGoogleAuth = async () => {
     googleSetupBlockingRef.current = true;
-    const referrerCode = resolveReferralCodeForSubmit();
-    if (referrerCode) writeCapturedReferralCode(referrerCode, referralCodeLockedFromLink ? 'url' : 'manual');
-    const result = await loginWithGoogle({ referrerCode: referrerCode || undefined });
+    const result = await loginWithGoogle();
     if (!result) {
       googleSetupBlockingRef.current = false;
       return;
@@ -913,23 +819,6 @@ const countryOptions = useMemo(() => {
                       {errors.currency && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.currency}</p>}
                     </div>
 
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
-                        {isArabic ? 'كود الدعوة (اختياري)' : 'Invitation code (optional)'}
-                      </label>
-                      <Input
-                        dir="ltr"
-                        value={invitationCode}
-                        onChange={handleInvitationCodeChange}
-                        readOnly={referralCodeLockedFromLink || googleSetupReferralLocked}
-                        placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
-                        icon={<Link2 className="h-4 w-4" />}
-                        className={cn(styles.authInput, invitationCode && 'border-cyan-400/35 bg-cyan-400/5')}
-                      />
-                      <p className="mt-1.5 text-[0.68rem] font-medium text-[var(--color-text-secondary)]">
-                        {isArabic ? 'اكتب الكود الذي حصلت عليه، أو اتركه فارغًا.' : 'Enter the code you received, or leave it empty.'}
-                      </p>
-                    </div>
                   </motion.div>
                 ) : isLogin && twoFactorChallenge ? (
                   <motion.div key="login-2fa" {...stepMotion} className={styles.verificationStep}>
@@ -1084,28 +973,6 @@ const countryOptions = useMemo(() => {
                       {errors.currency && <p className="mt-1.5 text-xs text-[var(--color-error)]">{errors.currency}</p>}
                     </div>
 
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]">
-                        {isArabic ? 'كود الدعوة (اختياري)' : 'Invitation code (optional)'}
-                      </label>
-                      <Input
-                        dir="ltr"
-                        value={invitationCode}
-                        onChange={handleInvitationCodeChange}
-                        readOnly={referralCodeLockedFromLink || googleSetupReferralLocked}
-                        disabled={isGoogleSetupMode && googleSetupReferralLocked}
-                        placeholder={isArabic ? 'اكتب كود الدعوة' : 'Enter invitation code'}
-                        icon={<Link2 className="h-4 w-4" />}
-                        className={cn(styles.authInput, invitationCode && 'border-cyan-400/35 bg-cyan-400/5')}
-                      />
-                      <p className="mt-1.5 text-[0.68rem] font-medium text-[var(--color-text-secondary)]">
-                        {isGoogleSetupMode && googleSetupReferralLocked
-                          ? (isArabic ? 'تم تأكيد كود الدعوة من Google ولا يمكن تغييره.' : 'This invitation was confirmed during Google sign-up and cannot be changed.')
-                          : invitationCode
-                          ? (isArabic ? 'سيتم ربط كود الدعوة بحسابك عند التسجيل.' : 'The invitation code will be linked to your account.')
-                          : (isArabic ? 'اكتب الكود الذي حصلت عليه، أو اتركه فارغًا.' : 'Enter the code you received, or leave it empty.')}
-                      </p>
-                    </div>
                   </StepTwo>
                 ) : null}
               </AnimatePresence>

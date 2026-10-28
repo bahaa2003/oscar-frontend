@@ -6,6 +6,9 @@ import Button from '../components/ui/Button';
 import useAuthStore from '../store/useAuthStore';
 import useTargetStore from '../store/useTargetStore';
 import useSystemStore from '../store/useSystemStore';
+import { useTheme } from '../context/ThemeContext';
+import { isSafeThemeMediaPath } from '../theme/platformTheme';
+import { resolveImageUrl } from '../utils/imageUrl';
 import { useToast } from '../components/ui/Toast';
 import { getActivePaymentMethods, isPaymentMethodAllowed } from '../utils/paymentSettings';
 
@@ -16,6 +19,8 @@ const BuyTarget = () => {
   const { user } = useAuthStore();
   const { products, loadApps, submitRequest } = useTargetStore();
   const { paymentSettings, loadPaymentSettings } = useSystemStore();
+  const { publishedPlatformTheme } = useTheme();
+  const targetBanner = publishedPlatformTheme?.brand?.targetBannerPath;
   const { addToast } = useToast();
 
   const refreshData = useCallback(() => (
@@ -78,6 +83,7 @@ const BuyTarget = () => {
 
   return (
     <div className="compact-ui mx-auto max-w-6xl space-y-3 text-[var(--color-text)]" dir="rtl">
+      {isSafeThemeMediaPath(targetBanner) && <img src={resolveImageUrl(targetBanner)} alt="OSCAR Target" className="max-h-56 w-full rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.7)] object-cover shadow-[var(--shadow-medium)]" />}
       <TargetForm products={products} paymentMethods={paymentMethods} onSubmit={handleSubmit} />
       <section className="rounded-2xl border border-[color:rgb(var(--color-primary-rgb)/0.16)] bg-[linear-gradient(135deg,rgb(var(--color-card-rgb)/0.92),rgb(var(--color-surface-rgb)/0.68))] p-3 shadow-[0_18px_48px_-42px_rgb(var(--color-primary-rgb)/0.32)]">
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">

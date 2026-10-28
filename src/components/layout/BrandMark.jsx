@@ -1,6 +1,11 @@
 import React from 'react';
 import { cn } from '../ui/Button';
 import brandIconImage from '../../assets/ms-removebg-preview.webp';
+import { useTheme } from '../../context/ThemeContext';
+import { isSafeThemeMediaPath } from '../../theme/platformTheme';
+import { resolveImageUrl } from '../../utils/imageUrl';
+
+const baseIconPixels = { xs: 48, sm: 56, md: 64, lg: 80 };
 
 const stylesBySize = {
   xs: {
@@ -38,14 +43,19 @@ const BrandMark = ({
   titleClassName,
   captionClassName,
 }) => {
+  const { publishedPlatformTheme } = useTheme();
   const styles = stylesBySize[size] || stylesBySize.md;
+  const customLogo = publishedPlatformTheme?.brand?.logoPath;
+  const logo = isSafeThemeMediaPath(customLogo) ? resolveImageUrl(customLogo) : brandIconImage;
+  const logoWidth = publishedPlatformTheme?.brand?.logoWidth;
+  const scaledSize = Number.isInteger(logoWidth) && logoWidth >= 80 && logoWidth <= 300 ? Math.round((baseIconPixels[size] || 64) * logoWidth / 144) : null;
   const isIconEnd = iconPosition === 'end';
 
   return (
     <div className={cn('flex items-center', isIconEnd && 'flex-row-reverse', styles.wrapper, className)}>
-      <div className={cn('relative overflow-hidden', styles.iconShell)}>
+      <div className={cn('relative shrink-0 overflow-hidden', styles.iconShell)} style={scaledSize ? { width: scaledSize, height: scaledSize } : undefined}>
         <img
-          src={brandIconImage}
+          src={logo}
           alt="OSCAR STORE"
           loading="eager"
           decoding="async"

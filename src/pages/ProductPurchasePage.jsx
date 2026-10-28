@@ -888,6 +888,7 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
       dir={dir}
     >
       <section className="purchase-phone purchase-phone--buy purchase-clean-card purchase-premium-modal" aria-label={purchaseProductName}>
+        <span className="purchase-neon-orbit-frame" aria-hidden="true" />
         <div className="purchase-modal-ambient" aria-hidden="true" />
 
         <header className="purchase-modal-header">

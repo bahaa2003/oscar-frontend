@@ -10,6 +10,7 @@ import {
 import { cn } from '../ui/Button';
 import BrandMark from './BrandMark';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
+import { useTheme } from '../../context/ThemeContext';
 
 const GoogleMark = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4.5 w-4.5 shrink-0">
@@ -22,6 +23,9 @@ const GoogleMark = () => (
 
 const PublicSidebar = ({ isOpen, onClose, onLogin, onHome, onAbout, onCreateAccount, onGoogleLogin, isBusy, isArabic }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const { publishedPlatformTheme } = useTheme();
+  const sidebarTemplate = publishedPlatformTheme?.brand?.sidebarTemplate || 'default';
+  const sidebarMetrics = publishedPlatformTheme?.brand?.sidebarMetrics || { width: 270, height: 100, radius: 28 };
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -62,14 +66,15 @@ const PublicSidebar = ({ isOpen, onClose, onLogin, onHome, onAbout, onCreateAcco
 
       <aside
         style={{
-          width: isMobile ? 'min(292px, calc(100vw - 1.5rem))' : 282,
-          transform: `translateX(${isOpen ? 0 : 332}px)`,
+          width: isMobile ? `min(${sidebarMetrics.width}px, calc(100vw - 1.5rem))` : sidebarMetrics.width,
+          height: `calc(${sidebarMetrics.height}vh - 2rem)`,
+          transform: `translateX(${isOpen ? 0 : 'calc(100% + 2rem)'})`,
         }}
         className="fixed right-3 top-3 z-50 block h-[calc(100vh-1.5rem)] overflow-hidden transition-[transform,width] duration-200 ease-out sm:right-4 sm:top-4 sm:h-[calc(100vh-2rem)] motion-reduce:transition-none"
       >
         <div className={cn(
-          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden rounded-[32px] border'
-        )}>
+          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden border'
+        )} data-sidebar-template={sidebarTemplate} style={{ borderRadius: `${sidebarMetrics.radius}px` }}>
           <div className="relative z-10 px-4 pb-4 pt-5">
             <div className="flex items-center justify-center gap-3">
               <button
