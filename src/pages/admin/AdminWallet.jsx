@@ -571,7 +571,7 @@ const AdminWallet = () => {
       );
     } catch (error) {
       addToast(
-        error?.message || (isArabic ? 'تعذر إضافة الرصيد للحساب الحالي.' : 'Unable to add balance to the current account.'),
+        error?.response?.data?.message || error?.message || (isArabic ? 'تعذر إضافة الرصيد للحساب الحالي.' : 'Unable to add balance to the current account.'),
         'error'
       );
     } finally {

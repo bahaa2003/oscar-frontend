@@ -624,6 +624,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(!previewOnly);
   const [busy, setBusy] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [error, setError] = useState('');
   const [partial, setPartial] = useState(false);
   useEffect(() => {
@@ -714,11 +715,21 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     || Object.keys(appearance.neon?.categoryCards || {}).length > 0)
     || draft.brand.logoPath || draft.brand.logoWidth !== 144 || draft.brand.slides.some(Boolean)
     || (draft.brand.marqueeTextArabic ?? DEFAULT_MARQUEE_AR) !== DEFAULT_MARQUEE_AR);
-  const run = async (action, success, keepDraft = false) => {
+  const run = async (action, success, keepDraft = false, { retries = 0 } = {}) => {
     if (previewOnly || !draft) return;
     setBusy(true);
     try {
-      const result = await action();
+      let result;
+      for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+          result = await action();
+          break;
+        } catch (cause) {
+          const retryable = !cause?.response || cause.response.status >= 500;
+          if (!retryable || attempt >= retries) throw cause;
+          await new Promise((resolve) => window.setTimeout(resolve, 650 * (attempt + 1)));
+        }
+      }
       if (result?.published) window.dispatchEvent(new CustomEvent('platform-theme-published', { detail: result.published }));
       await refresh(keepDraft);
       addToast(success, 'success');
@@ -728,11 +739,10 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       if (cause?.response?.status === 429) await refresh(true);
     } finally { setBusy(false); }
   };
-  const publishPreview = () => {
-    const confirmed = window.confirm(language === 'ar'
-      ? 'هل تريد نشر الإعدادات الظاهرة في المعاينة؟'
-      : 'Publish the exact theme currently shown in the preview?');
-    if (confirmed) return run(() => apiClient.platformTheme.publish(draft), t.published);
+  const publishPreview = () => setShowPublishConfirm(true);
+  const confirmPublish = () => {
+    setShowPublishConfirm(false);
+    return run(() => apiClient.platformTheme.publish(draft), t.published);
   };
   const upload = async (file, slot = null) => {
     if (!paid || previewOnly || !file) return;
@@ -934,7 +944,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
         </Section> : null}
         </>}
       </div>
-      {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true)}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button></div></div>}
+      {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true, { retries: 1 })}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button></div></div>}
       <div className="space-y-5">
         {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-surface)] p-3 text-sm"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), t.saved)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button></div>) : t.empty}</div></Section></div>}
         {!previewOnly && activePage === 'contacts' && <div id="theme-contacts" className="scroll-mt-20"><Section icon={MessageCircle} title={t.contactsPage}>
@@ -956,6 +966,20 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           </>}
         </Section></div>}
       </div>
+      {showPublishConfirm && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPublishConfirm(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="theme-publish-title" className="w-full max-w-md overflow-hidden rounded-3xl border border-amber-300/30 bg-[var(--color-card)] text-[var(--color-text)] shadow-[0_30px_100px_-24px_rgba(0,0,0,.75)]">
+          <div className="relative overflow-hidden bg-gradient-to-br from-amber-400/20 via-yellow-500/10 to-orange-500/20 px-6 py-6">
+            <div className="pointer-events-none absolute -end-10 -top-14 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl" />
+            <div className="relative mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-lg shadow-amber-500/20"><Sparkles className="h-7 w-7" /></div>
+            <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{language === 'ar' ? 'تأكيد نشر الثيم' : 'Confirm theme publishing'}</h2>
+            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{language === 'ar' ? 'هل أنت متأكد من رفع الإعدادات الظاهرة في المعاينة؟ ستظهر تغييرات الوضع الفاتح والغامق للزوار بعد النشر.' : 'Publish the exact settings shown in the preview? The light and dark appearance will be visible to visitors.'}</p>
+          </div>
+          <div className="flex flex-col-reverse gap-2 p-5 sm:flex-row sm:justify-center">
+            <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => setShowPublishConfirm(false)}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
+            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-black text-amber-950 shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60 sm:min-w-32" disabled={busy} onClick={confirmPublish}><Check className="h-4 w-4" />{busy ? (language === 'ar' ? 'جارٍ النشر…' : 'Publishing…') : (language === 'ar' ? 'نشر الآن' : 'Publish now')}</button>
+          </div>
+        </section>
+      </div>}
     </div>
   </main>;
 }

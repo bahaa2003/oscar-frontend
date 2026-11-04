@@ -42,6 +42,26 @@ const http = axios.create({
   // Hardcoding it breaks Multer file uploads.
 });
 
+const pendingWalletAdjustmentKeys = new Map();
+const getWalletAdjustmentRequest = (userId, type, amount, actorId = '') => {
+  const fingerprint = `${String(actorId || '').trim()}:${String(userId || '').trim()}:${type}:${Number(amount)}`;
+  const storageKey = `oscar:pending-wallet-adjustment:${encodeURIComponent(fingerprint)}`;
+  let key = pendingWalletAdjustmentKeys.get(storageKey) || '';
+  try { key ||= window.localStorage.getItem(storageKey) || ''; } catch { /* storage can be disabled */ }
+  if (!key) {
+    key = globalThis.crypto?.randomUUID?.() || `wallet-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    pendingWalletAdjustmentKeys.set(storageKey, key);
+    try { window.localStorage.setItem(storageKey, key); } catch { /* retain in memory for this page */ }
+  }
+  return {
+    key,
+    clear: () => {
+      pendingWalletAdjustmentKeys.delete(storageKey);
+      try { window.localStorage.removeItem(storageKey); } catch { /* no persistent storage */ }
+    },
+  };
+};
+
 // ─── Token helpers ───────────────────────────────────────────────────────────
 
 const AUTH_STORAGE_KEY = 'auth-storage';
@@ -2843,20 +2863,23 @@ const realApi = {
      * transaction and let useAdminStore handle the optimistic local state update.
      */
     addCoins: async (userId, amount, _actorContext) => {
-      if (amount >= 0) {
-        const res = await http.post(`/admin/wallets/${userId}/add`, {
-          amount: Math.abs(amount),
-          description: 'Admin balance top-up',
-          reason: 'Admin balance top-up',
-        });
+      const isCredit = Number(amount) >= 0;
+      const direction = isCredit ? 'credit' : 'debit';
+      const description = isCredit ? 'Admin balance top-up' : 'Admin balance deduction';
+      const request = getWalletAdjustmentRequest(userId, direction, Math.abs(Number(amount)), _actorContext?.id || _actorContext?._id);
+      try {
+        const res = await http.post(`/admin/wallets/${userId}/${isCredit ? 'add' : 'deduct'}`, {
+          amount: Math.abs(Number(amount)),
+          description,
+          reason: description,
+          idempotencyKey: request.key,
+        }, { headers: { 'Idempotency-Key': request.key } });
+        request.clear();
         return unwrap(res)?.transaction || unwrap(res);
+      } catch (error) {
+        // Keep the key on uncertain failures so a manual retry cannot credit twice.
+        throw error;
       }
-      const res = await http.post(`/admin/wallets/${userId}/deduct`, {
-        amount: Math.abs(amount),
-        description: 'Admin balance deduction',
-        reason: 'Admin balance deduction',
-      });
-      return unwrap(res)?.transaction || unwrap(res);
     },
 
     setBalance: async (userId, balance, _actorContext) => {

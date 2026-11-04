@@ -427,7 +427,7 @@ const AdminUserTransactions = () => {
       setAdjustAmount('');
     } catch (error) {
       await revalidateWalletState();
-      addToast(error?.message || 'تعذر زيادة الرصيد.', 'error');
+      addToast(error?.response?.data?.message || error?.message || 'تعذر زيادة الرصيد.', 'error');
     } finally {
       setIsBalanceUpdating(false);
     }
@@ -449,7 +449,7 @@ const AdminUserTransactions = () => {
       setAdjustAmount('');
     } catch (error) {
       await revalidateWalletState();
-      addToast(error?.message || 'تعذر خصم الرصيد.', 'error');
+      addToast(error?.response?.data?.message || error?.message || 'تعذر خصم الرصيد.', 'error');
     } finally {
       setIsBalanceUpdating(false);
     }

@@ -45,9 +45,16 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     if ((import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() !== 'real') return undefined;
     let active = true;
-    const refresh = () => apiClient.platformTheme.getPublished()
-      .then((result) => { if (active) setPublishedPlatformTheme(result?.published || result?.configuration || null); })
-      .catch(() => { if (active) setPublishedPlatformTheme(null); });
+    const refresh = (event) => {
+      const eventConfiguration = event?.detail?.schemaVersion === 2 ? event.detail : null;
+      if (eventConfiguration) {
+        setPublishedPlatformTheme(eventConfiguration);
+        return;
+      }
+      apiClient.platformTheme.getPublished()
+        .then((result) => { if (active) setPublishedPlatformTheme(result?.published || result?.configuration || null); })
+        .catch(() => { if (active) setPublishedPlatformTheme(null); });
+    };
     void refresh();
     window.addEventListener('platform-theme-published', refresh);
     window.addEventListener('platform-theme-subscription-updated', refresh);

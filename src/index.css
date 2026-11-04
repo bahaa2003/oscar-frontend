@@ -4475,6 +4475,7 @@
 .app-shell-sidebar-panel[data-sidebar-template="rounded"] { padding-block: .8rem; }
 .platform-bottom-nav { position: fixed; z-index: 70; left: 50%; bottom: max(.6rem, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(var(--platform-bottom-nav-width, 94vw), 32rem); height: var(--platform-bottom-nav-height, 64px); border-radius: var(--platform-bottom-nav-radius, 22px); background: var(--platform-bottom-nav-background, var(--color-card)); color: var(--platform-bottom-nav-foreground, var(--color-text)); border: 1px solid rgb(var(--color-border-rgb) / .75); box-shadow: 0 12px 38px -18px rgb(0 0 0 / .55); }
 .platform-bottom-nav a { color: inherit; }
+.platform-bottom-nav a[aria-current="page"] { color: var(--platform-bottom-nav-accent, var(--color-primary)); }
 @media (min-width: 768px) { .platform-bottom-nav { display: none; } }
 .platform-neon-border, [data-platform-neon="true"] { position: relative; isolation: isolate; --platform-neon-color: var(--platform-neon-categories-color, #22d3ee); --platform-neon-speed: var(--platform-neon-categories-speed, 5s); }
 [data-platform-neon="true"] { --platform-neon-color: var(--platform-neon-hero-color, #22d3ee); --platform-neon-speed: var(--platform-neon-hero-speed, 5s); }
@@ -4493,4 +4494,23 @@
 @media (max-width: 639px) {
   .platform-theme-product-grid { grid-template-columns: repeat(var(--platform-products-mobile, 2), minmax(0, 1fr)); }
   .platform-theme-category-grid { grid-template-columns: repeat(var(--platform-categories-mobile, 2), minmax(0, 1fr)); }
+}
+
+/* Keep customer support on the left and clear the mobile navigation bar. */
+.floating-whatsapp {
+  left: calc(1rem + env(safe-area-inset-left));
+  right: auto;
+  bottom: calc(var(--platform-bottom-nav-height, 64px) + 1.35rem + env(safe-area-inset-bottom));
+}
+.customer-service-menu { left: 0; right: auto; transform-origin: bottom left; }
+.customer-service-menu::after { left: 1.7rem; right: auto; }
+@media (min-width: 768px) {
+  .floating-whatsapp { bottom: calc(1.25rem + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 640px) {
+  .floating-whatsapp {
+    left: calc(0.85rem + env(safe-area-inset-left));
+    right: auto;
+    bottom: calc(var(--platform-bottom-nav-height, 64px) + 1.25rem + env(safe-area-inset-bottom));
+  }
 }

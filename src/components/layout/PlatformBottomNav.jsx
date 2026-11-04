@@ -27,6 +27,7 @@ export default function PlatformBottomNav() {
     color: layout.foreground,
     borderColor: layout.accent,
     borderRadius: `${layout.radius ?? 0}px`,
+    '--platform-bottom-nav-accent': layout.accent,
   };
   return <nav className="platform-bottom-nav grid grid-cols-5 items-center px-2" style={style} data-template={layout.template || 'bar'} aria-label={isArabic ? 'التنقل الرئيسي' : 'Main navigation'}>
     {items.map(({ key, path, icon: Icon, ar, en }) => <NavLink key={key} to={path} className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors ${isActive ? 'text-[var(--color-primary)]' : 'opacity-75'}`} style={({ isActive }) => isActive ? { color: layout.accent } : undefined}>

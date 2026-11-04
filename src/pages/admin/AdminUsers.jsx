@@ -745,7 +745,7 @@ const AdminUsers = () => {
         getUserWallet(selectedUser.id, { force: true }),
       ]);
     } catch (error) {
-      addToast(error?.message || 'تعذر تطبيق الرصيد الإضافي.', 'error');
+      addToast(error?.response?.data?.message || error?.message || 'تعذر تطبيق الرصيد الإضافي.', 'error');
     }
   };
 

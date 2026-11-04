@@ -6,8 +6,6 @@ import Header from './Header';
 import PlatformBottomNav from './PlatformBottomNav';
 import AmbientBackground from './AmbientBackground';
 import { useLanguage } from '../../context/LanguageContext';
-import { useTheme } from '../../context/ThemeContext';
-import { getThemeChrome } from '../../theme/platformTheme';
 import BackToTopButton from '../ui/BackToTopButton';
 import { registerVisitedPath } from '../../utils/navigation';
 import oscarLogo from '../../assets/ms-removebg-preview.webp';
@@ -44,10 +42,8 @@ const Layout = ({ children = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { dir, language } = useLanguage();
-  const { publishedPlatformTheme, theme } = useTheme();
-  const activeHeaderTheme = getThemeChrome(publishedPlatformTheme, 'header', theme);
-  const topHeaderTemplate = activeHeaderTheme?.template || 'floating';
-  const topHeaderHeight = activeHeaderTheme?.height || 64;
+  const topHeaderTemplate = 'floating';
+  const topHeaderHeight = 64;
   const location = useLocation();
   const navigate = useNavigate();
 
