@@ -2089,7 +2089,30 @@ const realApi = {
 
       if (effectiveLegacyToken) {
         clearGooglePkceAttempt();
-        throw new Error('Google OAuth token callback is no longer supported. Please try again.');
+        // The OSCAR Backend callback currently redirects with a short-lived
+        // login JWT in `?token=`. Consume that supported callback contract,
+        // remove it from browser history immediately, then load the profile.
+        // Without this branch the frontend rejects every successful Google
+        // callback even though Google and the Backend authenticated correctly.
+        try {
+          const callbackUrl = new URL(window.location.href);
+          callbackUrl.searchParams.delete('token');
+          window.history.replaceState(window.history.state, '', `${callbackUrl.pathname}${callbackUrl.search}${callbackUrl.hash}`);
+        } catch {
+          // URL cleanup is best-effort; authentication still proceeds.
+        }
+
+        setStoredAuthTokens(effectiveLegacyToken, null);
+        try {
+          const profileResponse = await http.get('/me', { _skipPermissionRecovery: true });
+          const profile = unwrap(profileResponse);
+          const user = normaliseUser(profile?.user || profile);
+          if (!user) throw new Error('Google sign-in succeeded, but the account profile could not be loaded.');
+          return { user, token: effectiveLegacyToken };
+        } catch (error) {
+          clearStoredSession();
+          throw error;
+        }
       }
 
       if (effectiveStatus) {

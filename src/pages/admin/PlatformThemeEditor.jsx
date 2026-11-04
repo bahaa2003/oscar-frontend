@@ -19,6 +19,7 @@ const liveApi = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() ===
 const card = 'rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.8)] bg-[color:rgb(var(--color-card-rgb)/0.94)] p-4 shadow-[var(--shadow-subtle)] sm:p-5';
 const input = 'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]';
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2.5 text-sm font-bold text-[var(--color-text)] transition hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50';
+const ThemeSectionActionsContext = React.createContext(null);
 const colorKeys = ['primary', 'secondary', 'accent', 'background', 'surface', 'text', 'mutedText', 'border'];
 const neonSections = ['purchase', 'hero', 'categories', 'bestSellers'];
 const sampleNeon = () => ({ purchase: { enabled: false, color: '#22D3EE', speed: 5 },
@@ -592,9 +593,31 @@ const errorText = (error, t) => {
   if (status === 404) return t.missingApi;
   return error?.response?.data?.message || t.failed;
 };
-const Section = ({ title, icon: Icon, locked = false, children }) => <section className={card}>
-  <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[var(--color-text)]"><Icon className="h-5 w-5 text-[var(--color-primary)]" />{title}{locked && <LockKeyhole className="ms-auto h-4 w-4 text-amber-500" />}</h2>{children}
-</section>;
+const Section = ({ title, icon: Icon, locked = false, children }) => {
+  const actions = React.useContext(ThemeSectionActionsContext);
+  const appearance = actions?.draft?.modes?.[actions.mode];
+  const colors = appearance?.colors || {};
+  const header = actions?.draft ? getThemeChrome(actions.draft, 'header', actions.mode) || {} : {};
+  const nav = actions?.draft ? getThemeChrome(actions.draft, 'bottomNav', actions.mode) || {} : {};
+  return <section className={card}>
+    <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[var(--color-text)]"><Icon className="h-5 w-5 text-[var(--color-primary)]" />{title}{locked && <LockKeyhole className="ms-auto h-4 w-4 text-amber-500" />}</h2>
+    {children}
+    {actions?.enabled && <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <span className="mb-2 block text-[0.68rem] font-bold text-[var(--color-text-secondary)]">{actions.language === 'ar' ? `معاينة مصغرة · ${title}` : `Mini preview · ${title}`}</span>
+        <div className="flex h-12 max-w-sm items-center gap-2 overflow-hidden rounded-xl border px-2" style={{ background: header.background || colors.background || '#F8FAFC', color: colors.text || '#0F172A', borderColor: colors.border || '#CBD5E1', borderRadius: header.radius ?? 12 }}>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[0.6rem] font-black text-white" style={{ background: colors.primary || '#2563EB' }}>OS</span>
+          <span className="min-w-0 flex-1 truncate text-xs font-bold" style={{ fontFamily: appearance?.typography?.arabicFont || 'inherit' }}>{actions.language === 'ar' ? 'شكل منصتك الحالي' : 'Your current storefront style'}</span>
+          <span className="rounded-lg px-2 py-1 text-[0.62rem] font-bold text-white" style={{ background: header.accent || colors.accent || colors.primary || '#2563EB', borderRadius: appearance?.buttons?.radius ?? 8 }}>{actions.language === 'ar' ? 'زر' : 'Button'}</span>
+          <span className="hidden h-6 w-12 shrink-0 items-center justify-center rounded-lg border text-[0.55rem] sm:flex" style={{ background: nav.background || colors.surface || '#FFFFFF', color: nav.foreground || colors.text || '#0F172A', borderColor: colors.border || '#CBD5E1', borderRadius: nav.radius ?? 8 }}>⌂　⌕</span>
+        </div>
+      </div>
+      <button type="button" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-black text-amber-950 shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50" disabled={actions.busy || !actions.canPublish || locked} onClick={actions.onPublish}>
+        <Check className="h-4 w-4" />{actions.language === 'ar' ? 'نشر الثيم' : 'Publish theme'}
+      </button>
+    </div>}
+  </section>;
+};
 const Select = ({ label, value, values, onChange, disabled = false, labels = {}, suffix = '' }) => <label className="block text-sm text-[var(--color-text)]">{label}
   <select className={`${input} mt-1`} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>{values.map((item) => <option key={item} value={item}>{labels[item] || `${item}${suffix}`}</option>)}</select>
 </label>;
@@ -807,7 +830,15 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const editingPage = ['colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding', 'layout'].includes(activePage);
   const setStudioSection = (id) => { setActivePage(id); window.history.replaceState(null, '', `#studio-${id}`); };
   const openSubscriptions = () => navigate('/admin/theme/subscriptions');
-  return <main className="platform-studio mx-auto max-w-[90rem] space-y-5 px-3 py-5 sm:px-6 sm:py-7">
+  return <ThemeSectionActionsContext.Provider value={{
+    enabled: !previewOnly && editingPage,
+    draft,
+    mode,
+    language,
+    busy,
+    canPublish: Boolean(settings?.eligibility?.canPublish),
+    onPublish: publishPreview,
+  }}><main className="platform-studio mx-auto max-w-[90rem] space-y-5 px-3 py-5 sm:px-6 sm:py-7">
     <header className="platform-studio__hero"><div><span className="platform-studio__eyebrow"><Sparkles className="h-4 w-4" />PLATFORM STUDIO</span><h1>{language === 'ar' ? 'حوّل منصتك إلى تجربة فريدة تحمل هويتك.' : 'Make your platform a distinctive experience.'}</h1><p>{language === 'ar' ? 'استكشف الهوية البصرية وعدّل مظهر منصتك من مساحة واحدة.' : 'Explore your visual identity and shape the platform from one workspace.'}</p></div><div className="platform-studio__hero-actions"><span className={`platform-studio__plan-badge ${paid ? 'is-paid' : ''}`}>{ultra ? 'ULTRA' : paid ? 'PRO' : language === 'ar' ? 'الخطة المجانية' : 'Free plan'}</span><Link to="/admin/theme/subscriptions" className="platform-studio__upgrade-link"><CreditCard className="h-4 w-4" />{language === 'ar' ? 'الخطط والاشتراكات' : 'Plans & subscriptions'}<ArrowUpRight className="h-4 w-4" /></Link></div></header>
     {(previewOnly || error || partial) && <div role="status" className={`${card} border-sky-500/40 text-sm text-[var(--color-text)]`}>{previewOnly ? t.previewNotice : error || t.partial}{!previewOnly && <button type="button" className={`${button} ms-3`} onClick={() => refresh(true)}>{t.retry}</button>}</div>}
     {!previewOnly && <nav className="platform-studio__nav" aria-label={language === 'ar' ? 'أقسام الاستوديو' : 'Studio sections'}>{studioNav.map(([id, Icon, label]) => { const locked = ['header', 'sidebar', 'navigation'].includes(id) && !canPreviewUltra; return <button key={id} type="button" aria-current={activePage === id ? 'page' : undefined} className={activePage === id ? 'is-active' : ''} onClick={() => setStudioSection(id)}><Icon className="h-4 w-4" /><span>{label}</span>{locked && <LockKeyhole className="ms-auto h-3.5 w-3.5 text-amber-500" aria-label="ULTRA" title="ULTRA" />}</button>; })}</nav>}
@@ -972,7 +1003,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
             <div className="pointer-events-none absolute -end-10 -top-14 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl" />
             <div className="relative mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-lg shadow-amber-500/20"><Sparkles className="h-7 w-7" /></div>
             <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{language === 'ar' ? 'تأكيد نشر الثيم' : 'Confirm theme publishing'}</h2>
-            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{language === 'ar' ? 'هل أنت متأكد من رفع الإعدادات الظاهرة في المعاينة؟ ستظهر تغييرات الوضع الفاتح والغامق للزوار بعد النشر.' : 'Publish the exact settings shown in the preview? The light and dark appearance will be visible to visitors.'}</p>
+            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{language === 'ar' ? 'سيتم نشر المسودة كاملة بالوضعين الفاتح والغامق، وستظهر التغييرات للزوار بعد النشر.' : 'This publishes the full draft in both light and dark modes. Visitors will see the changes after publishing.'}</p>
           </div>
           <div className="flex flex-col-reverse gap-2 p-5 sm:flex-row sm:justify-center">
             <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => setShowPublishConfirm(false)}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
@@ -981,5 +1012,5 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
         </section>
       </div>}
     </div>
-  </main>;
+  </main></ThemeSectionActionsContext.Provider>;
 }
