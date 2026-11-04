@@ -887,7 +887,7 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
       className={`product-purchase-page ${embedded ? '!min-h-0 !p-0' : ''}`}
       dir={dir}
     >
-      <section className="purchase-phone purchase-phone--buy purchase-clean-card purchase-premium-modal" aria-label={purchaseProductName}>
+      <section className="purchase-phone purchase-phone--buy purchase-clean-card purchase-premium-modal" data-platform-purchase aria-label={purchaseProductName}>
         <span className="purchase-neon-orbit-frame" aria-hidden="true" />
         <div className="purchase-modal-ambient" aria-hidden="true" />
 
@@ -1027,7 +1027,7 @@ const ProductPurchasePage = ({ product: providedProduct = null, onClose, onSubmi
             type="button"
             onClick={handlePurchase}
             disabled={isSubmitting || !quantityInput || !areOrderFieldsComplete}
-            className="purchase-primary-button purchase-buy-button purchase-action-buy"
+            className="purchase-primary-button purchase-buy-button purchase-action-buy" data-platform-button="primary"
           >
             {isSubmitting ? (
               <LoaderCircle size={20} strokeWidth={2.5} className="animate-spin" />

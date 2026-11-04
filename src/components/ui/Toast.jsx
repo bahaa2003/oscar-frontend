@@ -120,6 +120,8 @@ export const ToastProvider = ({ children }) => {
         {toasts.map((toast) => (
             <div
               key={toast.id}
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              data-toast-type={toast.type}
               className={cn(
                 'pointer-events-auto flex w-full min-w-0 max-w-md items-center gap-4 rounded-[1.35rem] border px-5 py-4 shadow-[var(--shadow-medium)] backdrop-blur-xl animate-[page-fade-in_0.2s_ease-out] sm:min-w-[320px]',
                 toast.type === 'success' &&

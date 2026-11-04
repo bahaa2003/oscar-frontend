@@ -526,6 +526,23 @@ http.interceptors.response.use(
 
 /** Unwrap the standard BE envelope: { success, data } → data */
 const unwrap = (res) => res.data?.data ?? res.data;
+const unwrapTheme = (res) => {
+  if (res.data?.success !== true || !res.data?.data || typeof res.data.data !== 'object') {
+    const error = new Error(res.data?.message || 'The theme server did not confirm this operation.');
+    error.code = 'THEME_RESPONSE_INVALID';
+    throw error;
+  }
+  return res.data.data;
+};
+const unwrapThemeDraft = (res) => {
+  const result = unwrapTheme(res);
+  if (result.draft?.schemaVersion !== 2) {
+    const error = new Error('The server did not return the saved theme draft.');
+    error.code = 'THEME_RESPONSE_INVALID';
+    throw error;
+  }
+  return result;
+};
 
 const toFiniteNumber = (value, fallback = 0) => {
   const parsed = Number(value);
@@ -1948,16 +1965,22 @@ const realApi = {
     setEnabled: async (enabled) => unwrap(await http.patch('/maintenance/status', { enabled })),
   },
   platformTheme: {
-    getPublished: async () => unwrap(await http.get('/theme/published')),
-    getSettings: async () => unwrap(await http.get('/admin/theme/settings')),
-    getPresets: async () => unwrap(await http.get('/admin/theme/presets')),
+    getPublished: async () => {
+      const result = unwrapTheme(await http.get('/theme/published', { headers: { 'Cache-Control': 'no-cache' } }));
+      if (!Object.hasOwn(result, 'published') || (result.published !== null && result.published?.schemaVersion !== 2)) {
+        throw new Error('The server returned an invalid published theme.');
+      }
+      return result;
+    },
+    getSettings: async () => unwrapTheme(await http.get('/admin/theme/settings')),
+    getPresets: async () => unwrapTheme(await http.get('/admin/theme/presets')),
     validate: async (configuration) => unwrap(await http.post('/admin/theme/preview/validate', configuration)),
-    saveDraft: async (configuration) => unwrap(await http.post('/admin/theme/draft', configuration)),
-    resetDraft: async () => unwrap(await http.post('/admin/theme/draft/reset')),
-    publish: async (configuration) => unwrap(await http.post('/admin/theme/publish', configuration)),
+    saveDraft: async (configuration) => unwrapThemeDraft(await http.post('/admin/theme/draft', configuration)),
+    resetDraft: async () => unwrapTheme(await http.post('/admin/theme/draft/reset')),
+    publish: async (configuration) => unwrapTheme(await http.post('/admin/theme/publish', configuration)),
     restore: async (version) => unwrap(await http.post('/admin/theme/restore', { version })),
-    restoreToDraft: async (version) => unwrap(await http.post('/admin/theme/restore-draft', { version })),
-    getHistory: async (page = 1) => unwrap(await http.get('/admin/theme/history', { params: { page } })),
+    restoreToDraft: async (version) => unwrapThemeDraft(await http.post('/admin/theme/restore-draft', { version })),
+    getHistory: async (page = 1) => unwrapTheme(await http.get('/admin/theme/history', { params: { page } })),
     getSubscription: async () => unwrap(await http.get('/admin/theme/subscription')),
     getPayments: async () => unwrap(await http.get('/admin/theme/subscription/payment-status')),
     getReviewQueue: async () => unwrap(await http.get('/admin/theme/subscription/review-queue')),

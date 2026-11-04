@@ -7,11 +7,11 @@ import CategoryCard from '../../components/home/CategoryCard';
 import { createStorefrontCategories } from '../../utils/storefront';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../components/ui/Toast';
-import { getThemeChrome, platformThemeStyles } from '../../theme/platformTheme';
+import { getThemeChrome, platformThemeStyles, PRODUCT_COLUMNS, CATEGORY_COLUMNS } from '../../theme/platformTheme';
+import { publishThemeDraft } from '../../theme/publishThemeDraft';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import useAuthStore from '../../store/useAuthStore';
 import useSystemStore from '../../store/useSystemStore';
-import PlatformStudioPreview from './PlatformStudioPreview';
 import StorefrontThemePreview from './StorefrontThemePreview';
 import './PlatformThemeEditor.css';
 
@@ -19,7 +19,6 @@ const liveApi = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() ===
 const card = 'rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.8)] bg-[color:rgb(var(--color-card-rgb)/0.94)] p-4 shadow-[var(--shadow-subtle)] sm:p-5';
 const input = 'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]';
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2.5 text-sm font-bold text-[var(--color-text)] transition hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50';
-const ThemeSectionActionsContext = React.createContext(null);
 const colorKeys = ['primary', 'secondary', 'accent', 'background', 'surface', 'text', 'mutedText', 'border'];
 const neonSections = ['purchase', 'hero', 'categories', 'bestSellers'];
 const sampleNeon = () => ({ purchase: { enabled: false, color: '#22D3EE', speed: 5 },
@@ -497,7 +496,7 @@ const copy = {
     arabicFont: 'الخط العربي', englishFont: 'الخط الإنجليزي', baseSize: 'حجم النص', headingWeight: 'وزن العناوين',
     buttonRadius: 'استدارة الأزرار', buttonStyle: 'شكل الأزرار', cardRadius: 'استدارة البطاقات', cardShadow: 'ظل البطاقات', navigation: 'القائمة',
     solid: 'ممتلئ', outline: 'محدد', none: 'بدون', subtle: 'خفيف', medium: 'متوسط', standard: 'عادي', compact: 'مدمج',
-    save: 'حفظ المسودة', reset: 'إعادة المسودة', publish: 'نشر الثيمين', restore: 'استعادة ونشر',
+    save: 'حفظ المسودة', reset: 'إعادة المسودة', publish: 'نشر التغييرات', restore: 'استعادة ونشر',
     free: 'مجاني', paid: 'اشتراك Pro نشط', pro: 'Pro', lock: 'للمشتركين',
     freeLocked: 'هذه الإعدادات تحتاج اشتراك Pro موثقًا. يمكنك تعديل الألوان والثيمات المجانية للوضعين.',
     currentPlan: 'حالة النشر', lastPublish: 'آخر نشر', nextEdit: 'النشر المجاني التالي', expires: 'ينتهي الاشتراك',
@@ -554,7 +553,7 @@ const copy = {
     arabicFont: 'Arabic font', englishFont: 'English font', baseSize: 'Base size', headingWeight: 'Heading weight',
     buttonRadius: 'Button radius', buttonStyle: 'Button style', cardRadius: 'Card radius', cardShadow: 'Card shadow', navigation: 'Navigation',
     solid: 'Solid', outline: 'Outline', none: 'None', subtle: 'Subtle', medium: 'Medium', standard: 'Standard', compact: 'Compact',
-    save: 'Save draft', reset: 'Reset draft', publish: 'Publish both modes', restore: 'Restore and publish',
+    save: 'Save draft', reset: 'Reset draft', publish: 'Publish changes', restore: 'Restore and publish',
     free: 'Free', paid: 'Pro active', pro: 'Pro', lock: 'Subscriber feature',
     freeLocked: 'These settings require verified Pro access. Both modes still support free colors and presets.',
     currentPlan: 'Publishing status', lastPublish: 'Last published', nextEdit: 'Next free publish', expires: 'Subscription expires',
@@ -586,6 +585,7 @@ const copy = {
 const dateText = (date, language) => date ? new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-US',
   { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(date)) : '—';
 const errorText = (error, t) => {
+  if (error?.code === 'THEME_RESPONSE_INVALID') return error.message;
   const status = error?.response?.status;
   if (!status) return t.networkError;
   if (status === 401) return t.unauthorized;
@@ -598,28 +598,9 @@ const errorText = (error, t) => {
   return error?.response?.data?.message || t.failed;
 };
 const Section = ({ title, icon: Icon, locked = false, children }) => {
-  const actions = React.useContext(ThemeSectionActionsContext);
-  const appearance = actions?.draft?.modes?.[actions.mode];
-  const colors = appearance?.colors || {};
-  const header = actions?.draft ? getThemeChrome(actions.draft, 'header', actions.mode) || {} : {};
-  const nav = actions?.draft ? getThemeChrome(actions.draft, 'bottomNav', actions.mode) || {} : {};
   return <section className={card}>
     <h2 className="mb-4 flex items-center gap-2 text-base font-black text-[var(--color-text)]"><Icon className="h-5 w-5 text-[var(--color-primary)]" />{title}{locked && <LockKeyhole className="ms-auto h-4 w-4 text-amber-500" />}</h2>
     {children}
-    {actions?.enabled && <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0 flex-1">
-        <span className="mb-2 block text-[0.68rem] font-bold text-[var(--color-text-secondary)]">{actions.language === 'ar' ? `معاينة مصغرة · ${title}` : `Mini preview · ${title}`}</span>
-        <div className="flex h-12 max-w-sm items-center gap-2 overflow-hidden rounded-xl border px-2" style={{ background: header.background || colors.background || '#F8FAFC', color: colors.text || '#0F172A', borderColor: colors.border || '#CBD5E1', borderRadius: header.radius ?? 12 }}>
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[0.6rem] font-black text-white" style={{ background: colors.primary || '#2563EB' }}>OS</span>
-          <span className="min-w-0 flex-1 truncate text-xs font-bold" style={{ fontFamily: appearance?.typography?.arabicFont || 'inherit' }}>{actions.language === 'ar' ? 'شكل منصتك الحالي' : 'Your current storefront style'}</span>
-          <span className="rounded-lg px-2 py-1 text-[0.62rem] font-bold text-white" style={{ background: header.accent || colors.accent || colors.primary || '#2563EB', borderRadius: appearance?.buttons?.radius ?? 8 }}>{actions.language === 'ar' ? 'زر' : 'Button'}</span>
-          <span className="hidden h-6 w-12 shrink-0 items-center justify-center rounded-lg border text-[0.55rem] sm:flex" style={{ background: nav.background || colors.surface || '#FFFFFF', color: nav.foreground || colors.text || '#0F172A', borderColor: colors.border || '#CBD5E1', borderRadius: nav.radius ?? 8 }}>⌂　⌕</span>
-        </div>
-      </div>
-      <button type="button" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-black text-amber-950 shadow-sm transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50" disabled={actions.busy || !actions.canPublish || locked} onClick={actions.onPublish}>
-        <Check className="h-4 w-4" />{actions.language === 'ar' ? 'نشر الثيم' : 'Publish theme'}
-      </button>
-    </div>}
   </section>;
 };
 const Select = ({ label, value, values, onChange, disabled = false, labels = {}, suffix = '' }) => <label className="block text-sm text-[var(--color-text)]">{label}
@@ -652,7 +633,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const [loading, setLoading] = useState(!previewOnly);
   const [busy, setBusy] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
-  const [historyVersionToPublish, setHistoryVersionToPublish] = useState(null);
+  const operationInFlight = useRef(false);
   const [error, setError] = useState('');
   const [partial, setPartial] = useState(false);
   useEffect(() => {
@@ -744,7 +725,8 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     || draft.brand.logoPath || draft.brand.logoWidth !== 144 || draft.brand.slides.some(Boolean)
     || (draft.brand.marqueeTextArabic ?? DEFAULT_MARQUEE_AR) !== DEFAULT_MARQUEE_AR);
   const run = async (action, success, keepDraft = false, { retries = 0 } = {}) => {
-    if (previewOnly || !draft) return;
+    if (previewOnly || !draft || operationInFlight.current) return;
+    operationInFlight.current = true;
     setBusy(true);
     try {
       let result;
@@ -758,22 +740,26 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           await new Promise((resolve) => window.setTimeout(resolve, 650 * (attempt + 1)));
         }
       }
-      if (result?.published) window.dispatchEvent(new CustomEvent('platform-theme-published', { detail: result.published }));
+      if (result?.draft?.schemaVersion === 2) setDraft(result.draft);
+      if (result?.published?.schemaVersion === 2) {
+        setDraft(result.published);
+        setSettings((current) => ({ ...current, published: result.published, draft: null, version: result.version,
+          eligibility: result.eligibility || current?.eligibility }));
+        window.dispatchEvent(new CustomEvent('platform-theme-published', { detail: result.published }));
+      }
       await refresh(keepDraft);
       addToast(success, 'success');
     } catch (cause) {
       const next = cause?.response?.data?.errors?.find?.((item) => item.field === 'nextFreeEditAt')?.value;
       addToast(next ? `${t.nextEdit}: ${dateText(next, language)}` : errorText(cause, t), 'error');
       if (cause?.response?.status === 429) await refresh(true);
-    } finally { setBusy(false); }
+    } finally { operationInFlight.current = false; setBusy(false); }
   };
-  const publishPreview = () => { setHistoryVersionToPublish(null); setShowPublishConfirm(true); };
+  const publishPreview = () => { if (!operationInFlight.current) setShowPublishConfirm(true); };
   const confirmPublish = () => {
-    const version = historyVersionToPublish;
     setShowPublishConfirm(false);
-    setHistoryVersionToPublish(null);
-    if (version !== null) return run(() => apiClient.platformTheme.restore(version), t.restored);
-    return run(() => apiClient.platformTheme.publish(draft), t.published);
+    const snapshot = structuredClone(draft);
+    return run(() => publishThemeDraft(apiClient.platformTheme, snapshot), t.published);
   };
   const upload = async (file, slot = null) => {
     if (!paid || previewOnly || !file) return;
@@ -838,35 +824,28 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const editingPage = ['colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding', 'layout'].includes(activePage);
   const setStudioSection = (id) => { setActivePage(id); window.history.replaceState(null, '', `#studio-${id}`); };
   const openSubscriptions = () => navigate('/admin/theme/subscriptions');
-  return <ThemeSectionActionsContext.Provider value={{
-    enabled: !previewOnly && editingPage,
-    draft,
-    mode,
-    language,
-    busy,
-    canPublish: Boolean(settings?.eligibility?.canPublish),
-    onPublish: publishPreview,
-  }}><main className="platform-studio mx-auto max-w-[90rem] space-y-5 px-3 py-5 sm:px-6 sm:py-7">
+  return <main className="platform-studio mx-auto max-w-[90rem] space-y-5 px-3 py-5 sm:px-6 sm:py-7">
     <header className="platform-studio__hero"><div><span className="platform-studio__eyebrow"><Sparkles className="h-4 w-4" />PLATFORM STUDIO</span><h1>{language === 'ar' ? 'حوّل منصتك إلى تجربة فريدة تحمل هويتك.' : 'Make your platform a distinctive experience.'}</h1><p>{language === 'ar' ? 'استكشف الهوية البصرية وعدّل مظهر منصتك من مساحة واحدة.' : 'Explore your visual identity and shape the platform from one workspace.'}</p></div><div className="platform-studio__hero-actions"><span className={`platform-studio__plan-badge ${paid ? 'is-paid' : ''}`}>{ultra ? 'ULTRA' : paid ? 'PRO' : language === 'ar' ? 'الخطة المجانية' : 'Free plan'}</span><Link to="/admin/theme/subscriptions" className="platform-studio__upgrade-link"><CreditCard className="h-4 w-4" />{language === 'ar' ? 'الخطط والاشتراكات' : 'Plans & subscriptions'}<ArrowUpRight className="h-4 w-4" /></Link></div></header>
+    {!previewOnly && <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-lg"><span className="text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'كل التعديلات في مسودة واحدة؛ احفظها أو انشرها للجميع.' : 'All changes share one draft. Save it or publish it to everyone.'}</span><button type="button" data-theme-publish className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-black text-amber-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{busy ? (language === 'ar' ? 'جارٍ التنفيذ…' : 'Working…') : t.publish}</button></div>}
     {(previewOnly || error || partial) && <div role="status" className={`${card} border-sky-500/40 text-sm text-[var(--color-text)]`}>{previewOnly ? t.previewNotice : error || t.partial}{!previewOnly && <button type="button" className={`${button} ms-3`} onClick={() => refresh(true)}>{t.retry}</button>}</div>}
     {!previewOnly && <nav className="platform-studio__nav" aria-label={language === 'ar' ? 'أقسام الاستوديو' : 'Studio sections'}>{studioNav.map(([id, Icon, label]) => { const locked = ['header', 'sidebar', 'navigation'].includes(id) && !canPreviewUltra; return <button key={id} type="button" aria-current={activePage === id ? 'page' : undefined} className={activePage === id ? 'is-active' : ''} onClick={() => setStudioSection(id)}><Icon className="h-4 w-4" /><span>{label}</span>{locked && <LockKeyhole className="ms-auto h-3.5 w-3.5 text-amber-500" aria-label="ULTRA" title="ULTRA" />}</button>; })}</nav>}
     {(previewOnly || editingPage || activePage === 'preview') && <div className="platform-studio__modebar"><span>{language === 'ar' ? 'وضع المعاينة' : 'Preview mode'}</span>{['light', 'dark'].map((value) => <button key={value} type="button" aria-pressed={mode === value} className={mode === value ? 'is-active' : ''} onClick={() => setMode(value)}>{t[value]}</button>)}</div>}
     {!previewOnly && activePage === 'overview' && <section className="space-y-5">
       <div className="platform-studio__overview-grid"><article className={`${card} platform-studio__welcome-card`}><span className="platform-studio__eyebrow"><Sparkles className="h-4 w-4" />{language === 'ar' ? 'مساحة تخصيصك' : 'Your customization workspace'}</span><h2>{language === 'ar' ? 'كل تفاصيل الهوية البصرية في مكان واحد' : 'Your visual identity, all in one place'}</h2><p>{language === 'ar' ? 'خصص عناصر المنصة، استكشف القوالب، وشاهد أثر تعديلاتك قبل النشر.' : 'Customize the platform, explore templates, and preview changes before publishing.'}</p><div className="platform-studio__overview-actions"><button type="button" onClick={() => setStudioSection('preview')}>{language === 'ar' ? 'ابدأ بالمعاينة' : 'Open full preview'}<ArrowUpRight className="h-4 w-4" /></button><Link to="/admin/theme/subscriptions">{language === 'ar' ? 'استكشف الخطط والاشتراكات' : 'Explore plans & subscriptions'}<ArrowUpRight className="h-4 w-4" /></Link></div></article><div className={`${card} platform-studio__status-card`}><span className="platform-studio__status-icon"><Activity /></span><small>{language === 'ar' ? 'حالة الثيم الحالي' : 'Current theme status'}</small><strong>{settings?.version ? `v${settings.version}` : language === 'ar' ? 'مسودة جاهزة' : 'Draft ready'}</strong><p>{language === 'ar' ? `${settings?.eligibility?.freeChangesRemaining ?? 0} تغييرات مجانية متبقية` : `${settings?.eligibility?.freeChangesRemaining ?? 0} free publishes remaining`}</p><span className="platform-studio__feature-count">{language === 'ar' ? 'أكثر من 20 خيار تخصيص' : '20+ customization controls'}</span></div></div>
-      <div className={`${card} p-3 sm:p-5`}><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">{language === 'ar' ? 'معاينة المنصة المباشرة' : 'Live platform preview'}</h2><p className="text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'بيانات توضيحية آمنة · التغييرات مسودة حتى النشر' : 'Safe sample data · edits stay as drafts until published'}</p></div><button type="button" className={button} onClick={() => setStudioSection('preview')}>{language === 'ar' ? 'فتح المعاينة الكاملة' : 'Open full preview'}<ArrowUpRight className="h-4 w-4" /></button></div><PlatformStudioPreview theme={draft} mode={mode} language={language} compact locked={!canPreviewPaid} onUpgrade={openSubscriptions} /></div>
+      <div className={`${card} p-3 sm:p-5`}><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">{language === 'ar' ? 'معاينة المنصة المباشرة' : 'Live platform preview'}</h2><p className="text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'بيانات المتجر الفعلية · التغييرات مسودة حتى النشر' : 'Real catalog data · edits stay as drafts until published'}</p></div><button type="button" className={button} onClick={() => setStudioSection('preview')}>{language === 'ar' ? 'فتح المعاينة الكاملة' : 'Open full preview'}<ArrowUpRight className="h-4 w-4" /></button></div><StorefrontThemePreview configuration={draft} mode={mode} language={language} /></div>
       <div className="platform-studio__quick-grid">{studioNav.filter(([id]) => !['overview', 'preview', 'contacts', 'history'].includes(id)).map(([id, Icon, label]) => <button key={id} type="button" onClick={() => setStudioSection(id)}><span><Icon className="h-5 w-5" /></span><strong>{label}</strong><small>{language === 'ar' ? 'افتح مساحة التخصيص' : 'Open customization workspace'}</small><ArrowUpRight className="platform-studio__quick-arrow h-4 w-4" /></button>)}</div>
       <section className={`${card} p-4 sm:p-5`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-black text-[var(--color-text)]">{language === 'ar' ? 'قوالب مقترحة لك' : 'Recommended templates'}</h2><p className="mt-1 text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? 'عاين القالب وطبقه على المسودة مباشرة.' : 'Preview a template and apply it to your draft.'}</p></div><button type="button" onClick={() => setStudioSection('templates')} className="inline-flex items-center gap-1 text-xs font-black text-[var(--color-primary)]">{language === 'ar' ? 'المكتبة كاملة' : 'Full library'}<ArrowUpRight className="h-4 w-4" /></button></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.slice(0, 4).map((entry) => { const locked = entry.tier === 'THEME_PRO' && !paid; const colors = entry.configuration.modes[mode].colors; return <button key={entry.id} type="button" onClick={() => locked ? openSubscriptions() : choosePreset(entry)} className={`theme-preset-card ${locked ? 'theme-preset-card--locked' : ''}`}><span className="theme-preset-card__scene" style={{ backgroundColor: colors.background, borderColor: colors.border }}><span className="theme-preset-card__panel" style={{ backgroundColor: colors.surface, borderColor: colors.border }}><span className="theme-preset-card__title" style={{ color: colors.text }}>Aa</span><span className="theme-preset-card__accent" style={{ backgroundColor: colors.primary }} /><span className="theme-preset-card__line" style={{ backgroundColor: colors.secondary }} /></span></span><span className="theme-preset-card__label"><span>{presetNames[language]?.[entry.id] || entry.id}</span>{locked ? <LockKeyhole className="h-4 w-4 text-amber-500" /> : null}</span><small className="studio-template-meta">{presetCategory(entry.id, language)} · {locked ? 'PRO' : language === 'ar' ? 'تطبيق فوري' : 'Apply instantly'}</small></button>; })}</div></section>
       {!paid && <div className="platform-studio__upgrade-banner"><span className="platform-studio__upgrade-orb"><Sparkles /></span><div><strong>{language === 'ar' ? 'أطلق الهوية الكاملة لمنصتك' : 'Unlock your platform’s full identity'}</strong><p>{language === 'ar' ? 'قوالب أكثر، تخصيص أعمق، ومعاينة متكاملة قبل النشر.' : 'More templates, richer controls, and a complete preview before publishing.'}</p></div><Link to="/admin/theme/subscriptions">{language === 'ar' ? 'استكشف الخطط' : 'Explore plans'}<ArrowUpRight className="h-4 w-4" /></Link></div>}
     </section>}
-    {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة المتجر الفعلية' : 'Actual storefront preview'}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /><div className="mt-4 flex justify-end"><button type="button" className={`${button} border-[var(--color-primary)] bg-[var(--color-primary)] text-white`} disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{t.publish}</button></div></Section>}
-    <div className="grid grid-cols-1 gap-5">
+    {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة المتجر الفعلية' : 'Actual storefront preview'}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /></Section>}
+    <fieldset disabled={busy} className="grid min-w-0 grid-cols-1 gap-5">
       <div id="theme-appearance" className={`space-y-5 scroll-mt-20 ${!previewOnly && !editingPage ? 'hidden' : ''}`}>
         {!previewOnly && activePage === 'layout' && <Section icon={LayoutGrid} title={language === 'ar' ? 'عرض المنتجات والأقسام' : 'Product and category layout'}>
-          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختار عدد المنتجات والأقسام. ستتغير المعاينة فورًا، ثم احفظ المسودة أو انشرها.' : 'Choose product and category counts. The preview updates immediately; then save or publish the draft.'}</p>
+          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختر عدد الأعمدة للكمبيوتر. التابلت يعرض حتى 3 منتجات، والموبايل حتى منتجين وقسمين في الصف. تتغير المعاينة فورًا؛ استخدم أحجام المعاينة لمراجعتها ثم احفظ المسودة أو انشرها.' : 'Choose desktop columns. Tablets show up to 3 products; mobile shows up to 2 products and 2 categories per row. Check the viewport previews, then save or publish the draft.'}</p>
           <div className="grid gap-5 lg:grid-cols-2">
             <div>
               <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف' : 'Products per row'}</h3>
-              <div className="grid grid-cols-3 gap-2">{[4, 3, 2].map((count) => {
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{PRODUCT_COLUMNS.map((count) => {
                 const selected = (draft.layout?.productsPerRow ?? 4) === count;
                 return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ productsPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
                   <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded bg-[var(--color-primary)]/20" />)}</span>
@@ -876,7 +855,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
             </div>
             <div>
               <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف' : 'Main categories per row'}</h3>
-              <div className="grid grid-cols-2 gap-2">{[3, 2].map((count) => {
+              <div className="grid grid-cols-2 gap-2">{CATEGORY_COLUMNS.map((count) => {
                 const selected = (draft.layout?.categoriesPerRow ?? 3) === count;
                 return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ categoriesPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
                   <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span>
@@ -885,18 +864,9 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
               })}</div>
             </div>
           </div>
-          <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-black">{t.layoutPreview}</h3><span className="text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? `${draft.layout?.productsPerRow ?? 4} منتجات · ${draft.layout?.categoriesPerRow ?? 3} أقسام` : `${draft.layout?.productsPerRow ?? 4} products · ${draft.layout?.categoriesPerRow ?? 3} categories`}</span></div>
-            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${draft.layout?.categoriesPerRow ?? 3}, minmax(0, 1fr))` }} aria-label={t.layoutPreview}>
-              {Array.from({ length: draft.layout?.categoriesPerRow ?? 3 }, (_, index) => <div key={index} className="rounded-xl border p-3 text-center" style={{ borderColor: part.colors.border, background: part.colors.background, color: part.colors.text, borderRadius: `${part.cards.radius}px` }}><span className="mx-auto mb-2 block h-7 w-7 rounded-lg" style={{ background: part.colors.primary, opacity: 0.8 }} /><span className="mx-auto block h-2 max-w-16 rounded-full" style={{ background: part.colors.secondary, opacity: 0.6 }} /></div>)}
-            </div>
-            <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${draft.layout?.productsPerRow ?? 4}, minmax(0, 1fr))` }} aria-label={t.layoutPreview}>
-              {Array.from({ length: (draft.layout?.productsPerRow ?? 4) * 2 }, (_, index) => <div key={index} className="overflow-hidden rounded-xl border" style={{ borderColor: part.colors.border, background: part.colors.surface, borderRadius: `${part.cards.radius}px` }}><div className="h-10" style={{ background: `color-mix(in srgb, ${part.colors.primary} 18%, ${part.colors.surface})` }} /><div className="space-y-1.5 p-2"><span className="block h-2 w-4/5 rounded-full" style={{ background: part.colors.text, opacity: 0.65 }} /><span className="block h-1.5 w-2/5 rounded-full" style={{ background: part.colors.primary }} /></div></div>)}
-            </div>
-          </div>
+          <StorefrontThemePreview configuration={draft} mode={mode} language={language} />
           <div className="mt-4 flex flex-wrap justify-end gap-2">
             <button type="button" className={button} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true, { retries: 1 })}><Save className="h-4 w-4" />{t.saveLayout}</button>
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-black text-amber-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{t.publish}</button>
           </div>
         </Section>}
         {(previewOnly || activePage === 'colors' || activePage === 'templates') && <>
@@ -1021,8 +991,9 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
         </>}
       </div>
       {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true, { retries: 1 })}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button></div></div>}
+      {!previewOnly && editingPage && activePage !== 'layout' && <Section icon={Sparkles} title={t.livePreview}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /></Section>}
       <div className="space-y-5">
-        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex flex-col gap-3 rounded-xl bg-[var(--color-surface)] p-3 text-sm sm:flex-row sm:items-center sm:justify-between"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), t.saved)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button><button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2 text-xs font-black text-amber-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={busy || !settings?.eligibility?.canPublish} onClick={() => { setHistoryVersionToPublish(item.version); setShowPublishConfirm(true); }}><Check className="h-4 w-4" />{t.restore}</button></div></div>) : t.empty}</div></Section></div>}
+        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><p className="mb-3 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'حمّل الإصدار المطلوب إلى المسودة، ثم استخدم زر نشر التغييرات الرئيسي لنشره.' : 'Load the desired version into the draft, then use the main Publish changes button.'}</p><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--color-surface)] p-3 text-sm"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), language === 'ar' ? `تم تحميل الإصدار #${item.version} للمسودة؛ جاهز للمراجعة والنشر.` : `Version #${item.version} loaded into the draft.`)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button></div>) : t.empty}</div></Section></div>}
         {!previewOnly && activePage === 'contacts' && <div id="theme-contacts" className="scroll-mt-20"><Section icon={MessageCircle} title={t.contactsPage}>
           {!ultra ? <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 p-5 sm:p-6">
             <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-amber-500"><LockKeyhole className="h-5 w-5" /></span><div><span className="inline-flex items-center rounded-full bg-amber-400/15 px-2.5 py-1 text-[0.68rem] font-black tracking-wide text-amber-600">ULTRA</span><h3 className="mt-2 font-black text-[var(--color-text)]">{t.contactsLockedTitle}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{t.contactsHint}</p></div></div>
@@ -1042,20 +1013,20 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           </>}
         </Section></div>}
       </div>
-      {showPublishConfirm && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowPublishConfirm(false); setHistoryVersionToPublish(null); } }}>
+      {showPublishConfirm && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowPublishConfirm(false); } }}>
         <section role="dialog" aria-modal="true" aria-labelledby="theme-publish-title" className="w-full max-w-md overflow-hidden rounded-3xl border border-amber-300/30 bg-[var(--color-card)] text-[var(--color-text)] shadow-[0_30px_100px_-24px_rgba(0,0,0,.75)]">
           <div className="relative overflow-hidden bg-gradient-to-br from-amber-400/20 via-yellow-500/10 to-orange-500/20 px-6 py-6">
             <div className="pointer-events-none absolute -end-10 -top-14 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl" />
             <div className="relative mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-lg shadow-amber-500/20"><Sparkles className="h-7 w-7" /></div>
-            <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{historyVersionToPublish !== null ? t.restore : (language === 'ar' ? 'تأكيد نشر الثيم' : 'Confirm theme publishing')}</h2>
-            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{historyVersionToPublish !== null ? t.restoreConfirm : (language === 'ar' ? 'سيتم نشر المسودة كاملة بالوضعين الفاتح والغامق، وستظهر التغييرات للزوار بعد النشر.' : 'This publishes the full draft in both light and dark modes. Visitors will see the changes after publishing.')}</p>
+            <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{language === 'ar' ? 'تأكيد نشر التغييرات' : 'Confirm changes'}</h2>
+            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{language === 'ar' ? 'سيتم حفظ المسودة ونشر جميع إعداداتها بالوضعين الفاتح والغامق للزوار.' : 'The draft will be saved and all its settings published in light and dark modes.'}</p>
           </div>
           <div className="flex flex-col-reverse gap-2 p-5 sm:flex-row sm:justify-center">
-            <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => { setShowPublishConfirm(false); setHistoryVersionToPublish(null); }}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
-            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-black text-amber-950 shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60 sm:min-w-32" disabled={busy} onClick={confirmPublish}><Check className="h-4 w-4" />{busy ? (language === 'ar' ? 'جارٍ النشر…' : 'Publishing…') : (language === 'ar' ? 'نشر الآن' : 'Publish now')}</button>
+            <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => { setShowPublishConfirm(false); }}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
+            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-black text-amber-950 shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60 sm:min-w-32" disabled={busy} onClick={confirmPublish}><Check className="h-4 w-4" />{busy ? (language === 'ar' ? 'جارٍ النشر…' : 'Publishing…') : (language === 'ar' ? 'تأكيد' : 'Confirm')}</button>
           </div>
         </section>
       </div>}
-    </div>
-  </main></ThemeSectionActionsContext.Provider>;
+    </fieldset>
+  </main>;
 }

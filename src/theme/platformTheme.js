@@ -14,6 +14,17 @@ const allowedFonts = {
   arabicFont: ['Cairo', 'Tajawal', 'Noto Sans Arabic', 'Almarai', 'Changa', 'IBM Plex Sans Arabic', 'Rubik'],
   englishFont: ['Inter', 'Arial', 'Roboto', 'Poppins', 'Montserrat', 'Outfit', 'Plus Jakarta Sans'],
 };
+const ensureThemeFont = (family) => {
+  if (!family || family === 'Arial' || !Object.values(allowedFonts).some((fonts) => fonts.includes(family))) return;
+  const id = `oscar-theme-font-${family.replaceAll(' ', '-').toLowerCase()}`;
+  if (document.getElementById(id)) return;
+  const weights = ({ Tajawal: '400;500;700;800', Almarai: '400;700;800', 'IBM Plex Sans Arabic': '400;500;600;700' })[family] || '400;500;600;700;800';
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${family.replaceAll(' ', '+')}:wght@${weights}&display=swap`;
+  document.head.appendChild(link);
+};
 const colorPattern = /^#[0-9A-Fa-f]{6}$/;
 const toRgb = (hex) => [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)).join(' ');
 const contrastLight = (hex) => {
@@ -25,6 +36,28 @@ const contrastLight = (hex) => {
 export const getThemeChrome = (configuration, section, mode = 'light') => {
   const chrome = configuration?.schemaVersion === 2 ? configuration.chrome : null;
   return chrome?.modes?.[mode]?.[section] || chrome?.[section] || null;
+};
+
+export const PRODUCT_COLUMNS = [2, 3, 4, 5, 6];
+export const CATEGORY_COLUMNS = [2, 3];
+export const getThemeGridStyles = (configuration) => {
+  const products = PRODUCT_COLUMNS.includes(configuration?.layout?.productsPerRow) ? configuration.layout.productsPerRow : 4;
+  const categories = CATEGORY_COLUMNS.includes(configuration?.layout?.categoriesPerRow) ? configuration.layout.categoriesPerRow : 3;
+  // The saved count targets desktop. Existing small-screen limits stay compatible.
+  return {
+    productGridStyle: { '--platform-products-desktop': products, '--platform-products-tablet': Math.min(products, 3), '--platform-products-mobile': Math.min(products, 2) },
+    categoryGridStyle: { '--platform-categories-desktop': categories, '--platform-categories-mobile': Math.min(categories, 2) },
+  };
+};
+
+export const getThemeHeaderStyle = (configuration, mode) => {
+  const header = getThemeChrome(configuration, 'header', mode);
+  if (!header) return undefined;
+  return {
+    height: `${header.height}px`, width: `${header.width}%`, marginInline: 'auto',
+    borderRadius: `${header.radius}px`, background: header.background, color: header.foreground,
+    borderColor: header.accent, '--platform-header-accent': header.accent,
+  };
 };
 
 export const platformThemeStyles = (configuration, mode = 'light') => {
@@ -53,18 +86,21 @@ export const platformThemeStyles = (configuration, mode = 'light') => {
     styles[prefix + '-accent'] = layout.accent;
     styles[prefix + '-radius'] = layout.radius + 'px';
   }
-  const productsPerRow = [2, 3, 4].includes(configuration.layout?.productsPerRow) ? configuration.layout.productsPerRow : 4;
-  const categoriesPerRow = [2, 3].includes(configuration.layout?.categoriesPerRow) ? configuration.layout.categoriesPerRow : 3;
-  styles['--platform-products-desktop'] = String(productsPerRow);
-  styles['--platform-products-tablet'] = String(Math.min(productsPerRow, 3));
-  styles['--platform-products-mobile'] = String(Math.min(productsPerRow, 2));
-  styles['--platform-categories-desktop'] = String(categoriesPerRow);
-  styles['--platform-categories-mobile'] = String(Math.min(categoriesPerRow, 2));
+  const grids = getThemeGridStyles(configuration);
+  Object.assign(styles, grids.productGridStyle, grids.categoryGridStyle);
+  // Legacy components also consume these background/elevation aliases.
+  styles['--color-background'] = appearance.colors.background;
+  styles['--color-background-rgb'] = toRgb(appearance.colors.background);
+  styles['--color-elevated'] = appearance.colors.surface;
+  styles['--color-elevated-rgb'] = toRgb(appearance.colors.surface);
   styles['--color-card'] = appearance.colors.surface;
   styles['--color-card-rgb'] = toRgb(appearance.colors.surface);
   styles['--color-muted'] = appearance.colors.mutedText;
   styles['--color-primary-soft'] = appearance.colors.primary;
   styles['--color-primary-hover'] = appearance.colors.primary;
+  if (Number.isInteger(configuration.brand?.sidebarMetrics?.radius)) {
+    styles['--platform-sidebar-radius'] = `${configuration.brand.sidebarMetrics.radius}px`;
+  }
   styles['--color-button-text'] = contrastLight(appearance.colors.primary) ? '#111827' : '#FFFFFF';
   if (allowedFonts.arabicFont.includes(appearance.typography?.arabicFont)) {
     styles['--platform-font-ar'] = `"${appearance.typography.arabicFont}", sans-serif`;
@@ -114,12 +150,18 @@ export const applyPublishedPlatformTheme = (configuration, mode = 'light') => {
   appliedProperties.forEach((property) => root.style.removeProperty(property));
   appliedProperties = [];
   root.classList.remove('platform-theme-active', 'platform-theme-compact', 'platform-theme-outline-button');
+  root.removeAttribute('data-platform-products-neon');
+  root.removeAttribute('data-platform-purchase-neon');
   const appearance = configuration?.schemaVersion === 2 ? configuration.modes?.[mode] : configuration;
   const styles = platformThemeStyles(configuration, mode);
   if (!Object.keys(styles).length) return;
+  ensureThemeFont(appearance?.typography?.arabicFont);
+  ensureThemeFont(appearance?.typography?.englishFont);
   Object.entries(styles).forEach(([property, value]) => root.style.setProperty(property, value));
   appliedProperties = Object.keys(styles);
   root.classList.add('platform-theme-active');
+  if (appearance?.neon?.bestSellers?.enabled) root.setAttribute('data-platform-products-neon', 'true');
+  if (appearance?.neon?.purchase?.enabled) root.setAttribute('data-platform-purchase-neon', 'true');
   if (appearance?.navigation?.style === 'compact') root.classList.add('platform-theme-compact');
   if (appearance?.buttons?.style === 'outline') root.classList.add('platform-theme-outline-button');
 };

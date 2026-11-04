@@ -13,7 +13,7 @@ const items = [
   { key: 'search', path: '/products', icon: Search, ar: 'البحث', en: 'Search' },
 ];
 
-export default function PlatformBottomNav() {
+export default function PlatformBottomNav({ preview = false }) {
   const { i18n } = useTranslation();
   const { publishedPlatformTheme, theme } = useTheme();
   const layout = getThemeChrome(publishedPlatformTheme, 'bottomNav', theme);
@@ -30,7 +30,7 @@ export default function PlatformBottomNav() {
     '--platform-bottom-nav-accent': layout.accent,
   };
   return <nav className="platform-bottom-nav grid grid-cols-5 items-center px-2" style={style} data-template={layout.template || 'bar'} aria-label={isArabic ? 'التنقل الرئيسي' : 'Main navigation'}>
-    {items.map(({ key, path, icon: Icon, ar, en }) => <NavLink key={key} to={path} className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors ${isActive ? 'text-[var(--color-primary)]' : 'opacity-75'}`} style={({ isActive }) => isActive ? { color: layout.accent } : undefined}>
+    {items.map(({ key, path, icon: Icon, ar, en }) => <NavLink key={key} to={path} onClick={preview ? (event) => event.preventDefault() : undefined} className={({ isActive }) => `flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold transition-colors ${isActive ? 'text-[var(--color-primary)]' : 'opacity-75'}`} style={({ isActive }) => isActive ? { color: layout.accent } : undefined}>
       <Icon className="h-4 w-4" aria-hidden="true" /><span className="max-w-full truncate">{isArabic ? ar : en}</span>
     </NavLink>)}
   </nav>;

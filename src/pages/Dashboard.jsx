@@ -17,7 +17,7 @@ import {
 } from '../utils/storefront';
 import { isBackofficeRole } from '../utils/authRoles';
 import { useTheme } from '../context/ThemeContext';
-import { isSafeThemeMediaPath } from '../theme/platformTheme';
+import { isSafeThemeMediaPath, getThemeGridStyles } from '../theme/platformTheme';
 import { resolveImageUrl } from '../utils/imageUrl';
 
 const Dashboard = () => {
@@ -27,6 +27,7 @@ const Dashboard = () => {
   const { i18n } = useTranslation();
   const { publishedPlatformTheme } = useTheme();
   const targetBanner = publishedPlatformTheme?.brand?.targetBannerPath;
+  const { categoryGridStyle } = getThemeGridStyles(publishedPlatformTheme);
   const navigate = useNavigate();
   const language = getStorefrontLanguage(i18n);
   const isTwoFactorEnabled = Boolean(user?.twoFactorEnabled ?? user?.isTwoFactorEnabled);
@@ -117,7 +118,7 @@ const Dashboard = () => {
           <ProductSearchBar products={storefrontProducts} language={language} onSelectProduct={handleProductSelect} forceIconRight placeholder={language === 'ar' ? 'ابحث عن منتج...' : 'Search for a product...'} noResultsLabel={language === 'ar' ? 'لا يوجد منتج مطابق' : 'No matching product found'} className="mx-auto w-full" inputClassName="h-12 rounded-full" />
         </div>
 
-        <div className="relative z-0 grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-3 xl:grid-cols-4">
+        <div className="platform-theme-category-grid relative z-0 grid gap-2 sm:gap-2.5" style={categoryGridStyle}>
           {visibleHomepageCategories.map((category, index) => (
             <CategoryCard key={category.id} category={category} active={false} index={index} onSelect={handleCategorySelect} />
           ))}

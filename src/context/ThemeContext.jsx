@@ -39,29 +39,58 @@ export const ThemeProvider = ({ children }) => {
       setPreviewPlatformTheme(event.data.configuration?.schemaVersion === 2 ? event.data.configuration : null);
     };
     window.addEventListener('message', receivePreview);
+    window.parent.postMessage({ type: 'oscar:theme-preview-ready' }, window.location.origin);
     return () => window.removeEventListener('message', receivePreview);
   }, [isPreviewFrame]);
 
   useEffect(() => {
     if ((import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() !== 'real') return undefined;
     let active = true;
+    let generation = 0;
+    let inFlight = null;
+    let refreshPending = false;
+    const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('oscar-published-theme') : null;
     const refresh = (event) => {
       const eventConfiguration = event?.detail?.schemaVersion === 2 ? event.detail : null;
       if (eventConfiguration) {
+        generation += 1; // Ignore any older GET that finishes after this successful publish.
         setPublishedPlatformTheme(eventConfiguration);
+        channel?.postMessage({ type: 'published' });
         return;
       }
-      apiClient.platformTheme.getPublished()
-        .then((result) => { if (active) setPublishedPlatformTheme(result?.published || result?.configuration || null); })
-        .catch(() => { if (active) setPublishedPlatformTheme(null); });
+      if (inFlight) return inFlight;
+      const requestGeneration = generation;
+      inFlight = apiClient.platformTheme.getPublished()
+        .then((result) => { if (active && generation === requestGeneration) setPublishedPlatformTheme(result.published); })
+        // A temporary connection failure must not erase the last confirmed theme.
+        .catch(() => {})
+        .finally(() => {
+          inFlight = null;
+          if (active && refreshPending) { refreshPending = false; void refresh(); }
+        });
+      return inFlight;
     };
+    const invalidate = () => {
+      generation += 1;
+      if (inFlight) { refreshPending = true; return; }
+      void refresh();
+    };
+    const refreshVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    if (channel) channel.onmessage = invalidate;
+    const timer = window.setInterval(refreshVisible, 30000);
     void refresh();
     window.addEventListener('platform-theme-published', refresh);
-    window.addEventListener('platform-theme-subscription-updated', refresh);
+    window.addEventListener('platform-theme-subscription-updated', invalidate);
+    window.addEventListener('focus', refreshVisible);
+    document.addEventListener('visibilitychange', refreshVisible);
     return () => {
       active = false;
+      window.clearInterval(timer);
+      channel?.close();
       window.removeEventListener('platform-theme-published', refresh);
-      window.removeEventListener('platform-theme-subscription-updated', refresh);
+      window.removeEventListener('platform-theme-subscription-updated', invalidate);
+      window.removeEventListener('focus', refreshVisible);
+      document.removeEventListener('visibilitychange', refreshVisible);
     };
   }, []);
 

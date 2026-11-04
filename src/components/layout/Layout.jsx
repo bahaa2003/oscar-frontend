@@ -9,6 +9,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import BackToTopButton from '../ui/BackToTopButton';
 import { registerVisitedPath } from '../../utils/navigation';
 import oscarLogo from '../../assets/ms-removebg-preview.webp';
+import { useTheme } from '../../context/ThemeContext';
+import { getThemeChrome } from '../../theme/platformTheme';
 
 const SiteCopyrightFooter = ({ isArabic }) => (
   <footer className="site-copyright-footer mx-auto mt-auto w-full max-w-[var(--shell-max-width)] px-3 pb-4 sm:px-4 md:px-6 lg:px-8">
@@ -42,8 +44,10 @@ const Layout = ({ children = null }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const { dir, language } = useLanguage();
-  const topHeaderTemplate = 'floating';
-  const topHeaderHeight = 64;
+  const { publishedPlatformTheme, theme } = useTheme();
+  const chrome = getThemeChrome(publishedPlatformTheme, 'header', theme);
+  const topHeaderTemplate = chrome?.template || 'floating';
+  const topHeaderHeight = chrome?.height || 64;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -88,7 +92,8 @@ const Layout = ({ children = null }) => {
     location.pathname === '/wallet/add-balance'
     || location.pathname.startsWith('/wallet/payment-details/')
   );
-  const shellOffset = !isMobile ? (isSidebarOpen ? '302px' : '100px') : '0';
+  const sidebarWidth = publishedPlatformTheme?.brand?.sidebarMetrics?.width || 270;
+  const shellOffset = !isMobile ? (isSidebarOpen ? `${sidebarWidth + 32}px` : '100px') : '0';
 
   const handleGoBack = () => {
     navigate(-1);

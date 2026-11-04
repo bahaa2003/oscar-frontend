@@ -11,7 +11,7 @@ import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassN
 import { getDefaultRouteForRole, isAdminRole, isSupervisorRole } from '../../utils/authRoles';
 import { cn } from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
-import { getThemeChrome } from '../../theme/platformTheme';
+import { getThemeChrome, getThemeHeaderStyle } from '../../theme/platformTheme';
 
 const parseHeaderWalletNumber = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -250,8 +250,8 @@ const Header = ({ toggleSidebar }) => {
       <div className={cn(
         'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[22px] border px-2.5 py-1.5 backdrop-blur-[22px] sm:rounded-[28px] sm:px-5 sm:py-1.5',
         isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
-      )} data-header-template="floating" style={headerTheme ? { background: headerTheme.background, color: headerTheme.foreground, borderColor: headerTheme.accent } : undefined}>
-        <div dir="ltr" className="grid min-h-[3.05rem] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:min-h-[3.25rem] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
+      )} data-header-template={headerTheme?.template || 'floating'} style={getThemeHeaderStyle(publishedPlatformTheme, theme)}>
+        <div dir="ltr" className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
           <div className="col-start-2 row-start-1 min-w-0 justify-self-center">
             <button
               type="button"

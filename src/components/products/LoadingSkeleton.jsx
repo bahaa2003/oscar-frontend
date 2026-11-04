@@ -2,9 +2,9 @@ import React from 'react';
 import { cn } from '../ui/Button';
 
 const layoutByVariant = {
-  catalogs: 'grid grid-cols-2 gap-3 sm:grid-cols-3',
-  products: 'grid grid-cols-3 gap-2.5 sm:gap-3',
-  search: 'grid grid-cols-2 gap-3 sm:grid-cols-3',
+  catalogs: 'platform-theme-category-grid grid gap-3',
+  products: 'platform-theme-product-grid grid gap-2.5 sm:gap-3',
+  search: 'platform-theme-product-grid grid gap-3',
 };
 
 const cardByVariant = {

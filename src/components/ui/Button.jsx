@@ -35,6 +35,7 @@ const Button = React.forwardRef(({ className, variant = 'primary', size = 'md', 
   return (
     <button
       ref={ref}
+      data-platform-button={variant === 'primary' ? 'primary' : undefined}
       className={cn(
         baseButtonClassName,
         variants[variant],

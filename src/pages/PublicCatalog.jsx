@@ -14,8 +14,10 @@ import useMediaStore from '../store/useMediaStore';
 import apiClient from '../services/client';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
+import { getThemeGridStyles, getThemeChrome, getThemeHeaderStyle } from '../theme/platformTheme';
 import HeaderBrand from '../components/layout/HeaderBrand';
 import PublicSidebar from '../components/layout/PublicSidebar';
+import PlatformBottomNav from '../components/layout/PlatformBottomNav';
 import HeroSlider from '../components/home/HeroSlider';
 import SoulChillBanner from '../components/home/SoulChillBanner';
 import CategoryCard from '../components/home/CategoryCard';
@@ -112,7 +114,7 @@ const PublicCatalog = () => {
   const { i18n } = useTranslation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userRole = useAuthStore((state) => state.user?.role);
-  const { publishedPlatformTheme } = useTheme();
+  const { publishedPlatformTheme, theme } = useTheme();
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const { categories, products, isLoading, loadProducts } = useMediaStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -122,10 +124,8 @@ const PublicCatalog = () => {
   const [isPublicCatalogLoading, setIsPublicCatalogLoading] = useState(isRealProvider);
 
   const language = getStorefrontLanguage(i18n);
-  const productsPerRow = [2, 3, 4].includes(publishedPlatformTheme?.layout?.productsPerRow) ? publishedPlatformTheme.layout.productsPerRow : 4;
-  const categoriesPerRow = [2, 3].includes(publishedPlatformTheme?.layout?.categoriesPerRow) ? publishedPlatformTheme.layout.categoriesPerRow : 3;
-  const productGridStyle = { '--platform-products-desktop': productsPerRow, '--platform-products-tablet': Math.min(productsPerRow, 3), '--platform-products-mobile': Math.min(productsPerRow, 2) };
-  const categoryGridStyle = { '--platform-categories-desktop': categoriesPerRow, '--platform-categories-mobile': Math.min(categoriesPerRow, 2) };
+  const { productGridStyle, categoryGridStyle } = getThemeGridStyles(publishedPlatformTheme);
+  const headerTheme = getThemeChrome(publishedPlatformTheme, 'header', theme);
   const isArabic = language === 'ar';
   const copy = useMemo(
     () => (
@@ -418,6 +418,7 @@ const PublicCatalog = () => {
   }, [appsCategoryId]);
 
   const handleProductSelect = useCallback(() => {
+    if (isThemePreviewFrame) return;
     navigate('/auth?mode=login');
   }, [navigate]);
 
@@ -430,14 +431,17 @@ const PublicCatalog = () => {
   }, []);
 
   const handleLogin = useCallback(() => {
+    if (isThemePreviewFrame) return;
     navigate('/auth?mode=login');
   }, [navigate]);
 
   const handleCreateAccount = useCallback(() => {
+    if (isThemePreviewFrame) return;
     navigate('/auth?mode=signup');
   }, [navigate]);
 
   const handleGoogleLogin = useCallback(() => {
+    if (isThemePreviewFrame) return;
     Promise.resolve(loginWithGoogle());
   }, [loginWithGoogle]);
 
@@ -449,13 +453,13 @@ const PublicCatalog = () => {
     navigate('/');
   }, [navigate]);
 
-  if (isAuthenticated) return null;
+  if (isAuthenticated && !isThemePreviewFrame) return null;
 
   return (
-    <div className="min-h-screen pb-5 pt-[4.75rem]">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-[color:rgb(var(--color-border-rgb)/0.32)] bg-[color:rgb(var(--color-background-rgb)/0.88)] shadow-[0_18px_44px_-34px_rgb(var(--color-primary-rgb)/0.36)] backdrop-blur-xl">
+    <div className="min-h-screen pb-5 pt-[4.75rem]" style={headerTheme ? { paddingTop: `${headerTheme.height + (headerTheme.template === 'floating' ? 28 : 16)}px` } : undefined}>
+      <header style={{ top: headerTheme?.template === 'floating' ? 12 : 0 }} className="fixed inset-x-0 top-0 z-50 border-b border-[color:rgb(var(--color-border-rgb)/0.32)] bg-[color:rgb(var(--color-background-rgb)/0.88)] shadow-[0_18px_44px_-34px_rgb(var(--color-primary-rgb)/0.36)] backdrop-blur-xl">
         <div className="mx-auto max-w-[var(--shell-max-width)] px-3 py-2 sm:px-4 lg:px-6">
-          <div dir="ltr" className="oscar-neon-panel grid min-h-[2.95rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-[20px] border px-2.5 py-1 sm:min-h-[3.25rem] sm:gap-5 sm:rounded-[28px] sm:px-5 sm:py-1.5">
+          <div dir="ltr" className="app-shell-header-panel oscar-neon-panel grid min-h-[2.95rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-[20px] border px-2.5 py-1 sm:min-h-[3.25rem] sm:gap-5 sm:rounded-[28px] sm:px-5 sm:py-1.5" data-header-template={headerTheme?.template} style={getThemeHeaderStyle(publishedPlatformTheme, theme)}>
             <div className="col-start-1 row-start-1 flex items-center gap-1 justify-self-start sm:gap-2">
               <ThemeToggle variant="glass" compact className="h-9 w-9 sm:h-10 sm:w-10" />
             </div>
@@ -695,6 +699,7 @@ const PublicCatalog = () => {
           <SoulChillBanner onClick={handleSoulChillClick} />
         </div>
       </main>
+      {isThemePreviewFrame && <PlatformBottomNav preview />}
     </div>
   );
 };

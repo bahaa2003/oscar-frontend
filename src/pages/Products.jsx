@@ -4,6 +4,7 @@ import { Layers3, Search, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-rea
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
+import { getThemeGridStyles } from '../theme/platformTheme';
 import useAuthStore from '../store/useAuthStore';
 import useMediaStore from '../store/useMediaStore';
 import useGroupStore from '../store/useGroupStore';
@@ -87,10 +88,7 @@ const Products = () => {
   const language = getStorefrontLanguage(i18n);
   const isRTL = language === 'ar';
   const copy = useMemo(() => getProductsPageCopy(language), [language]);
-  const productsPerRow = [2, 3, 4].includes(publishedPlatformTheme?.layout?.productsPerRow) ? publishedPlatformTheme.layout.productsPerRow : 4;
-  const categoriesPerRow = [2, 3].includes(publishedPlatformTheme?.layout?.categoriesPerRow) ? publishedPlatformTheme.layout.categoriesPerRow : 3;
-  const productGridStyle = { '--platform-products-desktop': productsPerRow, '--platform-products-tablet': Math.min(productsPerRow, 3), '--platform-products-mobile': Math.min(productsPerRow, 2) };
-  const categoryGridStyle = { '--platform-categories-desktop': categoriesPerRow, '--platform-categories-mobile': Math.min(categoriesPerRow, 2) };
+  const { productGridStyle, categoryGridStyle } = getThemeGridStyles(publishedPlatformTheme);
 
   const activeCategoryParam = searchParams.get('category') || '';
   const activePurchaseParam = searchParams.get('purchase') || '';
