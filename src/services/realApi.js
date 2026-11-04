@@ -1923,6 +1923,10 @@ const normalizeReferralListResult = (data = {}) => ({
 // ═════════════════════════════════════════════════════════════════════════════
 
 const realApi = {
+  maintenance: {
+    getStatus: async () => unwrap(await http.get('/maintenance/status', { headers: { 'Cache-Control': 'no-cache' } })),
+    setEnabled: async (enabled) => unwrap(await http.patch('/maintenance/status', { enabled })),
+  },
   platformTheme: {
     getPublished: async () => unwrap(await http.get('/theme/published')),
     getSettings: async () => unwrap(await http.get('/admin/theme/settings')),
@@ -1932,6 +1936,7 @@ const realApi = {
     resetDraft: async () => unwrap(await http.post('/admin/theme/draft/reset')),
     publish: async (configuration) => unwrap(await http.post('/admin/theme/publish', configuration)),
     restore: async (version) => unwrap(await http.post('/admin/theme/restore', { version })),
+    restoreToDraft: async (version) => unwrap(await http.post('/admin/theme/restore-draft', { version })),
     getHistory: async (page = 1) => unwrap(await http.get('/admin/theme/history', { params: { page } })),
     getSubscription: async () => unwrap(await http.get('/admin/theme/subscription')),
     getPayments: async () => unwrap(await http.get('/admin/theme/subscription/payment-status')),

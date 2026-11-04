@@ -15,6 +15,8 @@ import {
   Users,
   Wallet,
   Building2,
+  Power,
+  Wrench,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +45,7 @@ import { formatDateTime, formatNumber, getNumericLocale } from '../utils/intl';
 import { enrichOrders } from '../utils/orders';
 import { getUserRegistrationDate, isApprovedAccountStatus, isPendingAccountStatus } from '../utils/accountStatus';
 import { PERMISSIONS, hasPermission } from '../utils/permissions';
+import { isAdminRole } from '../utils/authRoles';
 
 const PENDING_STATUSES = ['pending', 'requested', 'under_review', 'processing'];
 const COMPLETED_STATUSES = ['completed', 'approved', 'success'];
@@ -207,6 +210,9 @@ const AdminDashboard = () => {
   const [rejectingUserId, setRejectingUserId] = useState('');
   const [supplierBalances, setSupplierBalances] = useState([]);
   const [isLoadingSupplierBalances, setIsLoadingSupplierBalances] = useState(false);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [isLoadingMaintenance, setIsLoadingMaintenance] = useState(true);
+  const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
 
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const locale = getNumericLocale(isArabic ? 'ar-EG' : 'en-US');
@@ -220,6 +226,38 @@ const AdminDashboard = () => {
   const canViewSuppliers = hasPermission(user, PERMISSIONS.ADMIN_SUPPLIERS);
   const canViewTargets = hasPermission(user, PERMISSIONS.ADMIN_TARGET_REQUESTS);
   const canConfirmTargets = hasPermission(user, PERMISSIONS.CONFIRM_TARGET_REQUESTS);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiClient.maintenance.getStatus()
+      .then((status) => { if (isMounted) setMaintenanceEnabled(status?.enabled === true); })
+      .catch(() => { if (isMounted) addToast(isArabic ? 'تعذر تحميل حالة صيانة الموقع.' : 'Unable to load maintenance status.', 'error'); })
+      .finally(() => { if (isMounted) setIsLoadingMaintenance(false); });
+    return () => { isMounted = false; };
+  }, [addToast, isArabic]);
+
+  const handleMaintenanceToggle = async () => {
+    const nextEnabled = !maintenanceEnabled;
+    const confirmation = nextEnabled
+      ? (isArabic ? 'سيظهر للزوار موقع الصيانة وستتوقف طلبات العملاء الجديدة. هل تريد المتابعة؟' : 'Visitors will see the maintenance page and new customer requests will be paused. Continue?')
+      : (isArabic ? 'سيعود المتجر للعمل وتصبح عمليات العملاء متاحة. هل تريد المتابعة؟' : 'The storefront and customer operations will become available again. Continue?');
+    if (!window.confirm(confirmation)) return;
+
+    setIsSavingMaintenance(true);
+    try {
+      const status = await apiClient.maintenance.setEnabled(nextEnabled);
+      const enabled = status?.enabled === true;
+      setMaintenanceEnabled(enabled);
+      window.dispatchEvent(new CustomEvent('oscar:maintenance-updated', { detail: { ...status, enabled } }));
+      addToast(enabled
+        ? (isArabic ? 'تم تفعيل وضع الصيانة.' : 'Maintenance mode is on.')
+        : (isArabic ? 'تم إيقاف وضع الصيانة وعاد المتجر للعمل.' : 'Maintenance mode is off. The store is back online.'), 'success');
+    } catch (error) {
+      addToast(error?.message || (isArabic ? 'تعذر تحديث وضع الصيانة.' : 'Unable to update maintenance mode.'), 'error');
+    } finally {
+      setIsSavingMaintenance(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -1011,6 +1049,44 @@ const AdminDashboard = () => {
         userName={user?.name}
         currentDateLabel={currentDateLabel}
       />
+
+      {isAdminRole(user?.role) ? (
+        <Card variant="premium" className={`overflow-hidden border p-4 sm:p-5 ${maintenanceEnabled ? 'border-orange-400/50 bg-orange-500/[0.06]' : 'border-emerald-500/30 bg-emerald-500/[0.04]'}`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${maintenanceEnabled ? 'bg-orange-500/12 text-orange-600' : 'bg-emerald-500/12 text-emerald-600'}`}>
+                <Wrench className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="font-bold text-[var(--color-text)]">{isArabic ? 'وضع صيانة الموقع' : 'Store maintenance mode'}</h2>
+                <p className={`mt-1 text-sm font-semibold ${maintenanceEnabled ? 'text-orange-600' : 'text-emerald-600'}`}>
+                  {isLoadingMaintenance
+                    ? (isArabic ? 'جارٍ التحقق من الحالة…' : 'Checking current status…')
+                    : maintenanceEnabled
+                      ? (isArabic ? 'الموقع في وضع الصيانة' : 'The site is under maintenance')
+                      : (isArabic ? 'الموقع يعمل بشكل طبيعي' : 'The site is operating normally')}
+                </p>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--color-text-secondary)]">
+                  {isArabic ? 'عند التفعيل تظهر صفحة الصيانة للزوار وتتوقف طلبات العملاء، مع استمرار دخول الإدارة.' : 'Visitors see the maintenance page and customer API operations pause. Active administrators retain access.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleMaintenanceToggle}
+              disabled={isLoadingMaintenance || isSavingMaintenance}
+              className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 ${maintenanceEnabled ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+            >
+              <Power className="h-4 w-4" />
+              {isSavingMaintenance
+                ? (isArabic ? 'جارٍ الحفظ…' : 'Saving…')
+                : maintenanceEnabled
+                  ? (isArabic ? 'إيقاف الصيانة' : 'Turn maintenance off')
+                  : (isArabic ? 'تفعيل الصيانة' : 'Turn maintenance on')}
+            </button>
+          </div>
+        </Card>
+      ) : null}
 
       <Card variant="premium" className="admin-dashboard-filter-card overflow-visible p-4 sm:p-6">
         <DashboardDateRangeFilter

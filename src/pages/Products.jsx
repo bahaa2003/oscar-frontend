@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Layers3, Search, ChevronRight, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../context/ThemeContext';
 import useAuthStore from '../store/useAuthStore';
 import useMediaStore from '../store/useMediaStore';
 import useGroupStore from '../store/useGroupStore';
@@ -73,6 +74,7 @@ const Products = () => {
   const products = useMediaStore((state) => state.products);
   const categories = useMediaStore((state) => state.categories);
   const isLoading = useMediaStore((state) => state.isLoading);
+  const { publishedPlatformTheme } = useTheme();
   const loadProducts = useMediaStore((state) => state.loadProducts);
   const groupsLastLoadedAt = useGroupStore((state) => state.groupsLastLoadedAt);
   const loadCurrencies = useSystemStore((state) => state.loadCurrencies);
@@ -85,6 +87,10 @@ const Products = () => {
   const language = getStorefrontLanguage(i18n);
   const isRTL = language === 'ar';
   const copy = useMemo(() => getProductsPageCopy(language), [language]);
+  const productsPerRow = [2, 3, 4].includes(publishedPlatformTheme?.layout?.productsPerRow) ? publishedPlatformTheme.layout.productsPerRow : 4;
+  const categoriesPerRow = [2, 3].includes(publishedPlatformTheme?.layout?.categoriesPerRow) ? publishedPlatformTheme.layout.categoriesPerRow : 3;
+  const productGridStyle = { '--platform-products-desktop': productsPerRow, '--platform-products-tablet': Math.min(productsPerRow, 3), '--platform-products-mobile': Math.min(productsPerRow, 2) };
+  const categoryGridStyle = { '--platform-categories-desktop': categoriesPerRow, '--platform-categories-mobile': Math.min(categoriesPerRow, 2) };
 
   const activeCategoryParam = searchParams.get('category') || '';
   const activePurchaseParam = searchParams.get('purchase') || '';
@@ -432,7 +438,7 @@ const Products = () => {
         <>
           {/* Root categories — wide banners (currentParentId is null) */}
           {currentCategories.length > 0 && currentParentId === null && !activeCategoryParam && (
-            <section className="grid grid-cols-2 gap-3 p-1 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+            <section className="platform-theme-category-grid grid gap-3 p-1 sm:gap-4" style={categoryGridStyle}>
               {currentCategories.map((catalog, index) => (
                 <CategoryCard
                   key={catalog.id}
@@ -447,7 +453,7 @@ const Products = () => {
 
           {/* Sub-categories — tight square cards (drilled into a parent) */}
           {shouldMergeProductsWithSubcategories && (
-            <section className="grid grid-cols-3 gap-3 p-1 sm:gap-4">
+            <section className="platform-theme-product-grid grid min-w-0 gap-3 p-1 sm:gap-4" style={productGridStyle}>
               {currentCategories.map((catalog, index) => (
                 <CategoryCard
                   key={catalog.id}
@@ -499,7 +505,7 @@ const Products = () => {
 
           {/* Products — from leaf category or parent drill-down */}
           {displayProducts.length > 0 && !shouldMergeProductsWithSubcategories && (
-            <section className="grid grid-cols-3 gap-3 p-1 sm:gap-4">
+            <section className="platform-theme-product-grid grid min-w-0 gap-3 p-1 sm:gap-4" style={productGridStyle}>
               {displayProducts.map((product) => (
                 <ProductCardSimple
                   key={product.id}

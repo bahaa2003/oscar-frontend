@@ -1,17 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, ArrowUpRight, Check, CreditCard, History, ImagePlus, Layers3, LockKeyhole, MenuSquare, Palette, PanelsTopLeft, RotateCcw, Save, Sparkles, Type, MessageCircle, LayoutDashboard } from 'lucide-react';
+import { Activity, ArrowUpRight, Check, CreditCard, History, ImagePlus, Layers3, LayoutGrid, LockKeyhole, MenuSquare, Palette, PanelsTopLeft, RotateCcw, Save, Sparkles, Type, MessageCircle, LayoutDashboard } from 'lucide-react';
 import apiClient from '../../services/client';
 import useMediaStore from '../../store/useMediaStore';
 import CategoryCard from '../../components/home/CategoryCard';
 import { createStorefrontCategories } from '../../utils/storefront';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../components/ui/Toast';
-import { platformThemeStyles } from '../../theme/platformTheme';
+import { getThemeChrome, platformThemeStyles } from '../../theme/platformTheme';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import useAuthStore from '../../store/useAuthStore';
 import useSystemStore from '../../store/useSystemStore';
 import PlatformStudioPreview from './PlatformStudioPreview';
+import StorefrontThemePreview from './StorefrontThemePreview';
 import './PlatformThemeEditor.css';
 
 const liveApi = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase() === 'real';
@@ -38,6 +39,11 @@ const DEFAULT_MARQUEE_AR = 'بِسْمِ اللَّهِ الرَّحْمَنِ �
 const sampleTheme = { schemaVersion: 2, modes: { light: samplePart('light'), dark: samplePart('dark') },
   brand: { logoPath: null, logoWidth: 144, slides: [null, null, null, null], marqueeTextArabic: DEFAULT_MARQUEE_AR, targetBannerPath: null, sidebarTemplate: 'default', sidebarMetrics: { width: 270, height: 100, radius: 28 } },
   chrome: { header: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 } } };
+sampleTheme.layout = { productsPerRow: 4, categoriesPerRow: 3 };
+sampleTheme.chrome = { modes: {
+  light: { header: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 } },
+  dark: { header: { template: 'bar', height: 64, width: 100, background: '#0F172A', foreground: '#F8FAFC', accent: '#60A5FA', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#0F172A', foreground: '#F8FAFC', accent: '#60A5FA', radius: 0 } },
+} };
 const headerLooks = [
   { name: 'Midnight edge', ar: 'مستطيل منتصف الليل', config: { template: 'bar', height: 64, width: 100, background: '#111827', foreground: '#F8FAFC', accent: '#38BDF8', radius: 0 } },
   { name: 'Violet float', ar: 'عائم بنفسجي', config: { template: 'floating', height: 72, width: 90, background: '#312E81', foreground: '#F5F3FF', accent: '#C4B5FD', radius: 24 } },
@@ -624,7 +630,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     if (previewOnly) return;
     const section = window.location.hash.replace('#studio-', '').replace('#theme-', '');
     if (section === 'subscription') { navigate('/admin/theme/subscriptions', { replace: true }); return; }
-    if (['overview', 'colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding', 'contacts', 'history', 'preview'].includes(section)) setActivePage(section);
+    if (['overview', 'colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding', 'layout', 'contacts', 'history', 'preview'].includes(section)) setActivePage(section);
   }, [navigate, previewOnly]);
   const paid = ['THEME_PRO', 'THEME_ULTRA'].includes(settings?.eligibility?.plan);
   const ultra = settings?.eligibility?.plan === 'THEME_ULTRA';
@@ -681,7 +687,8 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const updateBrand = (change) => setDraft((current) => ({ ...current, brand: { ...current.brand, ...change } }));
   const updateSidebarMetrics = (change) => setDraft((current) => ({ ...current, brand: { ...current.brand,
     sidebarMetrics: { ...sampleTheme.brand.sidebarMetrics, ...current.brand.sidebarMetrics, ...change } } }));
-  const updateChrome = (section, change) => setDraft((current) => ({ ...current, chrome: { ...current.chrome, [section]: { ...current.chrome[section], ...change } } }));
+  const updateChrome = (section, change) => setDraft((current) => { const modes = { ...current.chrome.modes, [mode]: { ...current.chrome.modes[mode], [section]: { ...current.chrome.modes[mode][section], ...change } } }; return { ...current, chrome: { ...current.chrome, header: modes.light.header, bottomNav: modes.light.bottomNav, modes } }; });
+  const updateLayout = (change) => setDraft((current) => ({ ...current, layout: { productsPerRow: 4, categoriesPerRow: 3, ...current.layout, ...change } }));
   const updateNeon = (section, change) => setDraft((current) => ({ ...current,
     modes: { ...current.modes, [mode]: { ...current.modes[mode], neon: { ...current.modes[mode].neon,
       [section]: { ...current.modes[mode].neon[section], ...change } } } } }));
@@ -720,6 +727,12 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       addToast(next ? `${t.nextEdit}: ${dateText(next, language)}` : errorText(cause, t), 'error');
       if (cause?.response?.status === 429) await refresh(true);
     } finally { setBusy(false); }
+  };
+  const publishPreview = () => {
+    const confirmed = window.confirm(language === 'ar'
+      ? 'هل تريد نشر الإعدادات الظاهرة في المعاينة؟'
+      : 'Publish the exact theme currently shown in the preview?');
+    if (confirmed) return run(() => apiClient.platformTheme.publish(draft), t.published);
   };
   const upload = async (file, slot = null) => {
     if (!paid || previewOnly || !file) return;
@@ -769,6 +782,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
 
   const studioNav = [
     ['overview', LayoutDashboard, language === 'ar' ? 'نظرة عامة' : 'Overview'],
+    ['layout', LayoutGrid, language === 'ar' ? 'توزيع المنتجات والأقسام' : 'Product & category layout'],
     ['header', PanelsTopLeft, language === 'ar' ? 'تصميم الهيدر' : 'Header studio'],
     ['sidebar', MenuSquare, language === 'ar' ? 'تصميم السايدبار' : 'Sidebar studio'],
     ['navigation', Activity, language === 'ar' ? 'النافبار السفلي' : 'Bottom navigation'],
@@ -780,7 +794,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     ['contacts', MessageCircle, language === 'ar' ? 'أرقام واتساب' : 'WhatsApp contacts'],
     ['history', History, language === 'ar' ? 'سجل النشر' : 'Publish history'],
   ];
-  const editingPage = ['colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding'].includes(activePage);
+  const editingPage = ['colors', 'templates', 'typography', 'header', 'sidebar', 'navigation', 'branding', 'layout'].includes(activePage);
   const setStudioSection = (id) => { setActivePage(id); window.history.replaceState(null, '', `#studio-${id}`); };
   const openSubscriptions = () => navigate('/admin/theme/subscriptions');
   return <main className="platform-studio mx-auto max-w-[90rem] space-y-5 px-3 py-5 sm:px-6 sm:py-7">
@@ -795,9 +809,10 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       <section className={`${card} p-4 sm:p-5`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-black text-[var(--color-text)]">{language === 'ar' ? 'قوالب مقترحة لك' : 'Recommended templates'}</h2><p className="mt-1 text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? 'عاين القالب وطبقه على المسودة مباشرة.' : 'Preview a template and apply it to your draft.'}</p></div><button type="button" onClick={() => setStudioSection('templates')} className="inline-flex items-center gap-1 text-xs font-black text-[var(--color-primary)]">{language === 'ar' ? 'المكتبة كاملة' : 'Full library'}<ArrowUpRight className="h-4 w-4" /></button></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.slice(0, 4).map((entry) => { const locked = entry.tier === 'THEME_PRO' && !paid; const colors = entry.configuration.modes[mode].colors; return <button key={entry.id} type="button" onClick={() => locked ? openSubscriptions() : choosePreset(entry)} className={`theme-preset-card ${locked ? 'theme-preset-card--locked' : ''}`}><span className="theme-preset-card__scene" style={{ backgroundColor: colors.background, borderColor: colors.border }}><span className="theme-preset-card__panel" style={{ backgroundColor: colors.surface, borderColor: colors.border }}><span className="theme-preset-card__title" style={{ color: colors.text }}>Aa</span><span className="theme-preset-card__accent" style={{ backgroundColor: colors.primary }} /><span className="theme-preset-card__line" style={{ backgroundColor: colors.secondary }} /></span></span><span className="theme-preset-card__label"><span>{presetNames[language]?.[entry.id] || entry.id}</span>{locked ? <LockKeyhole className="h-4 w-4 text-amber-500" /> : null}</span><small className="studio-template-meta">{presetCategory(entry.id, language)} · {locked ? 'PRO' : language === 'ar' ? 'تطبيق فوري' : 'Apply instantly'}</small></button>; })}</div></section>
       {!paid && <div className="platform-studio__upgrade-banner"><span className="platform-studio__upgrade-orb"><Sparkles /></span><div><strong>{language === 'ar' ? 'أطلق الهوية الكاملة لمنصتك' : 'Unlock your platform’s full identity'}</strong><p>{language === 'ar' ? 'قوالب أكثر، تخصيص أعمق، ومعاينة متكاملة قبل النشر.' : 'More templates, richer controls, and a complete preview before publishing.'}</p></div><Link to="/admin/theme/subscriptions">{language === 'ar' ? 'استكشف الخطط' : 'Explore plans'}<ArrowUpRight className="h-4 w-4" /></Link></div>}
     </section>}
-    {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة الموقع بالكامل' : 'Full website preview'}><p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'واجهة تفاعلية ببيانات توضيحية، مستقلة عن حسابات وطلبات العملاء.' : 'Interactive sample interface isolated from customer accounts and live orders.'}</p><PlatformStudioPreview theme={draft} mode={mode} language={language} locked={!canPreviewPaid} onUpgrade={openSubscriptions} /></Section>}
+    {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة المتجر الفعلية' : 'Actual storefront preview'}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /><div className="mt-4 flex justify-end"><button type="button" className={`${button} border-[var(--color-primary)] bg-[var(--color-primary)] text-white`} disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{t.publish}</button></div></Section>}
     <div className="grid grid-cols-1 gap-5">
       <div id="theme-appearance" className={`space-y-5 scroll-mt-20 ${!previewOnly && !editingPage ? 'hidden' : ''}`}>
+        {!previewOnly && activePage === 'layout' && <Section icon={LayoutGrid} title={language === 'ar' ? 'عرض المنتجات والأقسام' : 'Product and category layout'}><p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختر عدد العناصر وعاين الشبكة. سيتكيف العرض مع الشاشات الصغيرة.' : 'Choose a grid size and preview it. The storefront adapts the grid on smaller screens.'}</p><div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف' : 'Products per row'}</h3><div className="grid grid-cols-3 gap-2">{[4, 3, 2].map((count) => <button key={count} type="button" aria-pressed={(draft.layout?.productsPerRow || 4) === count} onClick={() => updateLayout({ productsPerRow: count })} className={`rounded-xl border p-3 text-start transition ${(draft.layout?.productsPerRow || 4) === count ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}><span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded bg-[var(--color-primary)]/20" />)}</span><strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'منتجات' : 'products'}</strong></button>)}</div></div><div><h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف' : 'Main categories per row'}</h3><div className="grid grid-cols-2 gap-2">{[3, 2].map((count) => <button key={count} type="button" aria-pressed={(draft.layout?.categoriesPerRow || 3) === count} onClick={() => updateLayout({ categoriesPerRow: count })} className={`rounded-xl border p-3 text-start transition ${(draft.layout?.categoriesPerRow || 3) === count ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}><span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span><strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'أقسام' : 'categories'}</strong></button>)}</div></div></div></Section>}
         {(previewOnly || activePage === 'colors' || activePage === 'templates') && <>
         <Section icon={Sparkles} title={`${t.presets} · ${t[mode]}`}><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.map((entry) => {
           const locked = entry.tier === 'THEME_PRO' && !paid;
@@ -856,7 +871,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
         {(previewOnly || ['header', 'navigation'].includes(activePage)) && <Section icon={Palette} title={activePage === 'header' ? (language === 'ar' ? 'تصميم الهيدر · ULTRA' : 'Header studio · ULTRA') : (language === 'ar' ? 'تصميم النافبار السفلي · ULTRA' : 'Bottom navigation studio · ULTRA')} locked={!canPreviewUltra}>
           <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختر قالبًا، ثم اضبط أبعاده وألوانه. التغييرات تظهر مباشرة في المعاينة الآمنة.' : 'Choose a layout and adjust its dimensions and colors. Changes appear immediately in the safe preview.'}</p>
           {['header', 'bottomNav'].filter((section) => previewOnly || (activePage === 'header' ? section === 'header' : section === 'bottomNav')).map((section) => {
-            const value = draft.chrome?.[section] || sampleTheme.chrome[section];
+            const value = getThemeChrome(draft, section, mode) || sampleTheme.chrome.modes[mode][section];
             const headerPart = section === 'header';
             return <fieldset key={section} disabled={!canPreviewUltra} className="mb-4 grid gap-3 rounded-xl border border-[var(--color-border)] p-3 disabled:opacity-55">
               <strong>{headerPart ? (language === 'ar' ? 'الهيدر العلوي' : 'Top header') : (language === 'ar' ? 'النافبار السفلي' : 'Bottom navigation')}</strong>
@@ -919,9 +934,9 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
         </Section> : null}
         </>}
       </div>
-      {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true)}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button><button type="button" className={`${button} w-full border-[var(--color-primary)] bg-[var(--color-primary)] text-white sm:w-auto`} disabled={busy || !settings?.eligibility?.canPublish || (!paid && needsPro)} onClick={() => run(() => apiClient.platformTheme.publish(draft), t.published)}><Check className="h-4 w-4" />{t.publish}</button></div></div>}
+      {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true)}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button></div></div>}
       <div className="space-y-5">
-        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-surface)] p-3 text-sm"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><button type="button" className={button} disabled={busy || !settings?.eligibility?.canPublish} onClick={() => run(() => apiClient.platformTheme.restore(item.version), t.published)}>{t.restore}</button></div>) : t.empty}</div></Section></div>}
+        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-surface)] p-3 text-sm"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), t.saved)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button></div>) : t.empty}</div></Section></div>}
         {!previewOnly && activePage === 'contacts' && <div id="theme-contacts" className="scroll-mt-20"><Section icon={MessageCircle} title={t.contactsPage}>
           {!ultra ? <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 p-5 sm:p-6">
             <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-amber-500"><LockKeyhole className="h-5 w-5" /></span><div><span className="inline-flex items-center rounded-full bg-amber-400/15 px-2.5 py-1 text-[0.68rem] font-black tracking-wide text-amber-600">ULTRA</span><h3 className="mt-2 font-black text-[var(--color-text)]">{t.contactsLockedTitle}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{t.contactsHint}</p></div></div>

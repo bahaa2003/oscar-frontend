@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { CreditCard, Home, Search, ShoppingBag, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { getThemeChrome } from '../../theme/platformTheme';
 
 const items = [
   { key: 'orders', path: '/orders', icon: ShoppingBag, ar: 'طلباتي', en: 'Orders' },
@@ -14,8 +15,8 @@ const items = [
 
 export default function PlatformBottomNav() {
   const { i18n } = useTranslation();
-  const { publishedPlatformTheme } = useTheme();
-  const layout = publishedPlatformTheme?.chrome?.bottomNav;
+  const { publishedPlatformTheme, theme } = useTheme();
+  const layout = getThemeChrome(publishedPlatformTheme, 'bottomNav', theme);
   if (!layout) return null;
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
   const style = {

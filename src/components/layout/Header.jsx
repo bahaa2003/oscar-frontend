@@ -11,6 +11,7 @@ import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassN
 import { getDefaultRouteForRole, isAdminRole, isSupervisorRole } from '../../utils/authRoles';
 import { cn } from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
+import { getThemeChrome } from '../../theme/platformTheme';
 
 const parseHeaderWalletNumber = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -61,8 +62,8 @@ const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const { user } = useAuthStore();
-  const { publishedPlatformTheme } = useTheme();
-  const headerTheme = publishedPlatformTheme?.chrome?.header;
+  const { publishedPlatformTheme, theme } = useTheme();
+  const headerTheme = getThemeChrome(publishedPlatformTheme, 'header', theme);
   const { notifications, unreadCount, isLoading, loadNotifications, loadUnreadCount, markAllAsRead, clearNotifications } = useNotificationStore();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const notificationsRef = useRef(null);

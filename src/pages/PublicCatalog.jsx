@@ -13,6 +13,7 @@ import useAuthStore from '../store/useAuthStore';
 import useMediaStore from '../store/useMediaStore';
 import apiClient from '../services/client';
 import ThemeToggle from '../components/ui/ThemeToggle';
+import { useTheme } from '../context/ThemeContext';
 import HeaderBrand from '../components/layout/HeaderBrand';
 import PublicSidebar from '../components/layout/PublicSidebar';
 import HeroSlider from '../components/home/HeroSlider';
@@ -33,6 +34,7 @@ import { homeHeroSlides } from '../data/homeHeroSlides';
 const dataProvider = (import.meta.env.VITE_DATA_PROVIDER || 'mock').toLowerCase();
 const isRealProvider = dataProvider === 'real';
 const SERVICE_NOTICE_SEEN_KEY = 'oscar-store-service-notice-seen-v1';
+const isThemePreviewFrame = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('themePreview') === '1';
 
 const hasSeenServiceNotice = () => {
   if (typeof window === 'undefined') return false;
@@ -110,15 +112,20 @@ const PublicCatalog = () => {
   const { i18n } = useTranslation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userRole = useAuthStore((state) => state.user?.role);
+  const { publishedPlatformTheme } = useTheme();
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const { categories, products, isLoading, loadProducts } = useMediaStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showServiceNotice, setShowServiceNotice] = useState(() => !hasSeenServiceNotice());
+  const [showServiceNotice, setShowServiceNotice] = useState(() => !isThemePreviewFrame && !hasSeenServiceNotice());
   const [currentParentId, setCurrentParentId] = useState(null);
   const [publicCatalog, setPublicCatalog] = useState({ categories: null, products: null });
   const [isPublicCatalogLoading, setIsPublicCatalogLoading] = useState(isRealProvider);
 
   const language = getStorefrontLanguage(i18n);
+  const productsPerRow = [2, 3, 4].includes(publishedPlatformTheme?.layout?.productsPerRow) ? publishedPlatformTheme.layout.productsPerRow : 4;
+  const categoriesPerRow = [2, 3].includes(publishedPlatformTheme?.layout?.categoriesPerRow) ? publishedPlatformTheme.layout.categoriesPerRow : 3;
+  const productGridStyle = { '--platform-products-desktop': productsPerRow, '--platform-products-tablet': Math.min(productsPerRow, 3), '--platform-products-mobile': Math.min(productsPerRow, 2) };
+  const categoryGridStyle = { '--platform-categories-desktop': categoriesPerRow, '--platform-categories-mobile': Math.min(categoriesPerRow, 2) };
   const isArabic = language === 'ar';
   const copy = useMemo(
     () => (
@@ -152,7 +159,7 @@ const PublicCatalog = () => {
   );
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isThemePreviewFrame) {
       navigate(getDefaultRouteForRole(userRole), { replace: true });
     }
   }, [isAuthenticated, navigate, userRole]);
@@ -613,7 +620,7 @@ const PublicCatalog = () => {
             {!showInitialLoading && (
               <>
                 {!isInsideCategory && currentCategories.length > 0 && (
-                  <div className="relative z-0 grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-3 xl:grid-cols-4">
+                  <div className="platform-theme-category-grid relative z-0 grid gap-2 sm:gap-2.5" style={categoryGridStyle}>
                     {currentCategories.map((category, index) => (
                       <CategoryCard
                         key={category.id}
@@ -627,7 +634,7 @@ const PublicCatalog = () => {
                 )}
 
                 {shouldMergeProductsWithSubcategories && (
-                  <div className="grid grid-cols-3 gap-3 p-1 sm:gap-4">
+                  <div className="platform-theme-product-grid grid min-w-0 gap-3 p-1 sm:gap-4" style={productGridStyle}>
                     {currentCategories.map((category, index) => (
                       <CategoryCard
                         key={category.id}
@@ -651,7 +658,7 @@ const PublicCatalog = () => {
                 )}
 
                 {isInsideCategory && currentProducts.length > 0 && !shouldMergeProductsWithSubcategories && (
-                  <div className="grid grid-cols-3 gap-3 p-1 sm:gap-4">
+                  <div className="platform-theme-product-grid grid min-w-0 gap-3 p-1 sm:gap-4" style={productGridStyle}>
                     {currentProducts.map((product) => (
                       <ProductCardSimple
                         key={product.id}

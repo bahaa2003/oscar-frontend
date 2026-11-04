@@ -22,6 +22,11 @@ const contrastLight = (hex) => {
   return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 > 0.18;
 };
 
+export const getThemeChrome = (configuration, section, mode = 'light') => {
+  const chrome = configuration?.schemaVersion === 2 ? configuration.chrome : null;
+  return chrome?.modes?.[mode]?.[section] || chrome?.[section] || null;
+};
+
 export const platformThemeStyles = (configuration, mode = 'light') => {
   const appearance = configuration?.schemaVersion === 2
     ? configuration.modes?.[mode] : configuration;
@@ -33,8 +38,8 @@ export const platformThemeStyles = (configuration, mode = 'light') => {
     styles[property] = value;
     if (rgbMap[key]) styles[rgbMap[key]] = toRgb(value);
   }
-  const chrome = configuration.schemaVersion === 2 ? configuration.chrome : null;
-  for (const [key, layout] of Object.entries({ header: chrome?.header, 'bottom-nav': chrome?.bottomNav })) {
+  for (const [key, section] of [['header', 'header'], ['bottom-nav', 'bottomNav']]) {
+    const layout = getThemeChrome(configuration, section, mode);
     if (!layout || !/^#[0-9A-Fa-f]{6}$/.test(layout.background || '')
       || !/^#[0-9A-Fa-f]{6}$/.test(layout.foreground || '')
       || !/^#[0-9A-Fa-f]{6}$/.test(layout.accent || '')
@@ -48,6 +53,13 @@ export const platformThemeStyles = (configuration, mode = 'light') => {
     styles[prefix + '-accent'] = layout.accent;
     styles[prefix + '-radius'] = layout.radius + 'px';
   }
+  const productsPerRow = [2, 3, 4].includes(configuration.layout?.productsPerRow) ? configuration.layout.productsPerRow : 4;
+  const categoriesPerRow = [2, 3].includes(configuration.layout?.categoriesPerRow) ? configuration.layout.categoriesPerRow : 3;
+  styles['--platform-products-desktop'] = String(productsPerRow);
+  styles['--platform-products-tablet'] = String(Math.min(productsPerRow, 3));
+  styles['--platform-products-mobile'] = String(Math.min(productsPerRow, 2));
+  styles['--platform-categories-desktop'] = String(categoriesPerRow);
+  styles['--platform-categories-mobile'] = String(Math.min(categoriesPerRow, 2));
   styles['--color-card'] = appearance.colors.surface;
   styles['--color-card-rgb'] = toRgb(appearance.colors.surface);
   styles['--color-muted'] = appearance.colors.mutedText;

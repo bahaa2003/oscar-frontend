@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { motion, useAnimationControls, useReducedMotion } from 'framer-motion';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -17,6 +17,8 @@ import {
   ACCOUNT_VERIFICATION_ROUTE,
 } from './utils/accountStatus';
 import useAuthStore from './store/useAuthStore';
+import apiClient from './services/client';
+import MaintenancePage from './pages/MaintenancePage';
 
 const Layout = lazy(() => import('./components/layout/Layout'));
 const Auth = lazy(() => import('./pages/Auth'));
@@ -64,6 +66,57 @@ const PaymentDetails = lazy(() => import('./pages/PaymentDetails'));
 const ADMIN_PANEL_ROLES = [...ADMIN_ROLES, ...SUPERVISOR_ROLES];
 
 const RouteLoader = () => null;
+
+const MAINTENANCE_REFRESH_MS = 5000;
+
+const MaintenanceController = ({ children }) => {
+  const location = useLocation();
+  const authToken = useAuthStore((state) => state.token);
+  const [maintenance, setMaintenance] = useState({ enabled: false, canBypass: false });
+  const [hasCheckedStatus, setHasCheckedStatus] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const status = await apiClient.maintenance.getStatus();
+        if (active) setMaintenance({ enabled: status?.enabled === true, canBypass: status?.canBypass === true });
+      } catch {
+        // If the status endpoint is temporarily unreachable, don't lock a stale page behind an outage screen.
+      } finally {
+        if (active) setHasCheckedStatus(true);
+      }
+    };
+
+    const handleLocalUpdate = (event) => {
+      const status = event?.detail || {};
+      setMaintenance({ enabled: status.enabled === true, canBypass: status.canBypass === true });
+    };
+
+    void refresh();
+    const interval = window.setInterval(refresh, MAINTENANCE_REFRESH_MS);
+    window.addEventListener('oscar:maintenance-updated', handleLocalUpdate);
+    window.addEventListener('focus', refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('oscar:maintenance-updated', handleLocalUpdate);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [authToken]);
+
+  const isAuthenticationRoute = location.pathname === '/auth' || location.pathname.startsWith('/auth/');
+  if (!hasCheckedStatus) {
+    if (isAuthenticationRoute) return children;
+    return (
+      <div className="oscar-maintenance-page fixed inset-0 z-[1000] grid min-h-[100dvh] place-items-center" aria-label="Loading OSCAR Store">
+        <span className="font-['Orbitron'] text-2xl font-black tracking-[0.18em] text-[var(--color-primary)]">OSCAR</span>
+      </div>
+    );
+  }
+  if (maintenance.enabled && !maintenance.canBypass && !isAuthenticationRoute) return <MaintenancePage />;
+  return children;
+};
 
 const renderSuspended = (element) => (
   <Suspense fallback={<RouteLoader />}>
@@ -523,8 +576,10 @@ function App() {
         <ToastProvider>
           <SessionBootstrap />
           <BrowserRouter>
-            <AnimatedAppRoutes />
-            <FloatingSupportWidgets />
+            <MaintenanceController>
+              <AnimatedAppRoutes />
+              <FloatingSupportWidgets />
+            </MaintenanceController>
           </BrowserRouter>
         </ToastProvider>
       </LanguageProvider>

@@ -673,6 +673,10 @@ const paginateMockReferralItems = (items, { page = 1, limit = 10 } = {}) => {
 
 // --- Mock API Service ---
 const mockApi = {
+  maintenance: {
+    getStatus: async () => ({ enabled: false, canBypass: false }),
+    setEnabled: async (enabled) => ({ enabled: Boolean(enabled), canBypass: true }),
+  },
   
   // --- Auth & Users ---
   auth: {

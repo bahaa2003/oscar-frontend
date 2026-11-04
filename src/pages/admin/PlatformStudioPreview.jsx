@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Activity, Bell, ChevronLeft, CircleUserRound, ClipboardList, CreditCard, Home, LayoutDashboard, Menu, PlusCircle, Search, ShoppingBag, Wallet } from 'lucide-react';
-import { platformThemeStyles } from '../../theme/platformTheme';
+import { getThemeChrome, platformThemeStyles } from '../../theme/platformTheme';
 
 const labels = {
   ar: { desktop: 'كمبيوتر', tablet: 'جهاز لوحي', mobile: 'هاتف', home: 'الرئيسية', orders: 'طلباتي', balance: 'إضافة رصيد', payments: 'دفعاتي', search: 'البحث', overview: 'نظرة عامة', dashboard: 'لوحة التحكم', activity: 'النشاط', products: 'المنتجات', wallet: 'رصيد المحفظة', current: 'الرصيد الحالي', month: 'هذا الشهر', recent: 'آخر التحديثات', draft: 'معاينة مسودة · لا تظهر للزوار حتى النشر', welcome: 'مرحبًا بعودتك', details: 'تابع أداء منصتك من مكان واحد', searchHint: 'ابحث في المنصة', available: 'متاح', preview: 'معاينة تفاعلية آمنة' },
@@ -13,8 +13,8 @@ export default function PlatformStudioPreview({ theme, mode = 'light', language 
   const [active, setActive] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const t = labels[language] || labels.ar;
-  const header = theme?.chrome?.header || {};
-  const bottomNav = theme?.chrome?.bottomNav || {};
+  const header = getThemeChrome(theme, 'header', mode) || {};
+  const bottomNav = getThemeChrome(theme, 'bottomNav', mode) || {};
   const sidebarTemplate = theme?.brand?.sidebarTemplate || 'default';
   const sidebarMetrics = theme?.brand?.sidebarMetrics || { width: 270, height: 100, radius: 28 };
   const paletteStyle = useMemo(() => platformThemeStyles(theme, mode), [theme, mode]);
