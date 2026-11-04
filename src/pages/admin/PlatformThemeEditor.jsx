@@ -519,6 +519,8 @@ const copy = {
     logo: 'شعار المنصة', logoWidth: 'عرض الشعار', slides: 'صور السلايدر الرئيسية', targetBanner: 'صورة بانر بيع التارجت', imageHint: 'JPG أو PNG أو WebP، بحد أقصى 5MB',
     upload: 'رفع صورة', remove: 'إزالة', sample: 'زر تجريبي', sampleText: 'هذه معاينة للألوان والخطوط والبطاقات في الوضع المحدد.',
     retry: 'إعادة المحاولة', partial: 'تعذر تحميل بعض بيانات الاشتراك أو السجل، ويمكنك تعديل الثيم.', loading: 'جارٍ التحميل...',
+    layoutPreview: 'معاينة التوزيع حسب المسودة الحالية', saveLayout: 'حفظ التوزيع كمسودة',
+    restored: 'تم استعادة الإصدار ونشره بنجاح.', restoreConfirm: 'سيتم نشر هذا الإصدار المحدد مباشرةً للزوار. هل تريد المتابعة؟',
     unavailable: 'يتطلب المحرر الاتصال بالباك إند الحقيقي.', networkError: 'تعذر الاتصال بالخادم. تحقق من الاتصال وحاول مرة أخرى.',
     missingApi: 'محرر مظهر المنصة غير متاح على الخادم الحالي. يلزم تحديث الخدمة.', unauthorized: 'انتهت صلاحية الجلسة.',
     forbidden: 'لا تملك صلاحية تعديل مظهر المنصة.', failed: 'تعذرت العملية.', saved: 'تم حفظ المسودة.', published: 'تم النشر.', resetDone: 'تمت إعادة المسودة.',
@@ -574,6 +576,8 @@ const copy = {
     logo: 'Platform logo', logoWidth: 'Logo width', slides: 'Homepage slider images', targetBanner: 'Sell Target banner image', imageHint: 'JPG, PNG, or WebP up to 5MB',
     upload: 'Upload image', remove: 'Remove', sample: 'Sample button', sampleText: 'Preview colors, fonts, and cards in the selected mode.',
     retry: 'Retry', partial: 'Some subscription or history details could not be loaded; you can still edit.', loading: 'Loading...',
+    layoutPreview: 'Preview of the current draft layout', saveLayout: 'Save layout as draft',
+    restored: 'Version restored and published.', restoreConfirm: 'This selected version will be published to visitors now. Continue?',
     unavailable: 'Connect the real backend to use this editor.', networkError: 'Cannot reach the server. Check your connection and retry.',
     missingApi: 'Platform appearance is unavailable on the current server. The service needs an update.', unauthorized: 'Your session expired.',
     forbidden: 'This account cannot edit platform appearance.', failed: 'The action failed.', saved: 'Draft saved.', published: 'Published.', resetDone: 'Draft reset.',
@@ -648,6 +652,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const [loading, setLoading] = useState(!previewOnly);
   const [busy, setBusy] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [historyVersionToPublish, setHistoryVersionToPublish] = useState(null);
   const [error, setError] = useState('');
   const [partial, setPartial] = useState(false);
   useEffect(() => {
@@ -762,9 +767,12 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       if (cause?.response?.status === 429) await refresh(true);
     } finally { setBusy(false); }
   };
-  const publishPreview = () => setShowPublishConfirm(true);
+  const publishPreview = () => { setHistoryVersionToPublish(null); setShowPublishConfirm(true); };
   const confirmPublish = () => {
+    const version = historyVersionToPublish;
     setShowPublishConfirm(false);
+    setHistoryVersionToPublish(null);
+    if (version !== null) return run(() => apiClient.platformTheme.restore(version), t.restored);
     return run(() => apiClient.platformTheme.publish(draft), t.published);
   };
   const upload = async (file, slot = null) => {
@@ -853,7 +861,44 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة المتجر الفعلية' : 'Actual storefront preview'}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /><div className="mt-4 flex justify-end"><button type="button" className={`${button} border-[var(--color-primary)] bg-[var(--color-primary)] text-white`} disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{t.publish}</button></div></Section>}
     <div className="grid grid-cols-1 gap-5">
       <div id="theme-appearance" className={`space-y-5 scroll-mt-20 ${!previewOnly && !editingPage ? 'hidden' : ''}`}>
-        {!previewOnly && activePage === 'layout' && <Section icon={LayoutGrid} title={language === 'ar' ? 'عرض المنتجات والأقسام' : 'Product and category layout'}><p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختر عدد العناصر وعاين الشبكة. سيتكيف العرض مع الشاشات الصغيرة.' : 'Choose a grid size and preview it. The storefront adapts the grid on smaller screens.'}</p><div className="grid gap-5 lg:grid-cols-2"><div><h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف' : 'Products per row'}</h3><div className="grid grid-cols-3 gap-2">{[4, 3, 2].map((count) => <button key={count} type="button" aria-pressed={(draft.layout?.productsPerRow || 4) === count} onClick={() => updateLayout({ productsPerRow: count })} className={`rounded-xl border p-3 text-start transition ${(draft.layout?.productsPerRow || 4) === count ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}><span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded bg-[var(--color-primary)]/20" />)}</span><strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'منتجات' : 'products'}</strong></button>)}</div></div><div><h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف' : 'Main categories per row'}</h3><div className="grid grid-cols-2 gap-2">{[3, 2].map((count) => <button key={count} type="button" aria-pressed={(draft.layout?.categoriesPerRow || 3) === count} onClick={() => updateLayout({ categoriesPerRow: count })} className={`rounded-xl border p-3 text-start transition ${(draft.layout?.categoriesPerRow || 3) === count ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}><span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span><strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'أقسام' : 'categories'}</strong></button>)}</div></div></div></Section>}
+        {!previewOnly && activePage === 'layout' && <Section icon={LayoutGrid} title={language === 'ar' ? 'عرض المنتجات والأقسام' : 'Product and category layout'}>
+          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختار عدد المنتجات والأقسام. ستتغير المعاينة فورًا، ثم احفظ المسودة أو انشرها.' : 'Choose product and category counts. The preview updates immediately; then save or publish the draft.'}</p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف' : 'Products per row'}</h3>
+              <div className="grid grid-cols-3 gap-2">{[4, 3, 2].map((count) => {
+                const selected = (draft.layout?.productsPerRow ?? 4) === count;
+                return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ productsPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
+                  <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded bg-[var(--color-primary)]/20" />)}</span>
+                  <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'منتجات' : 'products'}</strong>
+                </button>;
+              })}</div>
+            </div>
+            <div>
+              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف' : 'Main categories per row'}</h3>
+              <div className="grid grid-cols-2 gap-2">{[3, 2].map((count) => {
+                const selected = (draft.layout?.categoriesPerRow ?? 3) === count;
+                return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ categoriesPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
+                  <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span>
+                  <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'أقسام' : 'categories'}</strong>
+                </button>;
+              })}</div>
+            </div>
+          </div>
+          <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-black">{t.layoutPreview}</h3><span className="text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? `${draft.layout?.productsPerRow ?? 4} منتجات · ${draft.layout?.categoriesPerRow ?? 3} أقسام` : `${draft.layout?.productsPerRow ?? 4} products · ${draft.layout?.categoriesPerRow ?? 3} categories`}</span></div>
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${draft.layout?.categoriesPerRow ?? 3}, minmax(0, 1fr))` }} aria-label={t.layoutPreview}>
+              {Array.from({ length: draft.layout?.categoriesPerRow ?? 3 }, (_, index) => <div key={index} className="rounded-xl border p-3 text-center" style={{ borderColor: part.colors.border, background: part.colors.background, color: part.colors.text, borderRadius: `${part.cards.radius}px` }}><span className="mx-auto mb-2 block h-7 w-7 rounded-lg" style={{ background: part.colors.primary, opacity: 0.8 }} /><span className="mx-auto block h-2 max-w-16 rounded-full" style={{ background: part.colors.secondary, opacity: 0.6 }} /></div>)}
+            </div>
+            <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${draft.layout?.productsPerRow ?? 4}, minmax(0, 1fr))` }} aria-label={t.layoutPreview}>
+              {Array.from({ length: (draft.layout?.productsPerRow ?? 4) * 2 }, (_, index) => <div key={index} className="overflow-hidden rounded-xl border" style={{ borderColor: part.colors.border, background: part.colors.surface, borderRadius: `${part.cards.radius}px` }}><div className="h-10" style={{ background: `color-mix(in srgb, ${part.colors.primary} 18%, ${part.colors.surface})` }} /><div className="space-y-1.5 p-2"><span className="block h-2 w-4/5 rounded-full" style={{ background: part.colors.text, opacity: 0.65 }} /><span className="block h-1.5 w-2/5 rounded-full" style={{ background: part.colors.primary }} /></div></div>)}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <button type="button" className={button} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true, { retries: 1 })}><Save className="h-4 w-4" />{t.saveLayout}</button>
+            <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2.5 text-sm font-black text-amber-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={busy || !settings?.eligibility?.canPublish} onClick={publishPreview}><Check className="h-4 w-4" />{t.publish}</button>
+          </div>
+        </Section>}
         {(previewOnly || activePage === 'colors' || activePage === 'templates') && <>
         <Section icon={Sparkles} title={`${t.presets} · ${t[mode]}`}><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.map((entry) => {
           const locked = entry.tier === 'THEME_PRO' && !paid;
@@ -977,7 +1022,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       </div>
       {!previewOnly && editingPage && <div className="platform-studio__savebar">{!paid && needsPro && <div className="platform-studio__locked-note"><LockKeyhole className="h-4 w-4" />{t.freeLocked}<Link to="/admin/theme/subscriptions">{language === 'ar' ? 'عرض الخطط' : 'View plans'}<ArrowUpRight className="h-3.5 w-3.5" /></Link></div>}<div className="flex flex-col gap-2 sm:flex-row"><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.saveDraft(draft), t.saved, true, { retries: 1 })}><Save className="h-4 w-4" />{t.save}</button><button type="button" className={`${button} w-full sm:w-auto`} disabled={busy || !settings} onClick={() => run(() => apiClient.platformTheme.resetDraft(), t.resetDone)}><RotateCcw className="h-4 w-4" />{t.reset}</button></div></div>}
       <div className="space-y-5">
-        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex items-center justify-between gap-2 rounded-xl bg-[var(--color-surface)] p-3 text-sm"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), t.saved)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button></div>) : t.empty}</div></Section></div>}
+        {!previewOnly && activePage === 'history' && <div id="theme-history" className="scroll-mt-20"><Section icon={History} title={t.history}><div className="space-y-2">{history.length ? history.map((item) => <div key={item._id} className="flex flex-col gap-3 rounded-xl bg-[var(--color-surface)] p-3 text-sm sm:flex-row sm:items-center sm:justify-between"><span>#{item.version} · {dateText(item.publishedAt, language)}</span><div className="flex flex-wrap gap-2"><button type="button" className={button} disabled={busy} onClick={() => run(() => apiClient.platformTheme.restoreToDraft(item.version), t.saved)}>{language === 'ar' ? 'تحميل للمسودة' : 'Load as draft'}</button><button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-4 py-2 text-xs font-black text-amber-950 disabled:cursor-not-allowed disabled:opacity-50" disabled={busy || !settings?.eligibility?.canPublish} onClick={() => { setHistoryVersionToPublish(item.version); setShowPublishConfirm(true); }}><Check className="h-4 w-4" />{t.restore}</button></div></div>) : t.empty}</div></Section></div>}
         {!previewOnly && activePage === 'contacts' && <div id="theme-contacts" className="scroll-mt-20"><Section icon={MessageCircle} title={t.contactsPage}>
           {!ultra ? <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-transparent to-orange-500/10 p-5 sm:p-6">
             <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-400/15 text-amber-500"><LockKeyhole className="h-5 w-5" /></span><div><span className="inline-flex items-center rounded-full bg-amber-400/15 px-2.5 py-1 text-[0.68rem] font-black tracking-wide text-amber-600">ULTRA</span><h3 className="mt-2 font-black text-[var(--color-text)]">{t.contactsLockedTitle}</h3><p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">{t.contactsHint}</p></div></div>
@@ -997,16 +1042,16 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           </>}
         </Section></div>}
       </div>
-      {showPublishConfirm && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowPublishConfirm(false); }}>
+      {showPublishConfirm && <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowPublishConfirm(false); setHistoryVersionToPublish(null); } }}>
         <section role="dialog" aria-modal="true" aria-labelledby="theme-publish-title" className="w-full max-w-md overflow-hidden rounded-3xl border border-amber-300/30 bg-[var(--color-card)] text-[var(--color-text)] shadow-[0_30px_100px_-24px_rgba(0,0,0,.75)]">
           <div className="relative overflow-hidden bg-gradient-to-br from-amber-400/20 via-yellow-500/10 to-orange-500/20 px-6 py-6">
             <div className="pointer-events-none absolute -end-10 -top-14 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl" />
             <div className="relative mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl border border-amber-300/40 bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-lg shadow-amber-500/20"><Sparkles className="h-7 w-7" /></div>
-            <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{language === 'ar' ? 'تأكيد نشر الثيم' : 'Confirm theme publishing'}</h2>
-            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{language === 'ar' ? 'سيتم نشر المسودة كاملة بالوضعين الفاتح والغامق، وستظهر التغييرات للزوار بعد النشر.' : 'This publishes the full draft in both light and dark modes. Visitors will see the changes after publishing.'}</p>
+            <h2 id="theme-publish-title" className="relative text-center text-xl font-black">{historyVersionToPublish !== null ? t.restore : (language === 'ar' ? 'تأكيد نشر الثيم' : 'Confirm theme publishing')}</h2>
+            <p className="relative mt-2 text-center text-sm leading-6 text-[var(--color-text-secondary)]">{historyVersionToPublish !== null ? t.restoreConfirm : (language === 'ar' ? 'سيتم نشر المسودة كاملة بالوضعين الفاتح والغامق، وستظهر التغييرات للزوار بعد النشر.' : 'This publishes the full draft in both light and dark modes. Visitors will see the changes after publishing.')}</p>
           </div>
           <div className="flex flex-col-reverse gap-2 p-5 sm:flex-row sm:justify-center">
-            <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => setShowPublishConfirm(false)}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
+            <button type="button" className={`${button} sm:min-w-32`} disabled={busy} onClick={() => { setShowPublishConfirm(false); setHistoryVersionToPublish(null); }}>{language === 'ar' ? 'مراجعة التعديلات' : 'Keep reviewing'}</button>
             <button type="button" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-2.5 text-sm font-black text-amber-950 shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60 sm:min-w-32" disabled={busy} onClick={confirmPublish}><Check className="h-4 w-4" />{busy ? (language === 'ar' ? 'جارٍ النشر…' : 'Publishing…') : (language === 'ar' ? 'نشر الآن' : 'Publish now')}</button>
           </div>
         </section>
