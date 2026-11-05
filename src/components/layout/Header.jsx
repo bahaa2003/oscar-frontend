@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import useAuthStore from '../../store/useAuthStore';
 import useNotificationStore from '../../store/useNotificationStore';
 import { useLanguage } from '../../context/LanguageContext';
-import ThemeToggle from '../ui/ThemeToggle';
 import HeaderBrand from './HeaderBrand';
 import { formatWalletAmount, isNegativeWalletAmount, negativeWalletBalanceClassName } from '../../utils/storefront';
 import { getDefaultRouteForRole, isAdminRole, isSupervisorRole } from '../../utils/authRoles';
@@ -248,15 +247,15 @@ const Header = ({ toggleSidebar }) => {
   return (
     <header dir={isRTL ? 'rtl' : 'ltr'} className="w-full max-w-full">
       <div className={cn(
-        'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[22px] border px-2.5 py-1.5 backdrop-blur-[22px] sm:rounded-[28px] sm:px-5 sm:py-1.5',
+        'app-shell-header-panel oscar-neon-panel w-full max-w-full overflow-visible rounded-[20px] border px-2 py-1 backdrop-blur-[22px] sm:rounded-[26px] sm:px-4 sm:py-1',
         isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
       )} data-header-template={headerTheme?.template || 'floating'} style={getThemeHeaderStyle(publishedPlatformTheme, theme)}>
-        <div dir="ltr" className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 min-[380px]:gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
+        <div dir="ltr" className="grid h-full min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 min-[380px]:gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-4">
           <div className="col-start-2 row-start-1 min-w-0 justify-self-center">
             <button
               type="button"
               onClick={() => navigate(getDefaultRouteForRole(user?.role))}
-              className="inline-flex items-center gap-2 rounded-[14px] px-0 py-0 transition-all hover:-translate-y-0.5 sm:gap-4"
+              className="inline-flex items-center gap-1.5 rounded-[14px] px-0 py-0 transition-all hover:-translate-y-0.5 sm:gap-3"
             >
               <HeaderBrand className="justify-center" textClassName="min-[360px]:min-w-[4.1rem] sm:min-w-0" />
             </button>
@@ -265,16 +264,14 @@ const Header = ({ toggleSidebar }) => {
           <div className={cn(
             'header-mobile-actions col-start-1 row-start-1 flex min-w-0 shrink-0 items-center gap-1 justify-self-start px-0 sm:gap-2'
           )}>
-            <ThemeToggle compact className="h-10 w-10 shrink-0 rounded-full border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.16),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)]" />
-
             <div ref={notificationsRef} className="relative">
               <button
                 type="button"
                 onClick={handleNotificationsToggle}
-                className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.14),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(168_85_247/0.12),0_0_28px_-18px_rgb(168_85_247/0.95)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
+                className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[radial-gradient(circle_at_35%_25%,rgb(255_255_255/0.14),transparent_34%),linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(168_85_247/0.12),0_0_28px_-18px_rgb(168_85_247/0.95)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
                 aria-label="الإشعارات"
               >
-                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Bell className="h-4 w-4" />
                 {unreadCount > 0 ? (
                   <span className="absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[linear-gradient(135deg,#a855f7,#f43fdd)] px-1 text-[10px] font-black text-white shadow-[0_0_18px_rgb(244_63_221/0.52)]">
                     {unreadCount > 9 ? '+9' : unreadCount}
@@ -372,12 +369,12 @@ const Header = ({ toggleSidebar }) => {
                 <button
                   type="button"
                   onClick={() => navigate(walletTargetPath)}
-                  className="header-wallet-button hidden h-11 items-center gap-2.5 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-3.5 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 sm:inline-flex"
+                  className="header-wallet-button hidden h-10 items-center gap-2 rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(10_17_42/0.88),rgb(2_6_19/0.72))] px-3 text-start shadow-[inset_0_0_18px_rgb(34_211_238/0.08),0_0_28px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 sm:inline-flex"
                   aria-label={language === 'ar' ? 'المحفظة' : 'Wallet'}
                 >
                   <span className="min-w-0">
                     <span className={cn(
-                      'header-wallet-balance block truncate text-base font-black text-[#0b172a] dark:text-[var(--color-text)]',
+                      'header-wallet-balance block truncate text-sm font-black text-[#0b172a] dark:text-[var(--color-text)]',
                       headerWalletBalanceToneClassName
                     )}
                       data-negative-wallet={negativeWalletDataAttribute}
@@ -386,8 +383,8 @@ const Header = ({ toggleSidebar }) => {
                       {walletDisplayValue}
                     </span>
                   </span>
-                  <span className="header-wallet-icon inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
-                    <Wallet className="h-4 w-4" />
+                  <span className="header-wallet-icon inline-flex h-6 w-6 items-center justify-center rounded-full bg-[color:rgb(var(--color-primary-rgb)/0.14)] text-[var(--color-primary)]">
+                    <Wallet className="h-3.5 w-3.5" />
                   </span>
                 </button>
               </>
@@ -397,10 +394,10 @@ const Header = ({ toggleSidebar }) => {
           <button
             type="button"
             onClick={toggleSidebar}
-            className="col-start-3 row-start-1 inline-flex h-10 w-10 shrink-0 items-center justify-center justify-self-end rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(3_8_22/0.9),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(255_255_255/0.035),0_0_26px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
+            className="col-start-3 row-start-1 inline-flex h-9 w-9 shrink-0 items-center justify-center justify-self-end rounded-full border border-[color:rgb(var(--color-border-rgb)/0.84)] bg-[linear-gradient(180deg,rgb(3_8_22/0.9),rgb(2_6_19/0.78))] text-[var(--color-text)] shadow-[inset_0_0_18px_rgb(255_255_255/0.035),0_0_26px_-18px_rgb(34_211_238/0.9)] transition-all hover:-translate-y-0.5 hover:border-[color:rgb(var(--color-primary-rgb)/0.38)] hover:text-[var(--color-primary)]"
             aria-label={language === 'ar' ? 'فتح القائمة' : 'Open menu'}
           >
-            <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Menu className="h-4 w-4" />
           </button>
         </div>
       </div>

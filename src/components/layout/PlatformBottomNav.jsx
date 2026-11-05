@@ -19,14 +19,15 @@ export default function PlatformBottomNav({ preview = false }) {
   const layout = getThemeChrome(publishedPlatformTheme, 'bottomNav', theme);
   if (!layout) return null;
   const isArabic = String(i18n.resolvedLanguage || i18n.language || 'ar').toLowerCase().startsWith('ar');
+  const isFullBar = layout.template === 'bar';
   const style = {
-    height: `${layout.height || 64}px`,
-    width: `${layout.width || 94}vw`,
-    maxWidth: 'calc(100vw - 1rem)',
+    height: isFullBar ? `calc(${layout.height || 64}px + env(safe-area-inset-bottom))` : `${layout.height || 64}px`,
+    width: isFullBar ? '100vw' : `${layout.width || 94}vw`,
+    maxWidth: isFullBar ? 'none' : 'calc(100vw - 1rem)',
     background: layout.background,
     color: layout.foreground,
     borderColor: layout.accent,
-    borderRadius: `${layout.radius ?? 0}px`,
+    borderRadius: `${isFullBar ? 0 : layout.radius ?? 0}px`,
     '--platform-bottom-nav-accent': layout.accent,
   };
   return <nav className="platform-bottom-nav grid grid-cols-5 items-center px-2" style={style} data-template={layout.template || 'bar'} aria-label={isArabic ? 'التنقل الرئيسي' : 'Main navigation'}>

@@ -4472,11 +4472,15 @@
 
 /* Published platform appearance: paid chrome templates. */
 .app-shell-header-panel[data-header-template="floating"] { box-shadow: 0 16px 44px -24px rgb(var(--color-primary-rgb) / .72); }
+.app-shell-header-panel[data-header-template="bar"] { width: 100% !important; max-width: none !important; margin-inline: 0 !important; border-radius: 0 !important; }
 .app-shell-sidebar-panel[data-sidebar-template="rounded"] { padding-block: .8rem; }
 .platform-bottom-nav { position: fixed; z-index: 70; left: 50%; bottom: max(.6rem, env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(var(--platform-bottom-nav-width, 94vw), 32rem); height: var(--platform-bottom-nav-height, 64px); border-radius: var(--platform-bottom-nav-radius, 22px); background: var(--platform-bottom-nav-background, var(--color-card)); color: var(--platform-bottom-nav-foreground, var(--color-text)); border: 1px solid rgb(var(--color-border-rgb) / .75); box-shadow: 0 12px 38px -18px rgb(0 0 0 / .55); }
+.platform-bottom-nav[data-template="bar"] { left: 0; bottom: 0; transform: none; width: 100vw; max-width: none; border-radius: 0; border-inline: 0; border-bottom: 0; padding: 0 max(.5rem, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(.5rem, env(safe-area-inset-left)); box-sizing: border-box; }
+.layout-shell[data-bottom-nav-template="bar"] main { padding-bottom: calc(var(--platform-bottom-nav-height, 64px) + 1.5rem + env(safe-area-inset-bottom)) !important; }
+.layout-shell[data-bottom-nav-template="bar"] :is(.floating-whatsapp, .layout-back-to-top) { bottom: calc(var(--platform-bottom-nav-height, 64px) + 1.25rem + env(safe-area-inset-bottom)); }
 .platform-bottom-nav a { color: inherit; }
 .platform-bottom-nav a[aria-current="page"] { color: var(--platform-bottom-nav-accent, var(--color-primary)); }
-@media (min-width: 768px) { .platform-bottom-nav { display: none; } }
+@media (min-width: 768px) { .platform-bottom-nav:not([data-template="bar"]) { display: none; } }
 @property --platform-neon-angle {
   syntax: "<angle>";
   inherits: false;
@@ -4604,6 +4608,39 @@
 }
 
 .app-shell-sidebar-panel[data-platform-sidebar-neon="true"]::before { inset: 0; }
+
+/* Theme palette controls sidebar edges; the current destination alone gets the active fill. */
+:root.platform-theme-active .app-shell-sidebar-panel[data-sidebar-template] {
+  border-color: var(--color-border) !important;
+  box-shadow: var(--shadow-subtle) !important;
+}
+:root.platform-theme-active .app-shell-sidebar-panel[data-sidebar-template="square"] {
+  border-radius: 0 !important;
+  background: var(--color-surface) !important;
+}
+:root.platform-theme-active .app-shell-sidebar-panel .oscar-sidebar-nav-item.is-active {
+  border-color: var(--color-primary) !important;
+  background: var(--color-primary) !important;
+  color: var(--color-button-text, #fff) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 34%, transparent) !important;
+}
+:root.platform-theme-active .app-shell-sidebar-panel .oscar-sidebar-nav-item.is-active::after {
+  background: var(--color-button-text, #fff) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-primary) 65%, transparent) !important;
+}
+:root.platform-theme-active .app-shell-sidebar-panel .oscar-sidebar-nav-item.is-active .oscar-sidebar-icon-bubble {
+  border-color: color-mix(in srgb, var(--color-button-text, #fff) 42%, transparent) !important;
+  background: color-mix(in srgb, var(--color-button-text, #fff) 14%, transparent) !important;
+  color: var(--color-button-text, #fff) !important;
+  box-shadow: none !important;
+}
+.oscar-sidebar-shell[data-sidebar-template="square"] {
+  height: 100dvh !important;
+  max-height: 100dvh;
+}
+.oscar-sidebar-shell[data-sidebar-template="square"] .app-shell-sidebar-panel {
+  border-radius: 0 !important;
+}
 
 /* Keep customer support on the left and clear the mobile navigation bar. */
 .floating-whatsapp {

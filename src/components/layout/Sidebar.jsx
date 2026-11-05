@@ -33,6 +33,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
 import WalletSidebarCard from './WalletSidebarCard';
 import HeaderBrand from './HeaderBrand';
+import ThemeToggle from '../ui/ThemeToggle';
 import { SUPERVISOR_ROLES, getDefaultRouteForRole, hasRequiredRole } from '../../utils/authRoles';
 import { PERMISSIONS, hasPermission } from '../../utils/permissions';
 import { resolveUserAvatar } from '../../utils/avatar';
@@ -78,7 +79,7 @@ const copyToClipboard = async (value) => {
   }
 };
 
-const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
+const Sidebar = ({ isOpen, setIsOpen, isMobile, headerBarHeight = 0 }) => {
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [openNavSections, setOpenNavSections] = useState({
     account: true,
@@ -98,12 +99,15 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
 
   const isPinnedExpanded = isOpen;
   const isPreviewMode = !isMobile && !isOpen && isPreviewExpanded;
-  const isExpanded = isPinnedExpanded || isPreviewMode;
-  const showExpandedContent = isPinnedExpanded;
+  const isExpanded = isPinnedExpanded || isPreviewMode || sidebarTemplate === 'square';
+  const showExpandedContent = isPinnedExpanded || sidebarTemplate === 'square';
   const userId = String(user?.id || user?._id || user?.userId || '').trim();
   const sidebarWidth = isMobile
     ? `min(${sidebarMetrics.width}px, calc(100vw - 2rem))`
     : isExpanded ? `${sidebarMetrics.width}px` : '74px';
+  const sidebarHeight = headerBarHeight
+    ? `min(calc(${sidebarMetrics.height}vh - 4rem), calc(100vh - ${headerBarHeight + 32}px))`
+    : `calc(${sidebarMetrics.height}vh - 4rem)`;
   const sidebarTransform = isMobile && !isOpen
     ? `translate3d(${dir === 'rtl' ? 'calc(100% + 2rem)' : 'calc(-100% - 2rem)'}, 0, 0)`
     : 'translate3d(0, 0, 0)';
@@ -336,9 +340,13 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         aria-hidden={isMobile && !isOpen ? 'true' : undefined}
         data-expanded={isExpanded ? 'true' : 'false'}
         data-preview={isPreviewMode ? 'true' : 'false'}
+        data-sidebar-template={sidebarTemplate}
         style={{
           width: sidebarWidth,
-          height: `calc(${sidebarMetrics.height}vh - 4rem)`,
+          height: sidebarTemplate === 'square' ? '100dvh' : sidebarHeight,
+          ...(sidebarTemplate === 'square'
+            ? { top: 0, right: dir === 'rtl' ? 0 : 'auto', left: dir === 'rtl' ? 'auto' : 0 }
+            : headerBarHeight ? { top: `${headerBarHeight + 16}px` } : {}),
           transform: sidebarTransform,
           contain: 'layout paint style',
         }}
@@ -346,7 +354,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
         onMouseLeave={handlePreviewLeave}
         className={cn(
           'oscar-sidebar-shell fixed top-4 z-[90] h-[calc(100vh-4rem)] overflow-hidden transition-[transform,width] duration-300 ease-out',
-          dir === 'rtl' ? 'right-4' : 'left-4',
+          sidebarTemplate === 'square' ? 'right-0 left-0 top-0 h-dvh' : (dir === 'rtl' ? 'right-4' : 'left-4'),
           isMobile && !isOpen && 'pointer-events-none'
         )}
       >
@@ -378,7 +386,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                 />
               </button>
 
-              {!isMobile && (
+              {!isMobile && sidebarTemplate !== 'square' && (
                 <button
                   type="button"
                   onClick={() => setIsOpen((current) => !current)}
@@ -483,8 +491,6 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                   const SectionIcon = section.icon;
                   const isFixedOpen = section.key === 'account' || section.key === 'management';
                   const isSectionOpen = isFixedOpen || Boolean(openNavSections[section.key]);
-                  const isSectionActive = section.items.some((item) => isRouteActive(location.pathname, item.path));
-
                   return (
                     <section key={section.key} className="space-y-1.5">
                       <button
@@ -494,9 +500,7 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
                         className={cn(
                           'flex h-10 w-full items-center gap-2 rounded-xl border px-2.5 text-start text-[11px] font-black transition-all',
                           isFixedOpen && 'cursor-default',
-                          isSectionActive
-                            ? 'border-[color:rgb(var(--color-primary-rgb)/0.32)] bg-[color:rgb(var(--color-primary-rgb)/0.1)] text-[var(--color-primary)]'
-                            : 'border-[color:rgb(var(--color-border-rgb)/0.5)] bg-[color:rgb(var(--color-surface-rgb)/0.34)] text-[var(--color-text-secondary)] hover:border-[color:rgb(var(--color-primary-rgb)/0.24)] hover:text-[var(--color-text)]'
+                          'border-[color:rgb(var(--color-border-rgb)/0.5)] bg-[color:rgb(var(--color-surface-rgb)/0.34)] text-[var(--color-text-secondary)] hover:border-[color:rgb(var(--color-primary-rgb)/0.24)] hover:text-[var(--color-text)]'
                         )}
                       >
                         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[color:rgb(var(--color-primary-rgb)/0.2)] bg-[color:rgb(var(--color-primary-rgb)/0.08)] text-[var(--color-primary)]">
@@ -535,6 +539,23 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
               <LogOut className="h-5 w-5" />
               {isExpanded && <span>{dir === 'rtl' ? 'تسجيل الخروج' : 'Logout'}</span>}
             </button>
+            <div className={cn(
+              'mt-2 flex min-h-12 items-center justify-between gap-2 rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.58)] bg-[linear-gradient(135deg,rgb(var(--color-primary-rgb)/0.08),rgb(var(--color-card-rgb)/0.72))] px-2.5 py-1.5 shadow-[var(--shadow-subtle)]',
+              !isExpanded && 'justify-center px-1.5'
+            )}>
+              {isExpanded && (
+                <span className="min-w-0 truncate text-[11px] font-extrabold text-[var(--color-text-secondary)]">
+                  {theme === 'dark'
+                    ? (dir === 'rtl' ? 'الوضع الفاتح' : 'Light mode')
+                    : (dir === 'rtl' ? 'الوضع الداكن' : 'Dark mode')}
+                </span>
+              )}
+              <ThemeToggle
+                variant="glass"
+                compact={!isExpanded}
+                className={cn(isExpanded ? 'h-9 w-[82px] shrink-0' : 'h-9 w-9')}
+              />
+            </div>
           </div>
         </div>
       </aside>

@@ -48,6 +48,8 @@ const Layout = ({ children = null }) => {
   const chrome = getThemeChrome(publishedPlatformTheme, 'header', theme);
   const topHeaderTemplate = chrome?.template || 'floating';
   const topHeaderHeight = chrome?.height || 64;
+  const bottomNavTemplate = getThemeChrome(publishedPlatformTheme, 'bottomNav', theme)?.template || 'floating';
+  const sidebarTemplate = publishedPlatformTheme?.brand?.sidebarTemplate || 'default';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -93,19 +95,22 @@ const Layout = ({ children = null }) => {
     || location.pathname.startsWith('/wallet/payment-details/')
   );
   const sidebarWidth = publishedPlatformTheme?.brand?.sidebarMetrics?.width || 270;
-  const shellOffset = !isMobile ? (isSidebarOpen ? `${sidebarWidth + 32}px` : '100px') : '0';
+  const shellOffset = !isMobile
+    ? (sidebarTemplate === 'square' || isSidebarOpen ? `${sidebarWidth + 32}px` : '100px')
+    : '0';
 
   const handleGoBack = () => {
     navigate(-1);
   };
 
   return (
-    <div className={`relative min-h-screen overflow-x-clip bg-transparent text-[var(--color-text)] ${isAdminPage ? 'layout-admin-light' : ''}`}>
+    <div data-bottom-nav-template={bottomNavTemplate} className={`layout-shell relative min-h-screen overflow-x-clip bg-transparent text-[var(--color-text)] ${isAdminPage ? 'layout-admin-light' : ''}`}>
       <AmbientBackground />
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         isMobile={isMobile}
+        headerBarHeight={topHeaderTemplate === 'bar' ? topHeaderHeight : 0}
       />
 
       <div
@@ -113,9 +118,9 @@ const Layout = ({ children = null }) => {
         style={{ [dir === 'rtl' ? 'marginRight' : 'marginLeft']: shellOffset }}
       >
         <div
-          className="fixed z-40 max-w-full transition-all duration-300"
-          style={{
-            top: topHeaderTemplate === 'bar' ? 0 : (isMobile ? 'max(0.75rem, env(safe-area-inset-top))' : '1rem'),
+          className={`fixed max-w-full transition-all duration-300 ${topHeaderTemplate === 'bar' ? 'z-[100] left-0 right-0 top-0 w-full' : 'z-40'}`}
+          style={topHeaderTemplate === 'bar' ? { top: 0, left: 0, right: 0, width: '100%' } : {
+            top: isMobile ? 'max(0.75rem, env(safe-area-inset-top))' : '1rem',
             [dir === 'rtl' ? 'right' : 'left']: isMobile ? '12px' : shellOffset,
             [dir === 'rtl' ? 'left' : 'right']: isMobile ? '12px' : '16px',
           }}

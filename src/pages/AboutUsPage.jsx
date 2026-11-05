@@ -5,7 +5,6 @@ import { CheckCircle2, LogIn, Menu, MessageCircle, ShieldCheck, Zap } from 'luci
 import { useTranslation } from 'react-i18next';
 import useAuthStore from '../store/useAuthStore';
 import useSystemStore from '../store/useSystemStore';
-import ThemeToggle from '../components/ui/ThemeToggle';
 import BrandMark from '../components/layout/BrandMark';
 import HeaderBrand from '../components/layout/HeaderBrand';
 import PublicSidebar from '../components/layout/PublicSidebar';
@@ -65,11 +64,7 @@ const AboutUsPage = () => {
     <div className="min-h-screen pb-5 pt-[4.75rem]">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[color:rgb(var(--color-border-rgb)/0.32)] bg-[color:rgb(var(--color-background-rgb)/0.88)] shadow-[0_18px_44px_-34px_rgb(var(--color-primary-rgb)/0.36)] backdrop-blur-xl">
         <div className="mx-auto max-w-[var(--shell-max-width)] px-3 py-2 sm:px-4 lg:px-6">
-          <div dir="ltr" className="oscar-neon-panel grid min-h-[2.95rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-[20px] border px-2.5 py-1 sm:min-h-[3.25rem] sm:gap-5 sm:rounded-[28px] sm:px-5 sm:py-1.5">
-            <div className="col-start-1 row-start-1 flex items-center gap-1 justify-self-start sm:gap-2">
-              <ThemeToggle variant="glass" compact className="h-9 w-9 sm:h-10 sm:w-10" />
-            </div>
-
+          <div dir="ltr" className="oscar-neon-panel grid min-h-[2.65rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 rounded-[18px] border px-2 py-1 sm:min-h-[3rem] sm:gap-4 sm:rounded-[26px] sm:px-4">
             <div className="col-start-2 row-start-1 justify-self-center">
               <HeaderBrand />
             </div>

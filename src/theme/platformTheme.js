@@ -62,9 +62,11 @@ export const getThemeGridStyles = (configuration) => {
 export const getThemeHeaderStyle = (configuration, mode) => {
   const header = getThemeChrome(configuration, 'header', mode);
   if (!header) return undefined;
+  const fullBleed = header.template === 'bar';
   return {
-    height: `${header.height}px`, width: `${header.width}%`, maxWidth: '100%', boxSizing: 'border-box', marginInline: 'auto',
-    borderRadius: `${header.radius}px`, background: header.background, color: header.foreground,
+    height: `${header.height}px`, width: fullBleed ? '100%' : `${header.width}%`, maxWidth: '100%', boxSizing: 'border-box',
+    marginInline: fullBleed ? 0 : 'auto',
+    borderRadius: `${fullBleed ? 0 : header.radius}px`, background: header.background, color: header.foreground,
     borderColor: header.accent, '--platform-header-accent': header.accent,
   };
 };
