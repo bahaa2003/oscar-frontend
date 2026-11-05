@@ -4592,16 +4592,15 @@
 :root.platform-theme-active .app-shell-sidebar-panel[data-sidebar-template="rounded"] { background: color-mix(in srgb,var(--color-primary) 15%,var(--color-surface)) !important; }
 }
 :root[data-platform-products-neon] .platform-theme-product-grid { --platform-neon-color: var(--platform-neon-bestSellers-color); --platform-neon-speed: var(--platform-neon-bestSellers-speed); }
-:root[data-platform-purchase-neon] [data-platform-purchase] { --platform-neon-color: var(--platform-neon-purchase-color); --platform-neon-speed: var(--platform-neon-purchase-speed); }
-:root[data-platform-products-neon] .platform-theme-product-grid,
-:root[data-platform-purchase-neon] [data-platform-purchase] { position: relative; isolation: isolate; }
-:root[data-platform-products-neon] .platform-theme-product-grid::before,
-:root[data-platform-purchase-neon] [data-platform-purchase]::before {
+:root[data-platform-products-neon] .platform-theme-product-grid { position: relative; isolation: isolate; }
+:root[data-platform-products-neon] .platform-theme-product-grid::before {
   content: ''; position: absolute; z-index: 30; inset: 0; border-radius: var(--radius-lg); padding: 2px;
   background: conic-gradient(from 0deg,transparent,var(--platform-neon-color),transparent);
   animation: platform-neon-rotate var(--platform-neon-speed) linear infinite;
   -webkit-mask: linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
 }
+
+.app-shell-sidebar-panel[data-platform-sidebar-neon="true"]::before { inset: 0; }
 
 /* Keep customer support on the left and clear the mobile navigation bar. */
 .floating-whatsapp {

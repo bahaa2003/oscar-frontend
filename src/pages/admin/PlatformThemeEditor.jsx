@@ -32,11 +32,12 @@ const getLowContrastPairs = (pairs) => pairs.filter(([, foreground, background, 
   return first !== null && second !== null
     && (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05) < minimum;
 }).map(([label]) => label);
-const neonSections = ['purchase', 'hero', 'categories', 'bestSellers'];
+const neonSections = ['purchase', 'hero', 'categories', 'bestSellers', 'sidebar'];
 const sampleNeon = () => ({ purchase: { enabled: false, color: '#22D3EE', speed: 5 },
   hero: { enabled: false, color: '#A855F7', speed: 5 },
   categories: { enabled: false, color: '#34D399', speed: 5 },
-  bestSellers: { enabled: false, color: '#F59E0B', speed: 5 }, categoryCards: {} });
+  bestSellers: { enabled: false, color: '#F59E0B', speed: 5 },
+  sidebar: { enabled: false, color: '#F472B6', speed: 5 }, categoryCards: {} });
 const freeFonts = { arabic: ['Cairo', 'Tajawal'], english: ['Inter', 'Arial'] };
 const fonts = { arabic: [...freeFonts.arabic, 'Noto Sans Arabic', 'Almarai', 'Changa', 'IBM Plex Sans Arabic', 'Rubik'],
   english: [...freeFonts.english, 'Roboto', 'Poppins', 'Montserrat', 'Outfit', 'Plus Jakarta Sans'] };
@@ -501,7 +502,7 @@ const copy = {
     light: 'الوضع الفاتح', dark: 'الوضع الغامق', presets: 'الثيمات الجاهزة', colors: 'الألوان', typography: 'الخطوط',
     components: 'تفاصيل الواجهة', branding: 'صور المنصة', livePreview: 'معاينة مباشرة',
     neonTitle: 'حدود النيون المتحركة', neonHint: 'اختر لونًا وسرعة مختلفين لكل قسم في الوضع الفاتح والغامق.',
-    neonPurchase: 'نافذة الشراء', neonHero: 'السلايدر الرئيسي', neonCategories: 'الأقسام الرئيسية', neonBestSellers: 'الأكثر مبيعًا',
+    neonPurchase: 'نافذة الشراء', neonHero: 'السلايدر الرئيسي', neonCategories: 'الأقسام الرئيسية', neonBestSellers: 'الأكثر مبيعًا', neonSidebar: 'السايدبار',
     categoryDefault: 'الإعداد الافتراضي لكل الأقسام', categoryNeonHint: 'عاين أقسام الصفحة الرئيسية الفعلية، واختر لكل قسم لونًا وسرعة مختلفين في الوضع الحالي.', noHomepageCategories: 'لا توجد أقسام رئيسية متاحة الآن. ستظهر هنا بعد تحميل أقسام المتجر.',
     neonEnabled: 'تفعيل', neonSpeed: 'سرعة الدوران', neonDemo: 'معاينة تأثير النيون',
     primary: 'الأساسي', secondary: 'الثانوي', accent: 'التمييز', background: 'الخلفية', surface: 'البطاقات', text: 'النص', mutedText: 'النص الثانوي', border: 'الحدود',
@@ -559,7 +560,7 @@ const copy = {
     light: 'Light mode', dark: 'Dark mode', presets: 'Theme presets', colors: 'Colors', typography: 'Fonts',
     components: 'Interface details', branding: 'Platform images', livePreview: 'Live preview',
     neonTitle: 'Animated neon borders', neonHint: 'Set a different color and speed for each section in light and dark modes.',
-    neonPurchase: 'Purchase window', neonHero: 'Homepage slider', neonCategories: 'Main categories', neonBestSellers: 'Best sellers',
+    neonPurchase: 'Purchase window', neonHero: 'Homepage slider', neonCategories: 'Main categories', neonBestSellers: 'Best sellers', neonSidebar: 'Sidebar',
     categoryDefault: 'Default for all categories', categoryNeonHint: 'Preview real homepage categories and give each one its own color and speed in this mode.', noHomepageCategories: 'No homepage categories are available yet. They will appear after the catalog loads.',
     neonEnabled: 'Enable', neonSpeed: 'Orbit speed', neonDemo: 'Neon preview',
     primary: 'Primary', secondary: 'Secondary', accent: 'Accent', background: 'Background', surface: 'Cards', text: 'Text', mutedText: 'Muted text', border: 'Border',
@@ -919,7 +920,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
             const effect = part.neon?.[section] || sampleNeon()[section];
             const label = section === 'categories' ? t.categoryDefault : t[`neon${section[0].toUpperCase()}${section.slice(1)}`];
             return <div key={section} className="rounded-xl border border-[var(--color-border)] p-3">
-              <div className="mb-3 platform-neon-border px-3 py-2 text-center text-sm font-bold" style={{ '--platform-neon-color': effect.color, '--platform-neon-speed': `${effect.speed}s` }}>{label}</div>
+              <div className={`mb-3 px-3 py-2 text-center text-sm font-bold ${effect.enabled ? 'platform-neon-border' : 'rounded-xl border border-[var(--color-border)]'}`} style={{ '--platform-neon-color': effect.color, '--platform-neon-speed': `${effect.speed}s` }}>{label}</div>
               <label className="flex items-center justify-between gap-2 text-sm"><span>{t.neonEnabled}</span><input type="checkbox" checked={effect.enabled} disabled={!paid} onChange={(event) => updateNeon(section, { enabled: event.target.checked })} /></label>
               <label className="mt-3 flex items-center justify-between gap-2 text-sm"><span>{t.colors}</span><input type="color" value={effect.color} disabled={!paid} onChange={(event) => updateNeon(section, { color: event.target.value })} /></label>
               <div className="mt-3"><Select label={t.neonSpeed} value={effect.speed} values={[3, 5, 8, 12]} suffix="s" disabled={!paid} onChange={(value) => updateNeon(section, { speed: Number(value) })} /></div>

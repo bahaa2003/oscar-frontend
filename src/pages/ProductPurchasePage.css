@@ -3117,6 +3117,8 @@
 
 /* Slow OSCAR brand neon travelling around the purchase modal edge. */
 .purchase-phone--buy.purchase-premium-modal .purchase-neon-orbit-frame {
+  display: none;
+  --purchase-neon-color: var(--platform-neon-purchase-color, #22d3ee);
   position: absolute;
   inset: 0;
   z-index: 30;
@@ -3125,10 +3127,7 @@
   padding: 2px;
   border-radius: inherit;
   pointer-events: none;
-  filter:
-    drop-shadow(0 0 0.28rem rgb(34 211 238 / 0.62))
-    drop-shadow(0 0 0.42rem rgb(168 85 247 / 0.42))
-    drop-shadow(0 0 0.52rem rgb(244 63 221 / 0.3));
+  filter: drop-shadow(0 0 0.5rem var(--purchase-neon-color));
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
@@ -3137,6 +3136,10 @@
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
+}
+
+:root[data-platform-purchase-neon] .purchase-phone--buy.purchase-premium-modal .purchase-neon-orbit-frame {
+  display: block;
 }
 
 .purchase-phone--buy.purchase-premium-modal .purchase-neon-orbit-frame::before {
@@ -3150,15 +3153,14 @@
     from 0deg,
     transparent 0deg,
     transparent 326deg,
-    rgb(34 211 238 / 0.08) 330deg,
-    #22d3ee 335deg,
-    #38bdf8 341deg,
-    #7c3aed 348deg,
-    #f43fdd 354deg,
-    rgb(244 63 221 / 0.08) 358deg,
+    transparent 330deg,
+    var(--purchase-neon-color) 335deg,
+    #fff 341deg,
+    var(--purchase-neon-color) 348deg,
+    transparent 354deg,
     transparent 360deg
   );
-  animation: purchase-neon-border-orbit 8s linear infinite;
+  animation: purchase-neon-border-orbit var(--platform-neon-purchase-speed, 5s) linear infinite;
 }
 
 @keyframes purchase-neon-border-orbit {

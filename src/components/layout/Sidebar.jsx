@@ -87,7 +87,8 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [copiedUserId, setCopiedUserId] = useState(false);
   const { user, logout } = useAuthStore();
-  const { publishedPlatformTheme } = useTheme();
+  const { publishedPlatformTheme, theme } = useTheme();
+  const sidebarNeon = publishedPlatformTheme?.modes?.[theme]?.neon?.sidebar;
   const sidebarTemplate = publishedPlatformTheme?.brand?.sidebarTemplate || 'default';
   const sidebarMetrics = publishedPlatformTheme?.brand?.sidebarMetrics || { width: 270, height: 100, radius: 28 };
   const location = useLocation();
@@ -351,8 +352,10 @@ const Sidebar = ({ isOpen, setIsOpen, isMobile }) => {
       >
         <div className={cn(
           'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col border',
+          sidebarNeon?.enabled && 'platform-neon-border',
           isAdmin && 'border-[color:rgb(var(--color-primary-rgb)/0.26)]'
-        )} data-sidebar-template={sidebarTemplate} style={{ borderRadius: `${sidebarMetrics.radius}px` }}>
+        )} data-sidebar-template={sidebarTemplate} data-platform-sidebar-neon={sidebarNeon?.enabled ? 'true' : undefined}
+          style={{ borderRadius: `${sidebarMetrics.radius}px`, ...(sidebarNeon?.enabled ? { '--platform-neon-color': sidebarNeon.color, '--platform-neon-speed': `${sidebarNeon.speed}s` } : {}) }}>
           <div className="relative z-10 px-4 pb-4 pt-5">
             <div className={cn('relative flex items-center', isExpanded ? 'justify-center' : 'justify-center')}>
               <button

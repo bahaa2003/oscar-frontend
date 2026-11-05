@@ -23,7 +23,8 @@ const GoogleMark = () => (
 
 const PublicSidebar = ({ isOpen, onClose, onLogin, onHome, onAbout, onCreateAccount, onGoogleLogin, isBusy, isArabic }) => {
   const [isMobile, setIsMobile] = useState(false);
-  const { publishedPlatformTheme } = useTheme();
+  const { publishedPlatformTheme, theme } = useTheme();
+  const sidebarNeon = publishedPlatformTheme?.modes?.[theme]?.neon?.sidebar;
   const sidebarTemplate = publishedPlatformTheme?.brand?.sidebarTemplate || 'default';
   const sidebarMetrics = publishedPlatformTheme?.brand?.sidebarMetrics || { width: 270, height: 100, radius: 28 };
   const { pathname } = useLocation();
@@ -73,8 +74,10 @@ const PublicSidebar = ({ isOpen, onClose, onLogin, onHome, onAbout, onCreateAcco
         className="fixed right-3 top-3 z-50 block h-[calc(100vh-1.5rem)] overflow-hidden transition-[transform,width] duration-200 ease-out sm:right-4 sm:top-4 sm:h-[calc(100vh-2rem)] motion-reduce:transition-none"
       >
         <div className={cn(
-          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden border'
-        )} data-sidebar-template={sidebarTemplate} style={{ borderRadius: `${sidebarMetrics.radius}px` }}>
+          'app-shell-sidebar-panel oscar-sidebar-panel relative flex h-full flex-col overflow-hidden border',
+          sidebarNeon?.enabled && 'platform-neon-border'
+        )} data-sidebar-template={sidebarTemplate} data-platform-sidebar-neon={sidebarNeon?.enabled ? 'true' : undefined}
+          style={{ borderRadius: `${sidebarMetrics.radius}px`, ...(sidebarNeon?.enabled ? { '--platform-neon-color': sidebarNeon.color, '--platform-neon-speed': `${sidebarNeon.speed}s` } : {}) }}>
           <div className="relative z-10 px-4 pb-4 pt-5">
             <div className="flex items-center justify-center gap-3">
               <button

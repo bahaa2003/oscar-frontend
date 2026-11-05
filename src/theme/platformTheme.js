@@ -123,7 +123,7 @@ export const platformThemeStyles = (configuration, mode = 'light') => {
     styles['--radius-xl'] = `${appearance.cards.radius}px`;
   }
   const neon = appearance.neon || {};
-  for (const section of ['purchase', 'hero', 'categories', 'bestSellers']) {
+  for (const section of ['purchase', 'hero', 'categories', 'bestSellers', 'sidebar']) {
     const effect = neon[section];
     if (effect?.enabled === true && colorPattern.test(effect.color || '') && [3, 5, 8, 12].includes(effect.speed)) {
       styles[`--platform-neon-${section}-color`] = effect.color;
