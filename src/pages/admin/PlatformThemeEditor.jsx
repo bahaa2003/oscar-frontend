@@ -20,6 +20,18 @@ const card = 'rounded-2xl border border-[color:rgb(var(--color-border-rgb)/0.8)]
 const input = 'w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)]';
 const button = 'inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2.5 text-sm font-bold text-[var(--color-text)] transition hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-50';
 const colorKeys = ['primary', 'secondary', 'accent', 'background', 'surface', 'text', 'mutedText', 'border'];
+const colorLuminance = (hex) => {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
+  const channels = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+};
+const getLowContrastPairs = (pairs) => pairs.filter(([, foreground, background, minimum]) => {
+  const first = colorLuminance(foreground);
+  const second = colorLuminance(background);
+  return first !== null && second !== null
+    && (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05) < minimum;
+}).map(([label]) => label);
 const neonSections = ['purchase', 'hero', 'categories', 'bestSellers'];
 const sampleNeon = () => ({ purchase: { enabled: false, color: '#22D3EE', speed: 5 },
   hero: { enabled: false, color: '#A855F7', speed: 5 },
@@ -493,6 +505,7 @@ const copy = {
     categoryDefault: 'الإعداد الافتراضي لكل الأقسام', categoryNeonHint: 'عاين أقسام الصفحة الرئيسية الفعلية، واختر لكل قسم لونًا وسرعة مختلفين في الوضع الحالي.', noHomepageCategories: 'لا توجد أقسام رئيسية متاحة الآن. ستظهر هنا بعد تحميل أقسام المتجر.',
     neonEnabled: 'تفعيل', neonSpeed: 'سرعة الدوران', neonDemo: 'معاينة تأثير النيون',
     primary: 'الأساسي', secondary: 'الثانوي', accent: 'التمييز', background: 'الخلفية', surface: 'البطاقات', text: 'النص', mutedText: 'النص الثانوي', border: 'الحدود',
+    lowContrastNotice: 'تباين بعض الألوان منخفض وقد يصعّب القراءة، لكن حفظ الإعداد متاح:',
     arabicFont: 'الخط العربي', englishFont: 'الخط الإنجليزي', baseSize: 'حجم النص', headingWeight: 'وزن العناوين',
     buttonRadius: 'استدارة الأزرار', buttonStyle: 'شكل الأزرار', cardRadius: 'استدارة البطاقات', cardShadow: 'ظل البطاقات', navigation: 'القائمة',
     solid: 'ممتلئ', outline: 'محدد', none: 'بدون', subtle: 'خفيف', medium: 'متوسط', standard: 'عادي', compact: 'مدمج',
@@ -550,6 +563,7 @@ const copy = {
     categoryDefault: 'Default for all categories', categoryNeonHint: 'Preview real homepage categories and give each one its own color and speed in this mode.', noHomepageCategories: 'No homepage categories are available yet. They will appear after the catalog loads.',
     neonEnabled: 'Enable', neonSpeed: 'Orbit speed', neonDemo: 'Neon preview',
     primary: 'Primary', secondary: 'Secondary', accent: 'Accent', background: 'Background', surface: 'Cards', text: 'Text', mutedText: 'Muted text', border: 'Border',
+    lowContrastNotice: 'Some colors have low contrast and may be harder to read. You can still save this theme:',
     arabicFont: 'Arabic font', englishFont: 'English font', baseSize: 'Base size', headingWeight: 'Heading weight',
     buttonRadius: 'Button radius', buttonStyle: 'Button style', cardRadius: 'Card radius', cardShadow: 'Card shadow', navigation: 'Navigation',
     solid: 'Solid', outline: 'Outline', none: 'None', subtle: 'Subtle', medium: 'Medium', standard: 'Standard', compact: 'Compact',
@@ -656,6 +670,11 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     setContactsErrors({});
   }, [paymentSettings]);
   const part = draft?.modes?.[mode];
+  const modeContrastWarnings = getLowContrastPairs(part?.colors ? [
+    [`${t.text} / ${t.background}`, part.colors.text, part.colors.background, 4.5],
+    [`${t.text} / ${t.surface}`, part.colors.text, part.colors.surface, 4.5],
+    [`${t.mutedText} / ${t.background}`, part.colors.mutedText, part.colors.background, 4.5],
+  ] : []);
   const previewStyle = useMemo(() => platformThemeStyles(draft, mode), [draft, mode]);
   useEffect(() => {
     let active = true;
@@ -889,7 +908,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
             <small className="studio-template-meta">{presetCategory(entry.id, language)} · {locked ? (language === 'ar' ? 'مقفول · اعرض الخطط' : 'Locked · View plans') : (language === 'ar' ? 'معاينة وتطبيق فوري' : 'Preview and apply instantly')}</small>
           </button>;
         })}</div></Section>
-        {(previewOnly || activePage === 'colors') && <Section icon={Palette} title={t.colors}><div className="grid gap-3 sm:grid-cols-2">{colorKeys.map((key) => <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text)]"><span>{t[key]}</span><span className="flex items-center gap-2"><small dir="ltr">{part.colors[key]}</small><input type="color" aria-label={t[key]} value={part.colors[key]} onChange={(event) => updatePart('colors', key, event.target.value)} /></span></label>)}</div></Section>}
+        {(previewOnly || activePage === 'colors') && <Section icon={Palette} title={t.colors}><div className="grid gap-3 sm:grid-cols-2">{colorKeys.map((key) => <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text)]"><span>{t[key]}</span><span className="flex items-center gap-2"><small dir="ltr">{part.colors[key]}</small><input type="color" aria-label={t[key]} value={part.colors[key]} onChange={(event) => updatePart('colors', key, event.target.value)} /></span></label>)}</div>{modeContrastWarnings.length > 0 && <p role="note" className="mt-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">{t.lowContrastNotice} {modeContrastWarnings.join(language === 'ar' ? '، ' : ', ')}</p>}</Section>}
         </>}
         {(previewOnly || ['typography', 'header', 'navigation'].includes(activePage)) && <>
         {(previewOnly || activePage === 'typography') && <Section icon={Palette} title={t.typography}><div className="grid gap-3 sm:grid-cols-2">{[['arabicFont', 'arabic'], ['englishFont', 'english']].map(([key, kind]) => <label key={key} className="text-sm text-[var(--color-text)]">{t[key]}<select className={`${input} mt-1`} value={part.typography[key]} onChange={(event) => updatePart('typography', key, event.target.value)}>{fonts[kind].map((font) => <option key={font} value={font} disabled={!paid && !freeFonts[kind].includes(font)}>{font}{!freeFonts[kind].includes(font) ? ' 🔒 Pro' : ''}</option>)}</select></label>)}</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Select label={t.baseSize} value={part.typography.baseSize} values={[14,16,18,20]} disabled={!paid} onChange={(value) => updatePart('typography','baseSize',Number(value))} suffix="px" /><Select label={t.headingWeight} value={part.typography.headingWeight} values={[600,700,800]} disabled={!paid} onChange={(value) => updatePart('typography','headingWeight',Number(value))} /></div></Section>}
@@ -929,6 +948,10 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           {['header', 'bottomNav'].filter((section) => previewOnly || (activePage === 'header' ? section === 'header' : section === 'bottomNav')).map((section) => {
             const value = getThemeChrome(draft, section, mode) || sampleTheme.chrome.modes[mode][section];
             const headerPart = section === 'header';
+            const chromeContrastWarnings = getLowContrastPairs([
+              [`${language === 'ar' ? 'النص' : 'Text'} / ${language === 'ar' ? 'الخلفية' : 'Background'}`, value.foreground, value.background, 4.5],
+              [`${language === 'ar' ? 'التمييز' : 'Accent'} / ${language === 'ar' ? 'الخلفية' : 'Background'}`, value.accent, value.background, 2.2],
+            ]);
             return <fieldset key={section} disabled={!canPreviewUltra} className="mb-4 grid gap-3 rounded-xl border border-[var(--color-border)] p-3 disabled:opacity-55">
               <strong>{headerPart ? (language === 'ar' ? 'الهيدر العلوي' : 'Top header') : (language === 'ar' ? 'النافبار السفلي' : 'Bottom navigation')}</strong>
               <div className="grid gap-2 sm:grid-cols-3">{(headerPart ? headerLooks : bottomNavLooks).map((look) => <button key={look.name} type="button" onClick={() => updateChrome(section, look.config)} className={`studio-look-card ${value.template === look.config.template && value.background === look.config.background ? 'is-selected' : ''}`}><span style={{ background: look.config.background, color: look.config.accent, borderRadius: look.config.template === 'pill' ? 999 : look.config.radius }}>{look.config.template === 'bar' ? '━━━━' : '◜━━◝'}</span><strong>{language === 'ar' ? look.ar : look.name}</strong><small>{look.config.template === 'bar' ? (language === 'ar' ? 'حافة كاملة' : 'Full width') : look.config.template === 'pill' ? (language === 'ar' ? 'كبسولة عائمة' : 'Floating pill') : (language === 'ar' ? 'عائم منحني' : 'Curved floating')}</small></button>)}</div>
@@ -941,6 +964,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
               <label className="text-sm">{language === 'ar' ? 'العرض' : 'Width'}: {value.width}%<input type="range" className="mt-1 w-full" min="60" max="100" value={value.width} onChange={(event) => updateChrome(section, { width: Number(event.target.value) })} /></label>
               <label className="text-sm">{language === 'ar' ? 'استدارة الحواف' : 'Corner radius'}: {value.radius}px<input type="range" className="mt-1 w-full" min="0" max="32" step="4" value={value.radius} onChange={(event) => updateChrome(section, { radius: Number(event.target.value) })} /></label>
               <div className="grid grid-cols-3 gap-2">{[['background', language === 'ar' ? 'الخلفية' : 'Background'], ['foreground', language === 'ar' ? 'النص' : 'Text'], ['accent', language === 'ar' ? 'التمييز' : 'Accent']].map(([key, label]) => <label key={key} className="text-xs">{label}<input type="color" className="mt-1 h-10 w-full" value={value[key]} onChange={(event) => updateChrome(section, { [key]: event.target.value.toUpperCase() })} /></label>)}</div>
+              {chromeContrastWarnings.length > 0 && <p role="note" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">{t.lowContrastNotice} {chromeContrastWarnings.join(language === 'ar' ? '، ' : ', ')}</p>}
             </fieldset>;
           })}
           {!ultra && <Link to="/admin/theme/subscriptions" className="mt-3 inline-flex items-center gap-2 font-bold text-amber-600">{language === 'ar' ? '🔒 استكشف ULTRA لفتح التعديل' : '🔒 Explore ULTRA to unlock editing'}<ArrowUpRight className="h-4 w-4" /></Link>}
