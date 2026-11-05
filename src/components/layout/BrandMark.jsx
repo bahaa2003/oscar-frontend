@@ -53,7 +53,11 @@ const BrandMark = ({
 
   return (
     <div className={cn('flex items-center', isIconEnd && 'flex-row-reverse', styles.wrapper, className)}>
-      <div className={cn('relative shrink-0 overflow-hidden', styles.iconShell)} style={scaledSize ? { width: scaledSize, height: scaledSize } : undefined}>
+        <div className={cn('relative shrink-0 overflow-hidden', styles.iconShell)} style={scaledSize ? {
+          width: scaledSize, height: scaledSize,
+          // Keep paid logo sizing visible while preventing it from crowding the phone header.
+          maxWidth: 'min(100%, 22vw)', maxHeight: 'min(100%, 22vw)',
+        } : undefined}>
         <img
           src={logo}
           alt="OSCAR STORE"

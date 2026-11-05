@@ -11,14 +11,19 @@ const rgbMap = {
   border: '--color-border-rgb',
 };
 const allowedFonts = {
-  arabicFont: ['Cairo', 'Tajawal', 'Noto Sans Arabic', 'Almarai', 'Changa', 'IBM Plex Sans Arabic', 'Rubik'],
+  arabicFont: ['Cairo', 'Tajawal', 'Noto Sans Arabic', 'Almarai', 'Changa', 'IBM Plex Sans Arabic', 'Rubik', 'Aref Ruqaa', 'Aref Ruqaa Ink', 'Noto Kufi Arabic', 'El Messiri'],
   englishFont: ['Inter', 'Arial', 'Roboto', 'Poppins', 'Montserrat', 'Outfit', 'Plus Jakarta Sans'],
 };
+const allowedBodyWeights = [400, 500, 600, 700, 800];
 const ensureThemeFont = (family) => {
   if (!family || family === 'Arial' || !Object.values(allowedFonts).some((fonts) => fonts.includes(family))) return;
   const id = `oscar-theme-font-${family.replaceAll(' ', '-').toLowerCase()}`;
   if (document.getElementById(id)) return;
-  const weights = ({ Tajawal: '400;500;700;800', Almarai: '400;700;800', 'IBM Plex Sans Arabic': '400;500;600;700' })[family] || '400;500;600;700;800';
+  const weights = ({
+    Tajawal: '400;500;700;800', Almarai: '400;700;800', 'IBM Plex Sans Arabic': '400;500;600;700',
+    'Aref Ruqaa': '400;700', 'Aref Ruqaa Ink': '400;700',
+    'Noto Kufi Arabic': '100..900', 'Noto Sans Arabic': '100..900', 'El Messiri': '400..700',
+  })[family] || '400;500;600;700;800';
   const link = document.createElement('link');
   link.id = id;
   link.rel = 'stylesheet';
@@ -40,13 +45,17 @@ export const getThemeChrome = (configuration, section, mode = 'light') => {
 
 export const PRODUCT_COLUMNS = [2, 3, 4, 5, 6];
 export const CATEGORY_COLUMNS = [2, 3];
+export const MOBILE_GRID_COLUMNS = [1, 2, 3];
 export const getThemeGridStyles = (configuration) => {
   const products = PRODUCT_COLUMNS.includes(configuration?.layout?.productsPerRow) ? configuration.layout.productsPerRow : 4;
   const categories = CATEGORY_COLUMNS.includes(configuration?.layout?.categoriesPerRow) ? configuration.layout.categoriesPerRow : 3;
-  // The saved count targets desktop. Existing small-screen limits stay compatible.
+  const mobileProducts = MOBILE_GRID_COLUMNS.includes(configuration?.layout?.productsPerRowMobile)
+    ? configuration.layout.productsPerRowMobile : 2;
+  const mobileCategories = MOBILE_GRID_COLUMNS.includes(configuration?.layout?.categoriesPerRowMobile)
+    ? configuration.layout.categoriesPerRowMobile : 2;
   return {
-    productGridStyle: { '--platform-products-desktop': products, '--platform-products-tablet': Math.min(products, 3), '--platform-products-mobile': Math.min(products, 2) },
-    categoryGridStyle: { '--platform-categories-desktop': categories, '--platform-categories-mobile': Math.min(categories, 2) },
+    productGridStyle: { '--platform-products-desktop': products, '--platform-products-tablet': Math.min(products, 3), '--platform-products-mobile': mobileProducts },
+    categoryGridStyle: { '--platform-categories-desktop': categories, '--platform-categories-mobile': mobileCategories },
   };
 };
 
@@ -54,7 +63,7 @@ export const getThemeHeaderStyle = (configuration, mode) => {
   const header = getThemeChrome(configuration, 'header', mode);
   if (!header) return undefined;
   return {
-    height: `${header.height}px`, width: `${header.width}%`, marginInline: 'auto',
+    height: `${header.height}px`, width: `${header.width}%`, maxWidth: '100%', boxSizing: 'border-box', marginInline: 'auto',
     borderRadius: `${header.radius}px`, background: header.background, color: header.foreground,
     borderColor: header.accent, '--platform-header-accent': header.accent,
   };
@@ -111,7 +120,11 @@ export const platformThemeStyles = (configuration, mode = 'light') => {
   if ([14, 16, 18, 20].includes(appearance.typography?.baseSize)) {
     styles['--platform-base-font-size'] = `${appearance.typography.baseSize}px`;
   }
-  if ([600, 700, 800].includes(appearance.typography?.headingWeight)) {
+  const bodyWeight = appearance.typography?.bodyWeight ?? 400;
+  if (allowedBodyWeights.includes(bodyWeight)) {
+    styles['--platform-body-weight'] = String(bodyWeight);
+  }
+  if ([600, 700, 800, 900].includes(appearance.typography?.headingWeight)) {
     styles['--platform-heading-weight'] = String(appearance.typography.headingWeight);
   }
   if ([0, 4, 8, 12, 24].includes(appearance.buttons?.radius)) {

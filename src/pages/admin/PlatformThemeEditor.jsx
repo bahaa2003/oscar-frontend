@@ -7,7 +7,7 @@ import CategoryCard from '../../components/home/CategoryCard';
 import { createStorefrontCategories } from '../../utils/storefront';
 import { useLanguage } from '../../context/LanguageContext';
 import { useToast } from '../../components/ui/Toast';
-import { getThemeChrome, platformThemeStyles, PRODUCT_COLUMNS, CATEGORY_COLUMNS } from '../../theme/platformTheme';
+import { getThemeChrome, platformThemeStyles, PRODUCT_COLUMNS, CATEGORY_COLUMNS, MOBILE_GRID_COLUMNS } from '../../theme/platformTheme';
 import { publishThemeDraft } from '../../theme/publishThemeDraft';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import useAuthStore from '../../store/useAuthStore';
@@ -38,7 +38,7 @@ const sampleNeon = () => ({ purchase: { enabled: false, color: '#22D3EE', speed:
   categories: { enabled: false, color: '#34D399', speed: 5 },
   bestSellers: { enabled: false, color: '#F59E0B', speed: 5 },
   sidebar: { enabled: false, color: '#F472B6', speed: 5 }, categoryCards: {} });
-const freeFonts = { arabic: ['Cairo', 'Tajawal'], english: ['Inter', 'Arial'] };
+const freeFonts = { arabic: ['Cairo', 'Tajawal', 'Aref Ruqaa', 'Aref Ruqaa Ink', 'Noto Kufi Arabic', 'El Messiri'], english: ['Inter', 'Arial'] };
 const fonts = { arabic: [...freeFonts.arabic, 'Noto Sans Arabic', 'Almarai', 'Changa', 'IBM Plex Sans Arabic', 'Rubik'],
   english: [...freeFonts.english, 'Roboto', 'Poppins', 'Montserrat', 'Outfit', 'Plus Jakarta Sans'] };
 const sampleColors = {
@@ -46,13 +46,13 @@ const sampleColors = {
   dark: { primary: '#60A5FA', secondary: '#A78BFA', accent: '#FBBF24', background: '#0F172A', surface: '#1E293B', text: '#F8FAFC', mutedText: '#CBD5E1', border: '#475569' },
 };
 const samplePart = (mode) => ({ presetId: 'classic', colors: { ...sampleColors[mode] },
-  typography: { arabicFont: 'Cairo', englishFont: 'Inter', baseSize: 16, headingWeight: 700 },
+  typography: { arabicFont: 'Cairo', englishFont: 'Inter', baseSize: 16, bodyWeight: 400, headingWeight: 700 },
   buttons: { radius: 8, style: 'solid' }, cards: { radius: 12, shadow: 'subtle' }, navigation: { style: 'standard' }, neon: sampleNeon() });
 const DEFAULT_MARQUEE_AR = 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ ﴿قُلْ إِنَّ رَبِّي يَبْسُطُ الرِّزْقَ لِمَنْ يَشَاءُ مِنْ عِبَادِهِ وَيَقْدِرُ لَهُ وَمَا أَنْفَقْتُمْ مِنْ شَيْءٍ فَهُوَ يُخْلِفُهُ وَهُوَ خَيْرُ الرَّازِقِينَ﴾ صَدَقَ اللَّهُ الْعَظِيمُ';
 const sampleTheme = { schemaVersion: 2, modes: { light: samplePart('light'), dark: samplePart('dark') },
   brand: { logoPath: null, logoWidth: 144, slides: [null, null, null, null], marqueeTextArabic: DEFAULT_MARQUEE_AR, targetBannerPath: null, sidebarTemplate: 'default', sidebarMetrics: { width: 270, height: 100, radius: 28 } },
   chrome: { header: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 } } };
-sampleTheme.layout = { productsPerRow: 4, categoriesPerRow: 3 };
+sampleTheme.layout = { productsPerRow: 4, categoriesPerRow: 3, productsPerRowMobile: 2, categoriesPerRowMobile: 2 };
 sampleTheme.chrome = { modes: {
   light: { header: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#FFFFFF', foreground: '#0F172A', accent: '#2563EB', radius: 0 } },
   dark: { header: { template: 'bar', height: 64, width: 100, background: '#0F172A', foreground: '#F8FAFC', accent: '#60A5FA', radius: 0 }, bottomNav: { template: 'bar', height: 64, width: 100, background: '#0F172A', foreground: '#F8FAFC', accent: '#60A5FA', radius: 0 } },
@@ -472,8 +472,35 @@ const presetCategory = (id, language) => {
     : { luxury: 'Luxury', glass: 'Atmospheric', neon: 'Bold', minimal: 'Minimal', modern: 'Modern' };
   return labels[category];
 };
+function ThemePresetCard({ entry, mode, language, locked, active, onSelect }) {
+  const configuration = entry.configuration;
+  const appearance = configuration.modes[mode];
+  const colors = appearance.colors;
+  const chrome = getThemeChrome(configuration, 'header', mode);
+  const bottomNav = getThemeChrome(configuration, 'bottomNav', mode);
+  const products = configuration.layout?.productsPerRowMobile || configuration.layout?.productsPerRow || 2;
+  const categories = configuration.layout?.categoriesPerRowMobile || configuration.layout?.categoriesPerRow || 2;
+  const logoWidth = configuration.brand?.logoWidth || 144;
+  const tierLabel = entry.requiresUltra ? 'ULTRA' : entry.tier === 'THEME_PRO' ? 'PRO' : '';
+  return <button type="button" aria-pressed={active} aria-disabled={locked}
+    onClick={onSelect} className={`theme-preset-card ${active ? 'theme-preset-card--active' : ''} ${locked ? 'theme-preset-card--locked' : ''}`}>
+    <span className="theme-preset-card__scene" style={{ backgroundColor: colors.background, borderColor: colors.border }}>
+      <span className="theme-preset-card__mock-header" style={{ background: chrome?.background || colors.surface, color: chrome?.foreground || colors.text, borderColor: chrome?.accent || colors.primary, borderRadius: `${chrome?.radius ?? 8}px` }}><i style={{ width: `${Math.max(18, Math.min(38, logoWidth / 5))}px`, background: colors.primary }} /><i /><b>OSCAR</b><i /></span>
+      <span className="theme-preset-card__mock-content">
+        <i className="theme-preset-card__mock-sidebar" style={{ background: colors.surface, borderColor: colors.border, borderRadius: `${configuration.brand?.sidebarMetrics?.radius ?? 8}px` }} />
+        <span className="theme-preset-card__mock-main">
+          <i className="theme-preset-card__mock-categories" style={{ gridTemplateColumns: `repeat(${Math.min(categories, 3)}, minmax(0, 1fr))` }}>{Array.from({ length: Math.min(categories, 3) }, (_, index) => <b key={index} style={{ background: `${colors.secondary}40`, borderColor: colors.border, borderRadius: `${appearance.cards?.radius ?? 8}px` }} />)}</i>
+          <i className="theme-preset-card__mock-products" style={{ gridTemplateColumns: `repeat(${Math.min(products, 4)}, minmax(0, 1fr))` }}>{Array.from({ length: Math.min(products, 4) }, (_, index) => <b key={index} style={{ background: colors.surface, borderColor: colors.border, borderRadius: `${appearance.cards?.radius ?? 8}px` }}><i style={{ background: `${colors.primary}30` }} /><i style={{ background: colors.text }} /></b>)}</i>
+        </span>
+      </span>
+      <span className="theme-preset-card__mock-nav" style={{ background: bottomNav?.background || colors.surface, borderColor: bottomNav?.accent || colors.border, borderRadius: `${bottomNav?.radius ?? 12}px` }}><i /><i /><i /><i /><i /></span>
+    </span>
+    <span className="theme-preset-card__label"><span>{presetNames[language]?.[entry.id] || entry.id}</span>{locked ? <LockKeyhole className="h-4 w-4 text-amber-500" /> : tierLabel ? <span className="theme-preset-card__pro">{tierLabel}</span> : null}</span>
+    <small className="studio-template-meta">{presetCategory(entry.id, language)} · {products} {language === 'ar' ? 'منتجات بالهاتف' : 'mobile products'} · {categories} {language === 'ar' ? 'أقسام' : 'categories'} · {logoWidth}px</small>
+  </button>;
+}
 const samplePresets = Object.entries(previewPresetPalettes).map(([id, modes]) => ({
-  id, tier: ['classic', 'midnight', 'warm'].includes(id) ? 'FREE' : 'THEME_PRO',
+  id, tier: ['classic', 'midnight', 'warm'].includes(id) ? 'FREE' : 'THEME_PRO', requiresUltra: ['royal', 'aurora'].includes(id),
   configuration: { ...sampleTheme, modes: {
     light: { ...samplePart('light'), presetId: id, colors: Object.fromEntries(colorKeys.map((key, index) => [key, modes.light[index]])) },
     dark: { ...samplePart('dark'), presetId: id, colors: Object.fromEntries(colorKeys.map((key, index) => [key, modes.dark[index]])) },
@@ -507,7 +534,7 @@ const copy = {
     neonEnabled: 'تفعيل', neonSpeed: 'سرعة الدوران', neonDemo: 'معاينة تأثير النيون',
     primary: 'الأساسي', secondary: 'الثانوي', accent: 'التمييز', background: 'الخلفية', surface: 'البطاقات', text: 'النص', mutedText: 'النص الثانوي', border: 'الحدود',
     lowContrastNotice: 'تباين بعض الألوان منخفض وقد يصعّب القراءة، لكن حفظ الإعداد متاح:',
-    arabicFont: 'الخط العربي', englishFont: 'الخط الإنجليزي', baseSize: 'حجم النص', headingWeight: 'وزن العناوين',
+    arabicFont: 'الخط العربي لكل الموقع', englishFont: 'الخط الإنجليزي لكل الموقع', baseSize: 'حجم النص', bodyWeight: 'سُمك النص الأساسي', headingWeight: 'سُمك العناوين',
     buttonRadius: 'استدارة الأزرار', buttonStyle: 'شكل الأزرار', cardRadius: 'استدارة البطاقات', cardShadow: 'ظل البطاقات', navigation: 'القائمة',
     solid: 'ممتلئ', outline: 'محدد', none: 'بدون', subtle: 'خفيف', medium: 'متوسط', standard: 'عادي', compact: 'مدمج',
     save: 'حفظ المسودة', reset: 'إعادة المسودة', publish: 'نشر التغييرات', restore: 'استعادة ونشر',
@@ -565,7 +592,7 @@ const copy = {
     neonEnabled: 'Enable', neonSpeed: 'Orbit speed', neonDemo: 'Neon preview',
     primary: 'Primary', secondary: 'Secondary', accent: 'Accent', background: 'Background', surface: 'Cards', text: 'Text', mutedText: 'Muted text', border: 'Border',
     lowContrastNotice: 'Some colors have low contrast and may be harder to read. You can still save this theme:',
-    arabicFont: 'Arabic font', englishFont: 'English font', baseSize: 'Base size', headingWeight: 'Heading weight',
+    arabicFont: 'Arabic font · whole site', englishFont: 'English font · whole site', baseSize: 'Base size', bodyWeight: 'Body text weight', headingWeight: 'Heading weight',
     buttonRadius: 'Button radius', buttonStyle: 'Button style', cardRadius: 'Card radius', cardShadow: 'Card shadow', navigation: 'Navigation',
     solid: 'Solid', outline: 'Outline', none: 'None', subtle: 'Subtle', medium: 'Medium', standard: 'Standard', compact: 'Compact',
     save: 'Save draft', reset: 'Reset draft', publish: 'Publish changes', restore: 'Restore and publish',
@@ -718,7 +745,7 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
   const updateSidebarMetrics = (change) => setDraft((current) => ({ ...current, brand: { ...current.brand,
     sidebarMetrics: { ...sampleTheme.brand.sidebarMetrics, ...current.brand.sidebarMetrics, ...change } } }));
   const updateChrome = (section, change) => setDraft((current) => { const modes = { ...current.chrome.modes, [mode]: { ...current.chrome.modes[mode], [section]: { ...current.chrome.modes[mode][section], ...change } } }; return { ...current, chrome: { ...current.chrome, header: modes.light.header, bottomNav: modes.light.bottomNav, modes } }; });
-  const updateLayout = (change) => setDraft((current) => ({ ...current, layout: { productsPerRow: 4, categoriesPerRow: 3, ...current.layout, ...change } }));
+  const updateLayout = (change) => setDraft((current) => ({ ...current, layout: { productsPerRow: 4, categoriesPerRow: 3, productsPerRowMobile: 2, categoriesPerRowMobile: 2, ...current.layout, ...change } }));
   const updateNeon = (section, change) => setDraft((current) => ({ ...current,
     modes: { ...current.modes, [mode]: { ...current.modes[mode], neon: { ...current.modes[mode].neon,
       [section]: { ...current.modes[mode].neon[section], ...change } } } } }));
@@ -730,13 +757,29 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
     return { ...current, modes: { ...current.modes, [mode]: { ...appearance,
       neon: { ...neon, categoryCards: { ...categoryCards, [categoryId]: { ...effect, ...change } } } } } };
   });
-  const choosePreset = (entry) => setDraft((current) => ({ ...current,
-    modes: { ...current.modes, [mode]: structuredClone(entry.configuration.modes[mode]) } }));
+  const choosePreset = (entry) => setDraft((current) => {
+    const template = structuredClone(entry.configuration);
+    const ultraTemplate = entry.requiresUltra === true;
+    return {
+      ...current,
+      modes: template.modes,
+      layout: template.layout || current.layout,
+      chrome: ultraTemplate ? template.chrome : current.chrome,
+      brand: {
+        ...current.brand,
+        logoWidth: template.brand?.logoWidth || 144,
+        ...(ultraTemplate ? {
+          sidebarTemplate: template.brand?.sidebarTemplate || 'default',
+          sidebarMetrics: template.brand?.sidebarMetrics || sampleTheme.brand.sidebarMetrics,
+        } : {}),
+      },
+    };
+  });
   const needsPro = draft && (Object.values(draft.modes).some((appearance) =>
     presets.find((item) => item.id === appearance.presetId)?.tier === 'THEME_PRO'
     || !freeFonts.arabic.includes(appearance.typography.arabicFont)
     || !freeFonts.english.includes(appearance.typography.englishFont)
-    || appearance.typography.baseSize !== 16 || appearance.typography.headingWeight !== 700
+    || appearance.typography.baseSize !== 16
     || appearance.buttons.radius !== 8 || appearance.buttons.style !== 'solid'
     || appearance.cards.radius !== 12 || appearance.cards.shadow !== 'subtle'
     || appearance.navigation.style !== 'standard'
@@ -854,17 +897,17 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
       <div className="platform-studio__overview-grid"><article className={`${card} platform-studio__welcome-card`}><span className="platform-studio__eyebrow"><Sparkles className="h-4 w-4" />{language === 'ar' ? 'مساحة تخصيصك' : 'Your customization workspace'}</span><h2>{language === 'ar' ? 'كل تفاصيل الهوية البصرية في مكان واحد' : 'Your visual identity, all in one place'}</h2><p>{language === 'ar' ? 'خصص عناصر المنصة، استكشف القوالب، وشاهد أثر تعديلاتك قبل النشر.' : 'Customize the platform, explore templates, and preview changes before publishing.'}</p><div className="platform-studio__overview-actions"><button type="button" onClick={() => setStudioSection('preview')}>{language === 'ar' ? 'ابدأ بالمعاينة' : 'Open full preview'}<ArrowUpRight className="h-4 w-4" /></button><Link to="/admin/theme/subscriptions">{language === 'ar' ? 'استكشف الخطط والاشتراكات' : 'Explore plans & subscriptions'}<ArrowUpRight className="h-4 w-4" /></Link></div></article><div className={`${card} platform-studio__status-card`}><span className="platform-studio__status-icon"><Activity /></span><small>{language === 'ar' ? 'حالة الثيم الحالي' : 'Current theme status'}</small><strong>{settings?.version ? `v${settings.version}` : language === 'ar' ? 'مسودة جاهزة' : 'Draft ready'}</strong><p>{language === 'ar' ? `${settings?.eligibility?.freeChangesRemaining ?? 0} تغييرات مجانية متبقية` : `${settings?.eligibility?.freeChangesRemaining ?? 0} free publishes remaining`}</p><span className="platform-studio__feature-count">{language === 'ar' ? 'أكثر من 20 خيار تخصيص' : '20+ customization controls'}</span></div></div>
       <div className={`${card} p-3 sm:p-5`}><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black">{language === 'ar' ? 'معاينة المنصة المباشرة' : 'Live platform preview'}</h2><p className="text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'بيانات المتجر الفعلية · التغييرات مسودة حتى النشر' : 'Real catalog data · edits stay as drafts until published'}</p></div><button type="button" className={button} onClick={() => setStudioSection('preview')}>{language === 'ar' ? 'فتح المعاينة الكاملة' : 'Open full preview'}<ArrowUpRight className="h-4 w-4" /></button></div><StorefrontThemePreview configuration={draft} mode={mode} language={language} /></div>
       <div className="platform-studio__quick-grid">{studioNav.filter(([id]) => !['overview', 'preview', 'contacts', 'history'].includes(id)).map(([id, Icon, label]) => <button key={id} type="button" onClick={() => setStudioSection(id)}><span><Icon className="h-5 w-5" /></span><strong>{label}</strong><small>{language === 'ar' ? 'افتح مساحة التخصيص' : 'Open customization workspace'}</small><ArrowUpRight className="platform-studio__quick-arrow h-4 w-4" /></button>)}</div>
-      <section className={`${card} p-4 sm:p-5`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-black text-[var(--color-text)]">{language === 'ar' ? 'قوالب مقترحة لك' : 'Recommended templates'}</h2><p className="mt-1 text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? 'عاين القالب وطبقه على المسودة مباشرة.' : 'Preview a template and apply it to your draft.'}</p></div><button type="button" onClick={() => setStudioSection('templates')} className="inline-flex items-center gap-1 text-xs font-black text-[var(--color-primary)]">{language === 'ar' ? 'المكتبة كاملة' : 'Full library'}<ArrowUpRight className="h-4 w-4" /></button></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.slice(0, 4).map((entry) => { const locked = entry.tier === 'THEME_PRO' && !paid; const colors = entry.configuration.modes[mode].colors; return <button key={entry.id} type="button" onClick={() => locked ? openSubscriptions() : choosePreset(entry)} className={`theme-preset-card ${locked ? 'theme-preset-card--locked' : ''}`}><span className="theme-preset-card__scene" style={{ backgroundColor: colors.background, borderColor: colors.border }}><span className="theme-preset-card__panel" style={{ backgroundColor: colors.surface, borderColor: colors.border }}><span className="theme-preset-card__title" style={{ color: colors.text }}>Aa</span><span className="theme-preset-card__accent" style={{ backgroundColor: colors.primary }} /><span className="theme-preset-card__line" style={{ backgroundColor: colors.secondary }} /></span></span><span className="theme-preset-card__label"><span>{presetNames[language]?.[entry.id] || entry.id}</span>{locked ? <LockKeyhole className="h-4 w-4 text-amber-500" /> : null}</span><small className="studio-template-meta">{presetCategory(entry.id, language)} · {locked ? 'PRO' : language === 'ar' ? 'تطبيق فوري' : 'Apply instantly'}</small></button>; })}</div></section>
+      <section className={`${card} p-4 sm:p-5`}><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h2 className="font-black text-[var(--color-text)]">{language === 'ar' ? 'قوالب متكاملة للموقع' : 'Complete storefront templates'}</h2><p className="mt-1 text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? 'كل قالب يطبق ألوانًا وخطوطًا ومقاسات وتوزيعًا متناسقًا، مع الحفاظ على صورك وشعارك.' : 'Each template applies coordinated colors, typography, sizing, and layout while keeping your images and logo.'}</p></div><button type="button" onClick={() => setStudioSection('templates')} className="inline-flex items-center gap-1 text-xs font-black text-[var(--color-primary)]">{language === 'ar' ? 'المكتبة كاملة' : 'Full library'}<ArrowUpRight className="h-4 w-4" /></button></div><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.slice(0, 4).map((entry) => { const locked = entry.requiresUltra ? !canPreviewUltra : entry.tier === 'THEME_PRO' && !paid; const active = draft?.modes?.light?.presetId === entry.id && draft?.modes?.dark?.presetId === entry.id; return <ThemePresetCard key={entry.id} entry={entry} mode={mode} language={language} locked={locked} active={active} onSelect={() => locked ? openSubscriptions() : choosePreset(entry)} />; })}</div></section>
       {!paid && <div className="platform-studio__upgrade-banner"><span className="platform-studio__upgrade-orb"><Sparkles /></span><div><strong>{language === 'ar' ? 'أطلق الهوية الكاملة لمنصتك' : 'Unlock your platform’s full identity'}</strong><p>{language === 'ar' ? 'قوالب أكثر، تخصيص أعمق، ومعاينة متكاملة قبل النشر.' : 'More templates, richer controls, and a complete preview before publishing.'}</p></div><Link to="/admin/theme/subscriptions">{language === 'ar' ? 'استكشف الخطط' : 'Explore plans'}<ArrowUpRight className="h-4 w-4" /></Link></div>}
     </section>}
     {!previewOnly && activePage === 'preview' && <Section icon={Sparkles} title={language === 'ar' ? 'معاينة المتجر الفعلية' : 'Actual storefront preview'}><StorefrontThemePreview configuration={draft} mode={mode} language={language} /></Section>}
     <fieldset disabled={busy} className="grid min-w-0 grid-cols-1 gap-5">
       <div id="theme-appearance" className={`space-y-5 scroll-mt-20 ${!previewOnly && !editingPage ? 'hidden' : ''}`}>
         {!previewOnly && activePage === 'layout' && <Section icon={LayoutGrid} title={language === 'ar' ? 'عرض المنتجات والأقسام' : 'Product and category layout'}>
-          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختر عدد الأعمدة للكمبيوتر. التابلت يعرض حتى 3 منتجات، والموبايل حتى منتجين وقسمين في الصف. تتغير المعاينة فورًا؛ استخدم أحجام المعاينة لمراجعتها ثم احفظ المسودة أو انشرها.' : 'Choose desktop columns. Tablets show up to 3 products; mobile shows up to 2 products and 2 categories per row. Check the viewport previews, then save or publish the draft.'}</p>
+          <p className="mb-4 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'حدد توزيع الكمبيوتر والهاتف كلٌّ على حدة. التابلت يعرض حتى 3 منتجات، ومعاينة المتجر تتحدث فورًا. احفظ المسودة ثم انشرها لتطبيق الإعدادات على الموقع.' : 'Set desktop and mobile layouts separately. Tablets show up to 3 products. The storefront preview updates immediately; save the draft and publish it to apply the settings.'}</p>
           <div className="grid gap-5 lg:grid-cols-2">
             <div>
-              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف' : 'Products per row'}</h3>
+              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف · الكمبيوتر' : 'Products per row · Desktop'}</h3>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">{PRODUCT_COLUMNS.map((count) => {
                 const selected = (draft.layout?.productsPerRow ?? 4) === count;
                 return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ productsPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
@@ -872,12 +915,28 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
                   <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'منتجات' : 'products'}</strong>
                 </button>;
               })}</div>
+              <h3 className="mb-3 mt-5 font-bold">{language === 'ar' ? 'عدد المنتجات في الصف · الهاتف' : 'Products per row · Mobile'}</h3>
+              <div className="grid grid-cols-3 gap-2">{MOBILE_GRID_COLUMNS.map((count) => {
+                const selected = (draft.layout?.productsPerRowMobile ?? 2) === count;
+                return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ productsPerRowMobile: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
+                  <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded bg-[var(--color-primary)]/20" />)}</span>
+                  <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'منتجات' : 'products'}</strong>
+                </button>;
+              })}</div>
             </div>
             <div>
-              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف' : 'Main categories per row'}</h3>
+              <h3 className="mb-3 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف · الكمبيوتر' : 'Main categories per row · Desktop'}</h3>
               <div className="grid grid-cols-2 gap-2">{CATEGORY_COLUMNS.map((count) => {
                 const selected = (draft.layout?.categoriesPerRow ?? 3) === count;
                 return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ categoriesPerRow: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
+                  <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span>
+                  <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'أقسام' : 'categories'}</strong>
+                </button>;
+              })}</div>
+              <h3 className="mb-3 mt-5 font-bold">{language === 'ar' ? 'عدد الأقسام في الصف · الهاتف' : 'Main categories per row · Mobile'}</h3>
+              <div className="grid grid-cols-3 gap-2">{MOBILE_GRID_COLUMNS.map((count) => {
+                const selected = (draft.layout?.categoriesPerRowMobile ?? 2) === count;
+                return <button key={count} type="button" aria-pressed={selected} onClick={() => updateLayout({ categoriesPerRowMobile: count })} className={`rounded-xl border p-3 text-start transition ${selected ? 'border-[var(--color-primary)] ring-2 ring-[color:rgb(var(--color-primary-rgb)/0.22)]' : 'border-[var(--color-border)]'}`}>
                   <span className="grid aspect-[1.65] gap-1" style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}>{Array.from({ length: count * 2 }, (_, i) => <i key={i} className="rounded-lg bg-[var(--color-secondary)]/20" />)}</span>
                   <strong className="mt-2 block text-center text-sm">{count} {language === 'ar' ? 'أقسام' : 'categories'}</strong>
                 </button>;
@@ -890,29 +949,16 @@ export default function PlatformThemeEditor({ previewOnly = false }) {
           </div>
         </Section>}
         {(previewOnly || activePage === 'colors' || activePage === 'templates') && <>
-        <Section icon={Sparkles} title={`${t.presets} · ${t[mode]}`}><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{presets.map((entry) => {
-          const locked = entry.tier === 'THEME_PRO' && !paid;
-          const palette = entry.configuration.modes[mode].colors;
-          const active = part.presetId === entry.id;
-          return <button key={entry.id} type="button" aria-pressed={active} aria-disabled={locked}
-            onClick={() => locked ? openSubscriptions() : choosePreset(entry)} className={`theme-preset-card ${active ? 'theme-preset-card--active' : ''} ${locked ? 'theme-preset-card--locked' : ''}`}>
-            <span className="theme-preset-card__scene" style={{ backgroundColor: palette.background, borderColor: palette.border }}>
-              <span className="theme-preset-card__panel" style={{ backgroundColor: palette.surface, borderColor: palette.border }}>
-                <span className="theme-preset-card__title" style={{ color: palette.text }}>Aa</span>
-                <span className="theme-preset-card__accent" style={{ backgroundColor: palette.primary }} />
-                <span className="theme-preset-card__line" style={{ backgroundColor: palette.secondary }} />
-              </span>
-            </span>
-            <span className="theme-preset-card__label"><span>{presetNames[language]?.[entry.id] || entry.id}</span>
-              {locked ? <LockKeyhole className="h-4 w-4 text-amber-500" /> : entry.tier === 'THEME_PRO' ? <span className="theme-preset-card__pro">PRO</span> : null}
-            </span>
-            <small className="studio-template-meta">{presetCategory(entry.id, language)} · {locked ? (language === 'ar' ? 'مقفول · اعرض الخطط' : 'Locked · View plans') : (language === 'ar' ? 'معاينة وتطبيق فوري' : 'Preview and apply instantly')}</small>
-          </button>;
+        <Section icon={Sparkles} title={`${language === 'ar' ? 'قوالب متكاملة لشكل الموقع' : 'Complete storefront templates'} · ${t[mode]}`}><p className="mb-3 text-sm text-[var(--color-text-secondary)]">{language === 'ar' ? 'اختيار القالب يغيّر شكل المتجر كاملًا: الخطوط والألوان والبطاقات والأعمدة. قوالب ULTRA تغيّر الهيدر والنافبار والسايدبار أيضًا. اختبر النتيجة في المعاينة قبل حفظها أو نشرها.' : 'Templates change the full storefront: fonts, colors, cards, and columns. ULTRA templates also change the header, bottom navigation, and sidebar. Check the preview before saving or publishing.'}</p><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{presets.map((entry) => {
+          const locked = entry.requiresUltra ? !canPreviewUltra : entry.tier === 'THEME_PRO' && !paid;
+          const active = draft?.modes?.light?.presetId === entry.id && draft?.modes?.dark?.presetId === entry.id;
+          return <ThemePresetCard key={entry.id} entry={entry} mode={mode} language={language} locked={locked} active={active}
+            onSelect={() => locked ? openSubscriptions() : choosePreset(entry)} />;
         })}</div></Section>
         {(previewOnly || activePage === 'colors') && <Section icon={Palette} title={t.colors}><div className="grid gap-3 sm:grid-cols-2">{colorKeys.map((key) => <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text)]"><span>{t[key]}</span><span className="flex items-center gap-2"><small dir="ltr">{part.colors[key]}</small><input type="color" aria-label={t[key]} value={part.colors[key]} onChange={(event) => updatePart('colors', key, event.target.value)} /></span></label>)}</div>{modeContrastWarnings.length > 0 && <p role="note" className="mt-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">{t.lowContrastNotice} {modeContrastWarnings.join(language === 'ar' ? '، ' : ', ')}</p>}</Section>}
         </>}
         {(previewOnly || ['typography', 'header', 'navigation'].includes(activePage)) && <>
-        {(previewOnly || activePage === 'typography') && <Section icon={Palette} title={t.typography}><div className="grid gap-3 sm:grid-cols-2">{[['arabicFont', 'arabic'], ['englishFont', 'english']].map(([key, kind]) => <label key={key} className="text-sm text-[var(--color-text)]">{t[key]}<select className={`${input} mt-1`} value={part.typography[key]} onChange={(event) => updatePart('typography', key, event.target.value)}>{fonts[kind].map((font) => <option key={font} value={font} disabled={!paid && !freeFonts[kind].includes(font)}>{font}{!freeFonts[kind].includes(font) ? ' 🔒 Pro' : ''}</option>)}</select></label>)}</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Select label={t.baseSize} value={part.typography.baseSize} values={[14,16,18,20]} disabled={!paid} onChange={(value) => updatePart('typography','baseSize',Number(value))} suffix="px" /><Select label={t.headingWeight} value={part.typography.headingWeight} values={[600,700,800]} disabled={!paid} onChange={(value) => updatePart('typography','headingWeight',Number(value))} /></div></Section>}
+        {(previewOnly || activePage === 'typography') && <Section icon={Palette} title={t.typography}><p className="mb-3 text-xs text-[var(--color-text-secondary)]">{language === 'ar' ? 'الخط المختار يطبق على نصوص الموقع كلها في المعاينة والوضع المنشور. اختر الرقعة أو أحد الخطوط العريضة واضبط سُمك النص والعناوين.' : 'The selected font is applied to all storefront text in preview and after publishing. Choose Ruqaa or a bold Arabic font and adjust body and heading weights.'}</p><div className="grid gap-3 sm:grid-cols-2">{[['arabicFont', 'arabic'], ['englishFont', 'english']].map(([key, kind]) => <label key={key} className="text-sm text-[var(--color-text)]">{t[key]}<select className={`${input} mt-1`} value={part.typography[key]} onChange={(event) => updatePart('typography', key, event.target.value)}>{fonts[kind].map((font) => <option key={font} value={font} disabled={!paid && !freeFonts[kind].includes(font)}>{font === 'Aref Ruqaa' ? 'Aref Ruqaa · رقعة' : font === 'Aref Ruqaa Ink' ? 'Aref Ruqaa Ink · رقعة عريضة' : font === 'Noto Kufi Arabic' ? 'Noto Kufi Arabic · عريض' : font === 'El Messiri' ? 'El Messiri · عريض' : font}{!freeFonts[kind].includes(font) ? ' 🔒 Pro' : ''}</option>)}</select></label>)}</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Select label={t.baseSize} value={part.typography.baseSize} values={[14,16,18,20]} disabled={!paid} onChange={(value) => updatePart('typography','baseSize',Number(value))} suffix="px" /><Select label={t.bodyWeight} value={part.typography.bodyWeight ?? 400} values={[400,500,600,700,800]} onChange={(value) => updatePart('typography','bodyWeight',Number(value))} /><Select label={t.headingWeight} value={part.typography.headingWeight} values={[600,700,800,900]} onChange={(value) => updatePart('typography','headingWeight',Number(value))} /></div></Section>}
         {(previewOnly || activePage === 'typography') && <Section icon={Palette} title={t.components} locked={!paid}><fieldset disabled={!paid} className="grid gap-3 sm:grid-cols-2 disabled:opacity-60"><Select label={t.buttonRadius} value={part.buttons.radius} values={[0,4,8,12,24]} suffix="px" onChange={(value) => updatePart('buttons','radius',Number(value))} /><Select label={t.buttonStyle} value={part.buttons.style} values={['solid','outline']} labels={t} onChange={(value) => updatePart('buttons','style',value)} /><Select label={t.cardRadius} value={part.cards.radius} values={[0,4,8,12,16,24]} suffix="px" onChange={(value) => updatePart('cards','radius',Number(value))} /><Select label={t.cardShadow} value={part.cards.shadow} values={['none','subtle','medium']} labels={t} onChange={(value) => updatePart('cards','shadow',value)} /><Select label={t.navigation} value={part.navigation.style} values={['standard','compact']} labels={t} onChange={(value) => updatePart('navigation','style',value)} /></fieldset></Section>}
         {(previewOnly || activePage === 'typography') && <Section icon={Sparkles} title={t.neonTitle} locked={!paid}>
           <p className="mb-4 text-xs text-[var(--color-text-secondary)]">{t.neonHint}</p>

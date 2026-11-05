@@ -221,13 +221,30 @@
 .theme-preset-card:disabled { cursor: not-allowed; }
 .theme-preset-card--active { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgb(var(--color-primary-rgb) / 0.25); }
 .theme-preset-card__scene {
-  display: block;
-  height: 4.5rem;
+  display: flex;
+  height: 8.2rem;
+  flex-direction: column;
+  gap: 0.25rem;
   overflow: hidden;
   border: 1px solid;
   border-radius: 0.6rem;
-  padding: 0.65rem;
+  padding: 0.4rem;
 }
+.theme-preset-card__mock-header { display:flex; height:1.05rem; flex:0 0 auto; align-items:center; gap:.2rem; border:1px solid; padding:0 .25rem; }
+.theme-preset-card__mock-header i { display:block; width:.36rem; height:.36rem; border-radius:50%; opacity:.75; }
+.theme-preset-card__mock-header b { margin-inline:auto; font-size:.38rem; font-weight:950; letter-spacing:.06em; }
+.theme-preset-card__mock-content { display:flex; min-height:0; flex:1; gap:.25rem; }
+.theme-preset-card__mock-sidebar { display:block; width:12%; min-width:.5rem; border:1px solid; }
+.theme-preset-card__mock-main { display:flex; min-width:0; flex:1; flex-direction:column; gap:.2rem; }
+.theme-preset-card__mock-categories,.theme-preset-card__mock-products { display:grid; min-width:0; gap:.15rem; }
+.theme-preset-card__mock-categories { height:22%; flex:0 0 auto; }
+.theme-preset-card__mock-categories b { display:block; border:1px solid; }
+.theme-preset-card__mock-products { min-height:0; flex:1; }
+.theme-preset-card__mock-products>b { display:flex; min-width:0; flex-direction:column; gap:.16rem; border:1px solid; padding:.17rem; }
+.theme-preset-card__mock-products>b>i:first-child { display:block; min-height:0; flex:1; border-radius:.18rem; }
+.theme-preset-card__mock-products>b>i:last-child { display:block; width:72%; height:.16rem; border-radius:99px; opacity:.65; }
+.theme-preset-card__mock-nav { display:flex; height:.72rem; flex:0 0 auto; align-items:center; justify-content:space-around; border:1px solid; padding-inline:.25rem; }
+.theme-preset-card__mock-nav i { display:block; width:.35rem; height:.2rem; border-radius:99px; background:currentColor; opacity:.55; }
 .theme-preset-card__panel {
   display: flex;
   height: 100%;

@@ -4548,8 +4548,11 @@
 /* Published settings deliberately take precedence over older decorative rules. */
 :root.platform-theme-active { font-size: var(--platform-base-font-size, 16px); }
 :root.platform-theme-active body { background: var(--color-bg); color: var(--color-text); }
-:root.platform-theme-active[lang="ar"] body { font-family: var(--platform-font-ar, inherit); }
-:root.platform-theme-active[lang="en"] body { font-family: var(--platform-font-en, inherit); }
+:root.platform-theme-active[lang="ar"] body,
+:root.platform-theme-active[lang="ar"] body :not(svg):not(svg *) { font-family: var(--platform-font-ar, inherit) !important; }
+:root.platform-theme-active[lang="en"] body,
+:root.platform-theme-active[lang="en"] body :not(svg):not(svg *) { font-family: var(--platform-font-en, inherit) !important; }
+:root.platform-theme-active body { font-weight: var(--platform-body-weight, 400); }
 :root.platform-theme-active :is(h1,h2,h3,h4,h5,h6) { font-weight: var(--platform-heading-weight, 700) !important; }
 /* Important declarations in older component layers otherwise beat inline styles. */
 @layer base {
