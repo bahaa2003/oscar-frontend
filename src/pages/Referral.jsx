@@ -33,7 +33,7 @@ import { useToast } from '../components/ui/Toast';
 import { resolveUserAvatar } from '../utils/avatar';
 import useReferralStore from '../store/useReferralStore';
 import useResellerApplicationStore from '../store/useResellerApplicationStore';
-import referralHeroImage from '../assets/slide-3.webp';
+import referralHeroImage from '../assets/referral-optimized.webp';
 
 const copyText = async (value) => {
   try {

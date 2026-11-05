@@ -2,7 +2,7 @@ import slideOne from '../assets/س1.avif';
 import slideTwo from '../assets/س2.avif';
 import slideThree from '../assets/س3.webp';
 import slideFour from '../assets/س4.avif';
-import slideFive from '../assets/س5.avif';
+import slideFive from '../assets/slide-five-optimized.avif';
 
 export const homeHeroSlides = [
   {

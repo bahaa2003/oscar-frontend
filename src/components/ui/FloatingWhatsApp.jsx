@@ -7,7 +7,7 @@ import useAuthStore from '../../store/useAuthStore';
 import useSystemStore from '../../store/useSystemStore';
 import { isAdminRole } from '../../utils/authRoles';
 import { buildWhatsAppLink, getAdminWhatsAppNumber } from '../../utils/whatsapp';
-import oscarAssistantIcon from '../../assets/ChatGPT_Image_31_مايو_2026__08_01_23_م-removebg-preview.png';
+import oscarAssistantIcon from '../../assets/oscar-assistant.webp';
 
 const USER_SUPPORT_ROUTES = [
   '/dashboard',

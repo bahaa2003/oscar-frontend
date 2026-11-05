@@ -260,7 +260,6 @@ Login/register/2FA
 | `src/components/ui` | Reusable primitives such as button, badge, card, modal, input, table, toast |
 | `src/config` | Frontend feature flags |
 | `src/context` | Theme and language providers |
-| `src/services/accountSecurityApi.js` | Mock/in-memory account security and email OTP adapter used by the account security UI |
 | `src/utils` | Formatting, routing, pricing, auth, permissions, order, wallet, image, WhatsApp, cache, and validation helpers |
 | `src/data` | Mock data, country catalog, legacy translations, wallet seed data |
 | `src/locales` | Bundled i18next locale JSON |
@@ -848,7 +847,6 @@ Reusable UI lives in `src/components/ui`:
 Feature UI also includes:
 
 - `LazyOscarAIAssistant` and `OscarAIAssistant` in `src/components/ai-assistant`
-- `ReferralBanner` on the public/customer home experience when referrals are enabled
 - `WalletSidebarCard`, which keeps customer wallet balance visible in the sidebar
 
 ---

@@ -1,6 +1,6 @@
 import buyCardsImage from '../assets/buyCards.webp';
-import chatAppsImage from '../assets/chatApps.webp';
-import gamesChargingImage from '../assets/gamesCharging.webp';
+import chatAppsImage from '../assets/chat-optimized.webp';
+import gamesChargingImage from '../assets/games-optimized.webp';
 import brandIconImage from '../assets/ms-removebg-preview.webp';
 import { calculateProductPrice } from './pricing';
 import { formatNumber } from './intl';

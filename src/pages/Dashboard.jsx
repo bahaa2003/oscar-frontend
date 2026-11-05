@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ShieldCheck, Sparkles, Target } from 'lucide-react';
+import { ArrowLeft, UserCircle2, Sparkles, Target } from 'lucide-react';
 import useAuthStore from '../store/useAuthStore';
 import useMediaStore from '../store/useMediaStore';
 import useGroupStore from '../store/useGroupStore';
@@ -30,7 +30,7 @@ const Dashboard = () => {
   const { categoryGridStyle } = getThemeGridStyles(publishedPlatformTheme);
   const navigate = useNavigate();
   const language = getStorefrontLanguage(i18n);
-  const isTwoFactorEnabled = Boolean(user?.twoFactorEnabled ?? user?.isTwoFactorEnabled);
+  const isProfileIncomplete = user && ['name', 'email', 'phone'].some((field) => !String(user[field] || '').trim());
   const isCustomerUser = String(user?.role || '').trim().toLowerCase() === 'customer';
   const shouldUseLocalGroupPricing = isBackofficeRole(user?.role);
 
@@ -87,25 +87,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-3 pb-5 sm:space-y-4">
-      {!isTwoFactorEnabled ? (
+      {isProfileIncomplete ? (
         <section className="mx-auto w-full max-w-3xl overflow-hidden rounded-[0.95rem] border border-[color:rgb(var(--color-border-rgb)/0.56)] bg-[linear-gradient(180deg,rgb(var(--color-card-rgb)/0.68),rgb(var(--color-surface-rgb)/0.42))] px-2 py-1 text-[0.74rem] text-[var(--color-text)] shadow-[var(--shadow-subtle)] backdrop-blur-xl sm:rounded-[1.1rem] sm:px-2.5 sm:py-1.5">
           <div dir="ltr" className="grid min-h-7 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5">
             <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.65rem] bg-[linear-gradient(135deg,#5b21b6,#7c3aed_48%,#2f1fb4)] text-white shadow-[0_10px_22px_-16px_rgb(124_58_237/0.9)] sm:h-7 sm:w-7">
-              <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <UserCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </span>
 
             <p dir={language === 'ar' ? 'rtl' : 'ltr'} className="min-w-0 truncate text-center text-[0.64rem] font-semibold leading-4 text-[var(--color-text)] min-[380px]:text-[0.7rem] sm:text-[0.8rem]">
               {language === 'ar'
-                ? 'حرصًا على أمان حسابك، فعّل المصادقة الثنائية الآن.'
-                : 'For your account safety, enable two-factor authentication now.'}
+                ? 'أكمل بيانات حسابك للاستفادة من خدماتنا.'
+                : 'Complete your account details to use our services.'}
             </p>
 
             <Link
-              to="/account-security"
+              to="/account"
               className="inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-full bg-[linear-gradient(135deg,#f43fdd,#a855f7_48%,#6d28d9)] px-2 text-[0.62rem] font-black text-white shadow-[0_12px_24px_-18px_rgb(168_85_247/0.95)] transition-all hover:-translate-y-0.5 hover:brightness-105 sm:h-7 sm:px-3 sm:text-[0.7rem]"
             >
               <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-              {language === 'ar' ? 'فعّل الآن' : 'Enable now'}
+              {language === 'ar' ? 'أكمل بياناتك' : 'Complete profile'}
             </Link>
           </div>
         </section>

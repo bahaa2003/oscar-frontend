@@ -6,10 +6,10 @@ const ThemeContext = createContext();
 const THEME_STORAGE_KEY = 'oscar-theme';
 
 const getInitialTheme = () => {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
-  return 'light';
+  return 'dark';
 };
 
 export const useTheme = () => useContext(ThemeContext);

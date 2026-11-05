@@ -19,7 +19,7 @@ import apiClient from '../../services/client';
 import { resolveImageUrl } from '../../utils/imageUrl';
 import { formatOrderDateTime, getOrderStatusMeta, resolveSiteOrderNumber } from '../../utils/orders';
 import coinsImage from '../../assets/عملات.webp';
-import oscarAssistantIcon from '../../assets/ChatGPT_Image_31_مايو_2026__08_01_23_م-removebg-preview.png';
+import oscarAssistantIcon from '../../assets/oscar-assistant.webp';
 import {
   ASSISTANT_MAX_MESSAGES,
   ASSISTANT_STORAGE_KEY,
